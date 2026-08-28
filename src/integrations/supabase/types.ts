@@ -126884,6 +126884,10 @@ export type Database = {
         Args: { p_channel: string }
         Returns: string
       }
+      omni_comms_priv_binding_verification_supported: {
+        Args: { p_channel: string }
+        Returns: boolean
+      }
       omni_comms_priv_bootstrap_employer_registration_pilot: {
         Args: {
           p_actor_id: string
