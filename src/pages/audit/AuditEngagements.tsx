@@ -56,7 +56,9 @@ export default function AuditEngagements() {
   const { getCreateFields, getUpdateFields } = useAuditFields();
   const checkAvailability = useTeamAvailabilityCheck();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState<Record<string, string>>({ status: 'all', risk: 'all', plan_status: 'Approved', plan_id: 'all' });
+  // DEF-S1B-36: default to all plan statuses so audits belonging to closed or
+  // carried-forward annual plans remain discoverable without changing filters.
+  const [filters, setFilters] = useState<Record<string, string>>({ status: 'all', risk: 'all', plan_status: 'All Plans', plan_id: 'all' });
   const [modalState, setModalState] = useState<{ mode: 'create' | 'edit' | null; record?: any }>({ mode: null });
   const [form, setForm] = useState(emptyForm);
   const [conflictResult, setConflictResult] = useState<any>(null);
