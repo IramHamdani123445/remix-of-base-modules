@@ -20,6 +20,7 @@ import { useTeamAvailabilityCheck } from '@/hooks/useAuditWorkflowGates';
 import { ConflictAlertPanel } from '@/components/audit/ConflictAlertPanel';
 import { formatDepartmentLabel } from '@/lib/audit/departmentLabel';
 import { useToast } from '@/hooks/use-toast';
+import { useHasPermission } from '@/hooks/useNavigationMenu';
 import { Progress } from '@/components/ui/progress';
 
 const STATUSES = ['Planned', 'In Progress', 'Findings Raised', 'Management Response', 'Closed'];
@@ -45,6 +46,7 @@ const emptyForm = {
 
 export default function AuditEngagements() {
   const navigate = useNavigate();
+  const canCreateEngagement = useHasPermission('audit_engagements', 'create');
   const { toast } = useToast();
   const { data = [], isLoading, isError, create, update } = useIAEngagements();
   const { data: departments = [] } = useIADepartments();
@@ -244,7 +246,7 @@ export default function AuditEngagements() {
   return (
     <PageShell title="Audits" subtitle="Select an audit to open its workspace"
       breadcrumbs={[{ label: 'Internal Audit', href: '/audit/dashboard' }, { label: 'Audits' }]}
-      actions={<Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />New Audit</Button>}
+      actions={canCreateEngagement ? <Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" />New Audit</Button> : null}
       isLoading={isLoading} error={isError ? 'Failed to load' : null}>
 
       {filters.plan_status !== 'All Plans' && (
