@@ -124633,6 +124633,7 @@ export type Database = {
         Returns: boolean
       }
       ia_actor_label: { Args: never; Returns: string }
+      ia_annual_plan_readiness: { Args: { p_plan_id: string }; Returns: Json }
       ia_apply_manual_override: {
         Args: {
           p_candidate_id?: string
@@ -124863,6 +124864,16 @@ export type Database = {
       }
       ia_current_auditor_id: { Args: never; Returns: string }
       ia_current_profile_id: { Args: never; Returns: string }
+      ia_decide_annual_plan: {
+        Args: {
+          p_comments?: string
+          p_committee_name?: string
+          p_decision: string
+          p_minutes_reference?: string
+          p_plan_id: string
+        }
+        Returns: Json
+      }
       ia_detect_material_plan_changes: {
         Args: { p_plan_id: string; p_proposed_changes: Json }
         Returns: Json
@@ -125137,6 +125148,10 @@ export type Database = {
       }
       ia_storage_class: { Args: { _name: string }; Returns: string }
       ia_storage_engagement: { Args: { _name: string }; Returns: string }
+      ia_submit_annual_plan: {
+        Args: { p_notes?: string; p_plan_id: string }
+        Returns: Json
+      }
       ia_transition_execution_status: {
         Args: {
           p_engagement_id: string
