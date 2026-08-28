@@ -19,13 +19,19 @@ import {
 } from './internalAuditCommunicationProducer';
 import type { ConfiguredBusinessEventResult } from '../emitConfiguredBusinessEvent';
 
-/** Operator communication-stage code → catalogued Omni-Comms event code. */
+/**
+ * Operator communication-stage code → catalogued Omni-Comms event code.
+ *
+ * DEF-S1B-51: a document call-up, an iterative audit query and a schedule /
+ * team-and-scope notice are distinct business acts and now carry distinct
+ * semantic events. Launch is never reused to mean "scheduled".
+ */
 export const IA_STAGE_EVENT_MAP: Record<string, string> = {
   PLAN_INTIMATION: 'INTERNAL_AUDIT.ENGAGEMENT.INTIMATION_ISSUED',
-  TEAM_AND_SCOPE_NOTICE: 'INTERNAL_AUDIT.ENGAGEMENT.LAUNCHED',
+  TEAM_AND_SCOPE_NOTICE: 'INTERNAL_AUDIT.ENGAGEMENT.SCHEDULED',
   DOC_REQUEST: 'INTERNAL_AUDIT.REQUEST.ISSUED',
   ENTRANCE_MEETING: 'INTERNAL_AUDIT.ENGAGEMENT.ENTRANCE_MEETING',
-  QUERY_CYCLE: 'INTERNAL_AUDIT.REQUEST.ISSUED',
+  QUERY_CYCLE: 'INTERNAL_AUDIT.QUERY.ISSUED',
   DRAFT_FINDING_DISCUSSION: 'INTERNAL_AUDIT.REPORT.DRAFT_CIRCULATED',
   EXIT_MEETING: 'INTERNAL_AUDIT.ENGAGEMENT.EXIT_MEETING',
   FINAL_REPORT_ISSUE: 'INTERNAL_AUDIT.REPORT.ISSUED',
@@ -35,7 +41,7 @@ export const IA_STAGE_EVENT_MAP: Record<string, string> = {
 /** Reminder-mode overrides, where the catalogue has a dedicated event. */
 const IA_STAGE_REMINDER_EVENT_MAP: Record<string, string> = {
   DOC_REQUEST: 'INTERNAL_AUDIT.REQUEST.REMINDER',
-  QUERY_CYCLE: 'INTERNAL_AUDIT.REQUEST.REMINDER',
+  QUERY_CYCLE: 'INTERNAL_AUDIT.QUERY.CLARIFICATION_REQUESTED',
 };
 
 export type IaStageMode = 'initial' | 'reminder' | 'reissue';
