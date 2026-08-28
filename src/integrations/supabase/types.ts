@@ -74800,12 +74800,29 @@ export type Database = {
         Row: {
           accepted_at: string | null
           action_plan: string | null
+          audit_concluded_at: string | null
+          audit_concluded_by: string | null
+          audit_conclusion: string | null
+          clarification_request: string | null
+          clarification_requested_at: string | null
+          clarification_requested_by: string | null
           created_at: string | null
           created_by: string | null
+          dispute_disposed_at: string | null
+          dispute_disposed_by: string | null
+          dispute_disposition: string | null
+          dispute_disposition_notes: string | null
+          dispute_state: string
           due_date: string | null
           engagement_id: string | null
+          escalated_at: string | null
+          escalated_by: string | null
+          escalation_authority: string | null
+          escalation_reason: string | null
+          escalation_reference: string | null
           finding_id: string
           id: string
+          is_current: boolean
           is_overdue: boolean | null
           last_reminder_date: string | null
           management_position: string | null
@@ -74813,6 +74830,7 @@ export type Database = {
           rejection_rationale: string | null
           reminder_sent: boolean | null
           response_text: string | null
+          response_version: number
           responsible_person: string | null
           review_outcome: string | null
           reviewed_at: string | null
@@ -74820,6 +74838,8 @@ export type Database = {
           status: string | null
           submitted_by: string | null
           submitted_date: string | null
+          superseded_by_response_id: string | null
+          supersedes_response_id: string | null
           supporting_docs: string[] | null
           target_date: string | null
           updated_at: string | null
@@ -74828,12 +74848,29 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           action_plan?: string | null
+          audit_concluded_at?: string | null
+          audit_concluded_by?: string | null
+          audit_conclusion?: string | null
+          clarification_request?: string | null
+          clarification_requested_at?: string | null
+          clarification_requested_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          dispute_disposed_at?: string | null
+          dispute_disposed_by?: string | null
+          dispute_disposition?: string | null
+          dispute_disposition_notes?: string | null
+          dispute_state?: string
           due_date?: string | null
           engagement_id?: string | null
+          escalated_at?: string | null
+          escalated_by?: string | null
+          escalation_authority?: string | null
+          escalation_reason?: string | null
+          escalation_reference?: string | null
           finding_id: string
           id?: string
+          is_current?: boolean
           is_overdue?: boolean | null
           last_reminder_date?: string | null
           management_position?: string | null
@@ -74841,6 +74878,7 @@ export type Database = {
           rejection_rationale?: string | null
           reminder_sent?: boolean | null
           response_text?: string | null
+          response_version?: number
           responsible_person?: string | null
           review_outcome?: string | null
           reviewed_at?: string | null
@@ -74848,6 +74886,8 @@ export type Database = {
           status?: string | null
           submitted_by?: string | null
           submitted_date?: string | null
+          superseded_by_response_id?: string | null
+          supersedes_response_id?: string | null
           supporting_docs?: string[] | null
           target_date?: string | null
           updated_at?: string | null
@@ -74856,12 +74896,29 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           action_plan?: string | null
+          audit_concluded_at?: string | null
+          audit_concluded_by?: string | null
+          audit_conclusion?: string | null
+          clarification_request?: string | null
+          clarification_requested_at?: string | null
+          clarification_requested_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          dispute_disposed_at?: string | null
+          dispute_disposed_by?: string | null
+          dispute_disposition?: string | null
+          dispute_disposition_notes?: string | null
+          dispute_state?: string
           due_date?: string | null
           engagement_id?: string | null
+          escalated_at?: string | null
+          escalated_by?: string | null
+          escalation_authority?: string | null
+          escalation_reason?: string | null
+          escalation_reference?: string | null
           finding_id?: string
           id?: string
+          is_current?: boolean
           is_overdue?: boolean | null
           last_reminder_date?: string | null
           management_position?: string | null
@@ -74869,6 +74926,7 @@ export type Database = {
           rejection_rationale?: string | null
           reminder_sent?: boolean | null
           response_text?: string | null
+          response_version?: number
           responsible_person?: string | null
           review_outcome?: string | null
           reviewed_at?: string | null
@@ -74876,6 +74934,8 @@ export type Database = {
           status?: string | null
           submitted_by?: string | null
           submitted_date?: string | null
+          superseded_by_response_id?: string | null
+          supersedes_response_id?: string | null
           supporting_docs?: string[] | null
           target_date?: string | null
           updated_at?: string | null
@@ -74894,6 +74954,20 @@ export type Database = {
             columns: ["finding_id"]
             isOneToOne: false
             referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_management_responses_superseded_by_response_id_fkey"
+            columns: ["superseded_by_response_id"]
+            isOneToOne: false
+            referencedRelation: "ia_management_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_management_responses_supersedes_response_id_fkey"
+            columns: ["supersedes_response_id"]
+            isOneToOne: false
+            referencedRelation: "ia_management_responses"
             referencedColumns: ["id"]
           },
         ]
@@ -124878,8 +124952,26 @@ export type Database = {
         Args: { p_plan_id: string; p_proposed_changes: Json }
         Returns: Json
       }
+      ia_dispose_finding_dispute: {
+        Args: {
+          p_authority_reference?: string
+          p_disposition: string
+          p_notes: string
+          p_response_id: string
+        }
+        Returns: Json
+      }
       ia_engagement_progress: {
         Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_escalate_finding_dispute: {
+        Args: {
+          p_authority: string
+          p_reason: string
+          p_reference: string
+          p_response_id: string
+        }
         Returns: Json
       }
       ia_evaluate_engagement_closure: {
@@ -125068,6 +125160,10 @@ export type Database = {
       }
       ia_register_actions: { Args: { p_filters?: Json }; Returns: Json }
       ia_register_findings: { Args: { p_filters?: Json }; Returns: Json }
+      ia_register_management_responses: {
+        Args: { p_filters?: Json }
+        Returns: Json
+      }
       ia_resolve_engagement_risk: {
         Args: { p_department_id?: string; p_function_id?: string }
         Returns: Json
@@ -125099,6 +125195,18 @@ export type Database = {
       ia_respondent_writable_class: {
         Args: { _class: string }
         Returns: boolean
+      }
+      ia_resubmit_management_response: {
+        Args: {
+          p_action_plan?: string
+          p_management_position?: string
+          p_rejection_rationale?: string
+          p_response_id: string
+          p_response_text: string
+          p_responsible_person?: string
+          p_target_date?: string
+        }
+        Returns: Json
       }
       ia_review_activity: {
         Args: { p_activity_id: string; p_notes?: string; p_outcome: string }
