@@ -2,14 +2,22 @@
 //
 // Consumes the persisted Slice 2c-ii resolution snapshot, revalidates it,
 // renders each eligible recipient × channel, and derives mode-aware message
-// status, held dispatch-job evidence and the final request status.
+// status, dispatch-job evidence and the final request status.
 //
 // No provider is contacted. No email is sent. No delivery attempt is created.
-// No runnable dispatch job may ever be produced by this build.
+// A dispatch job may only be proposed as runnable when the fail-closed
+// certification decision in `dispatchAuthorization.ts` authorises it; the
+// persistence RPC independently re-evaluates the same contract, so this
+// module can never widen what the database will accept.
 
 import { renderMessage } from "./renderMessage.ts";
 import { RenderingError } from "./renderingErrors.ts";
 import { revalidateSnapshot } from "./snapshotRevalidator.ts";
+import {
+  type DispatchAuthorizationContext,
+  type DispatchHoldReason,
+  evaluateDispatchAuthorization,
+} from "./dispatchAuthorization.ts";
 import type {
   MessageCandidate,
   PersistedChannelResolution,
@@ -23,9 +31,10 @@ export interface DispatchJobCandidate {
   message_index: number;
   channel: string;
   mode: RuntimeMode;
-  status: "held";
-  is_runnable: false;
-  hold_reason: string;
+  /** `queued` + `is_runnable: true` is only ever proposed for an AUTHORIZED job. */
+  status: "held" | "queued";
+  is_runnable: boolean;
+  hold_reason: string | null;
   attempt_count: 0;
 }
 
@@ -46,14 +55,42 @@ const HOLD_REASON_PRECEDENCE: Array<{ blocker: string; reason: string }> = [
   { blocker: "live_delivery_disabled", reason: "live_delivery_disabled" },
 ];
 
-export function resolveHoldReason(mode: RuntimeMode, blockers: string[]): string {
-  if (mode === "shadow") return "shadow_mode";
+/**
+ * Resolve the dispatch state for one rendered leg.
+ *
+ * Resolution-time blockers win first (they are more specific than any
+ * governance reason). Otherwise the fail-closed certification decision
+ * applies: AUTHORIZED yields a runnable job, anything else yields its exact
+ * hold reason. When no authorisation context is supplied at all — the default
+ * for every non-certification deployment — the leg stays held under
+ * `runtime_privileged_certification_pending`, exactly as before.
+ */
+export function resolveDispatchState(
+  mode: RuntimeMode,
+  blockers: string[],
+  authorization?: DispatchAuthorizationContext | null,
+): { runnable: boolean; holdReason: string | null } {
+  if (mode === "shadow") return { runnable: false, holdReason: "shadow_mode" };
   for (const entry of HOLD_REASON_PRECEDENCE) {
-    if (blockers.includes(entry.blocker)) return entry.reason;
+    if (blockers.includes(entry.blocker)) return { runnable: false, holdReason: entry.reason };
   }
-  // Privileged live-provider readiness has not been certified in this build.
-  return "runtime_privileged_certification_pending";
+  if (!authorization) {
+    return { runnable: false, holdReason: "runtime_privileged_certification_pending" };
+  }
+  const decision = evaluateDispatchAuthorization(authorization);
+  if (decision.authorized) return { runnable: true, holdReason: null };
+  return { runnable: false, holdReason: decision.reason satisfies DispatchHoldReason };
 }
+
+/** Back-compatible accessor retained for existing callers and tests. */
+export function resolveHoldReason(
+  mode: RuntimeMode,
+  blockers: string[],
+  authorization?: DispatchAuthorizationContext | null,
+): string | null {
+  return resolveDispatchState(mode, blockers, authorization).holdReason;
+}
+
 
 function recipientContext(recipient: RenderContext["recipients"][number]): Record<string, unknown> {
   return {
