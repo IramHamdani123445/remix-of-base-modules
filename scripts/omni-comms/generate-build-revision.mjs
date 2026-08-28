@@ -19,7 +19,9 @@ const SOURCE_DIRS = [
   "supabase/functions/omni-comms-dispatch",
   "supabase/functions/_shared/omni-comms",
 ];
-const ARTIFACT = "supabase/functions/_shared/omni-comms/buildRevision.generated.ts";
+const ARTIFACT = "supabase/functions/_shared/omni-comms/adapterRegistry.ts";
+const BEGIN = "/* ------------------------------------------------------------------ *\n * BEGIN GENERATED BUILD REVISION";
+const END = "/* END GENERATED BUILD REVISION */";
 
 function walk(dir, acc = []) {
   for (const entry of readdirSync(dir).sort()) {
@@ -48,25 +50,24 @@ for (const file of files) {
 // governance check and column keeps working unchanged.
 const revision = digest.digest("hex").slice(0, 40);
 
-const body = `// GENERATED FILE — do not edit by hand.
-// Produced by scripts/omni-comms/generate-build-revision.mjs from the content
-// of the Omni-Comms runtime, dispatcher and shared adapter sources.
-//
-// Source files hashed: ${files.length}
+const artifactPath = join(ROOT, ARTIFACT);
+const current = readFileSync(artifactPath, "utf8");
+const start = current.indexOf(BEGIN);
+const end = current.indexOf(END);
+if (start < 0 || end < 0) {
+  console.error(`Generated build-revision region not found in ${ARTIFACT}`);
+  process.exit(1);
+}
+const region = `${BEGIN}
+ * Content hash of every Omni-Comms runtime, dispatcher and shared source.
+ * ------------------------------------------------------------------ */
 export const OMNI_COMMS_BUILD_REVISION = "${revision}";
 export const OMNI_COMMS_BUILD_SOURCE_FILE_COUNT = ${files.length};
-`;
-
-const current = (() => {
-  try {
-    return readFileSync(join(ROOT, ARTIFACT), "utf8");
-  } catch {
-    return null;
-  }
-})();
+${END}`;
+const next = current.slice(0, start) + region + current.slice(end + END.length);
 
 if (process.argv.includes("--check")) {
-  if (current !== body) {
+  if (next !== current) {
     console.error(
       `omni-comms build revision artifact is stale.\nExpected revision ${revision}.\nRun: node scripts/omni-comms/generate-build-revision.mjs`,
     );
@@ -74,6 +75,6 @@ if (process.argv.includes("--check")) {
   }
   console.log(`omni-comms build revision up to date: ${revision}`);
 } else {
-  if (current !== body) writeFileSync(join(ROOT, ARTIFACT), body);
+  if (next !== current) writeFileSync(artifactPath, next);
   console.log(`omni-comms build revision: ${revision} (${files.length} source files)`);
 }
