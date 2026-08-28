@@ -922,7 +922,12 @@ Deno.serve(async (req: Request) => {
         userId,
         row.request_id,
         canonical.organizationId,
+        {
+          deployedRevision: REVISION_VERIFIED ? DEPLOYED_REVISION : null,
+          currentProjectRef: projectRefFromUrl(SUPABASE_URL),
+        },
       );
+
       const base = buildResolvedResponse(row, finData, persistedRecipients, requestBlockers);
       return json({
         ...buildResult({
