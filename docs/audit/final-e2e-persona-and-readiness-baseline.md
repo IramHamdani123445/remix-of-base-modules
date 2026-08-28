@@ -32,3 +32,15 @@ Scope: persona certification and UI entitlement closure. No lifecycle developmen
 
 ## Freeze status
 System is frozen for the final full E2E. No lifecycle RPCs changed in this pass.
+
+## Final readiness cleanup (DEF-S1B-37 / 39 / 40 / 41 / 42)
+
+| Defect | Verdict | Change |
+| --- | --- | --- |
+| DEF-S1B-37 | CLOSED | Engagement Summary and Overdue Actions now read the governed read models (`ia_register_findings`, `ia_register_actions`, `ia_q_action_centre_counts`); Plan Slippage repointed from the non-existent `ia_engagements` to `ia_audit_engagements` with `execution_status`. No mock data remains. |
+| DEF-S1B-39 | CLOSED | Evidence banner suppressed on closed / cancelled engagements (`EngagementDetail.tsx`). |
+| DEF-S1B-40 | CLOSED | Engagement Summary, Overdue Actions and Plan Slippage added to the Internal Audit → Reporting sidebar group so all audit reports share one navigation model. |
+| DEF-S1B-41 | CLOSED | No React Fragment prop warning reproduced; `AuditLifecycleStepper` uses keyed `React.Fragment` only, which is valid. |
+| DEF-S1B-42 | CLOSED | CSV export now collapses embedded newlines so one record is one CSV line, and the Action Centre header displays the exported record count next to the Export control. |
+
+No lifecycle or communication architecture changes were made in this pass.
