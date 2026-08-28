@@ -173,6 +173,11 @@ export interface DispatchCertificationSnapshot {
   request_created_at: string | null;
   quarantined: boolean | null;
   as_of: string | null;
+  /**
+   * Adapters currently approved for controlled-pilot dispatch by the governed
+   * database registry. Absence denies every credential-bearing adapter.
+   */
+  certification_safe_adapters?: string[] | null;
   channels: Array<{
     channel: string;
     release_state: string | null;
