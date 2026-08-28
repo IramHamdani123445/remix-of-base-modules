@@ -127508,6 +127508,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_debug_job_decision: {
+        Args: { p_message_id: string }
+        Returns: Json
+      }
       omni_comms_priv_dispatch_attachment_manifest: {
         Args: { p_message_id: string }
         Returns: Json
