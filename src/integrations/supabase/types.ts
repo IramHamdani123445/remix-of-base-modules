@@ -75419,6 +75419,10 @@ export type Database = {
       }
       ia_plan_carry_forward: {
         Row: {
+          acceptance_notes: string | null
+          accepted_at: string | null
+          accepted_by: string | null
+          accepted_by_profile: string | null
           annual_plan_id: string | null
           carried_by: string | null
           created_at: string | null
@@ -75435,10 +75439,16 @@ export type Database = {
           source_reference: string | null
           source_type: string
           status: string | null
+          target_engagement_id: string | null
           target_fiscal_year: string | null
+          target_plan_id: string | null
           target_resolution_date: string | null
         }
         Insert: {
+          acceptance_notes?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          accepted_by_profile?: string | null
           annual_plan_id?: string | null
           carried_by?: string | null
           created_at?: string | null
@@ -75455,10 +75465,16 @@ export type Database = {
           source_reference?: string | null
           source_type: string
           status?: string | null
+          target_engagement_id?: string | null
           target_fiscal_year?: string | null
+          target_plan_id?: string | null
           target_resolution_date?: string | null
         }
         Update: {
+          acceptance_notes?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          accepted_by_profile?: string | null
           annual_plan_id?: string | null
           carried_by?: string | null
           created_at?: string | null
@@ -75475,7 +75491,9 @@ export type Database = {
           source_reference?: string | null
           source_type?: string
           status?: string | null
+          target_engagement_id?: string | null
           target_fiscal_year?: string | null
+          target_plan_id?: string | null
           target_resolution_date?: string | null
         }
         Relationships: [
@@ -75491,6 +75509,20 @@ export type Database = {
             columns: ["original_finding_id"]
             isOneToOne: false
             referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_plan_carry_forward_target_engagement_id_fkey"
+            columns: ["target_engagement_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_plan_carry_forward_target_plan_id_fkey"
+            columns: ["target_plan_id"]
+            isOneToOne: false
+            referencedRelation: "ia_annual_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -125117,6 +125149,15 @@ export type Database = {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
       }
+      ia_plan_accept_carry_forward: {
+        Args: {
+          p_carry_forward_id: string
+          p_notes?: string
+          p_quarter?: string
+          p_target_plan_id: string
+        }
+        Returns: Json
+      }
       ia_q_action_centre_counts: { Args: { p_filters?: Json }; Returns: Json }
       ia_q_closure_blockers: { Args: { p_filters?: Json }; Returns: Json }
       ia_q_followup_queue: { Args: { p_filters?: Json }; Returns: Json }
@@ -125162,6 +125203,10 @@ export type Database = {
       ia_register_findings: { Args: { p_filters?: Json }; Returns: Json }
       ia_register_management_responses: {
         Args: { p_filters?: Json }
+        Returns: Json
+      }
+      ia_reopen_annual_plan: {
+        Args: { p_plan_id: string; p_reason: string }
         Returns: Json
       }
       ia_resolve_engagement_risk: {
