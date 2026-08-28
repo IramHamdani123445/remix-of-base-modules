@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, Loader2, Rocket, AlertTriangle } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLaunchReadiness, useLaunchEngagement } from '@/hooks/useEngagementExecution';
+import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -14,9 +15,15 @@ interface Props {
 export function LaunchReadinessPanel({ engagementId, currentExecutionStatus, onLaunched }: Props) {
   const { data: readiness, isLoading } = useLaunchReadiness(engagementId);
   const launchMutation = useLaunchEngagement();
+  const { can } = useInternalAuditPermissions();
+  const isEntitledToLaunch = can('launch_department_audit');
 
-  const canLaunch = currentExecutionStatus === 'Planned' || currentExecutionStatus === 'Ready for Launch';
-  const alreadyLaunched = !canLaunch && currentExecutionStatus !== undefined;
+  const canLaunch = isEntitledToLaunch
+    && (currentExecutionStatus === 'Planned' || currentExecutionStatus === 'Ready for Launch');
+  const alreadyLaunched = currentExecutionStatus !== undefined
+    && currentExecutionStatus !== 'Planned'
+    && currentExecutionStatus !== 'Ready for Launch';
+
 
   const handleLaunch = async () => {
     await launchMutation.mutateAsync(engagementId);

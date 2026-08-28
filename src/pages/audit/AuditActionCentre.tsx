@@ -17,6 +17,7 @@ import type { DataTableColumn, ExportColumn } from '@/components/common';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { useIADepartments, useIAAnnualPlans } from '@/hooks/useAuditData';
 import { ActionLifecycleDialog } from '@/components/audit/actions/ActionLifecycleDialog';
+import { useInternalAuditPersona } from '@/hooks/audit/useInternalAuditPersona';
 import {
   useIaActionRegister, useIaFindingRegister, useIaMyAuditWork, useIaManagementActionsQueue,
   useIaHeadOfAuditAttention, useIaQualityReviewQueue, useIaFollowUpQueue, useIaClosureBlockers,
@@ -37,6 +38,8 @@ const FINDING_STATUSES = ['Draft', 'Under Review', 'Confirmed', 'Released', 'Res
 
 export default function AuditActionCentre() {
   const navigate = useNavigate();
+  const persona = useInternalAuditPersona();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('tab') || 'my-work';
 
@@ -270,7 +273,7 @@ export default function AuditActionCentre() {
   const exportCols = (cols: DataTableColumn<any>[]): ExportColumn[] =>
     cols.map(col => ({ key: col.key, header: col.header }));
 
-  const tabs = [
+  const allTabs = [
     { value: 'my-work', label: 'My Audit Work', icon: ListChecks, rows: applyText(myWork.data ?? []), cols: workColumns, q: myWork, onView: (r: any) => go(r.link) },
     { value: 'management', label: 'Management Actions', icon: Users, rows: applyText(management.data ?? []), cols: managementColumns, q: management, onView: (r: any) => go(r.link) },
     { value: 'attention', label: 'Head of Audit', icon: Target, rows: applyText(attention.data ?? []), cols: attentionColumns, q: attention, onView: (r: any) => go(r.link) },
@@ -281,6 +284,16 @@ export default function AuditActionCentre() {
     { value: 'qa', label: 'Quality Review', icon: Gavel, rows: applyText(qaQueue.data ?? []), cols: qaColumns, q: qaQueue, onView: (r: any) => go(r.link) },
     { value: 'closure', label: 'Closure Readiness', icon: CheckCircle2, rows: applyText(closure.data ?? []), cols: closureColumns, q: closure, onView: (r: any) => go(r.link) },
   ];
+
+  /**
+   * Management respondents only operate their own queues (DEF-S1B-34): they must
+   * not see audit-team surfaces such as Head of Audit, Quality Review,
+   * Verification or Closure Readiness.
+   */
+  const MANAGEMENT_TABS = ['management', 'findings', 'register', 'followup'];
+  const tabs = persona.isManagementOnly
+    ? allTabs.filter(t => MANAGEMENT_TABS.includes(t.value))
+    : allTabs;
 
   const active = tabs.find(t => t.value === tab) ?? tabs[0];
 
@@ -453,7 +466,7 @@ export default function AuditActionCentre() {
         </CardContent>
       </Card>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={active?.value ?? tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
           {tabs.map(t => (
             <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
