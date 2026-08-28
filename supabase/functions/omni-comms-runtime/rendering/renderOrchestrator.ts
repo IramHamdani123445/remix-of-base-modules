@@ -95,8 +95,9 @@ export function resolveHoldReason(
  * Build the per-leg authorisation context from the persisted render context.
  *
  * Returns `null` — which means HELD — whenever the render context carries no
- * certification block, no per-channel governance snapshot, or no resolved
- * provider adapter. Absence always denies.
+ * certification block, no per-channel governance snapshot, or no evaluation
+ * instant. Absence always denies, and the instant is always supplied by the
+ * Edge Function boundary so this package stays a pure function of its inputs.
  */
 function dispatchAuthorizationFor(
   context: RenderContext,
@@ -104,7 +105,8 @@ function dispatchAuthorizationFor(
   resolution: PersistedChannelResolution,
 ): DispatchAuthorizationContext | null {
   const cert = context.dispatch_certification;
-  if (!cert) return null;
+  if (!cert || !cert.as_of) return null;
+
   const governance = (cert.channels ?? []).find((c) => c.channel === channel) ?? null;
   if (!governance) return null;
   return {
