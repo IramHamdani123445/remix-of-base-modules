@@ -91,6 +91,47 @@ export function resolveHoldReason(
   return resolveDispatchState(mode, blockers, authorization).holdReason;
 }
 
+/**
+ * Build the per-leg authorisation context from the persisted render context.
+ *
+ * Returns `null` — which means HELD — whenever the render context carries no
+ * certification block, no per-channel governance snapshot, or no resolved
+ * provider adapter. Absence always denies.
+ */
+function dispatchAuthorizationFor(
+  context: RenderContext,
+  channel: string,
+  resolution: PersistedChannelResolution,
+): DispatchAuthorizationContext | null {
+  const cert = context.dispatch_certification;
+  if (!cert) return null;
+  const governance = (cert.channels ?? []).find((c) => c.channel === channel) ?? null;
+  if (!governance) return null;
+  return {
+    runtimeEnvironment: cert.runtime_environment ?? null,
+    markerEnvironmentKind: cert.marker_environment_kind ?? null,
+    markerAllowsControlledTestActivation: cert.marker_allows_controlled_test_activation ?? null,
+    markerProjectRef: cert.marker_project_ref ?? null,
+    currentProjectRef: cert.current_project_ref ?? null,
+    release: {
+      release_state: governance.release_state ?? null,
+      release_expires_at: governance.release_expires_at ?? null,
+      approved_commit: governance.approved_commit ?? null,
+      permitted_caller_modules: governance.permitted_caller_modules ?? null,
+      permitted_modes: governance.permitted_modes ?? null,
+    },
+    deployedRevision: cert.deployed_revision ?? null,
+    callerModuleCode: cert.caller_module_code ?? null,
+    mode: context.request.mode,
+    providerAdapterKey: resolution.provider_adapter_key ?? null,
+    recipientAllowlisted: governance.recipient_allowlisted ?? null,
+    dispatchCertifiedFrom: cert.dispatch_certified_from ?? null,
+    requestCreatedAt: cert.request_created_at ?? null,
+    quarantined: cert.quarantined ?? null,
+    asOf: cert.as_of ?? new Date().toISOString(),
+  };
+}
+
 
 function recipientContext(recipient: RenderContext["recipients"][number]): Record<string, unknown> {
   return {
