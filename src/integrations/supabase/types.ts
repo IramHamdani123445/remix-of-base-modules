@@ -71396,6 +71396,7 @@ export type Database = {
           inclusion_rationale: string | null
           inclusion_reason_codes: Json | null
           inclusion_reason_notes: string | null
+          intimation_issued_at: string | null
           is_active: boolean | null
           is_adhoc: boolean | null
           launched_at: string | null
@@ -71413,6 +71414,9 @@ export type Database = {
           primary_auditee_contact_id: string | null
           quarter: string | null
           reviewer_id: string | null
+          schedule_version: number
+          scheduled_at: string | null
+          scheduled_by: string | null
           scheduling_notes: string | null
           scope: string | null
           secondary_auditee_contact_ids: Json | null
@@ -71464,6 +71468,7 @@ export type Database = {
           inclusion_rationale?: string | null
           inclusion_reason_codes?: Json | null
           inclusion_reason_notes?: string | null
+          intimation_issued_at?: string | null
           is_active?: boolean | null
           is_adhoc?: boolean | null
           launched_at?: string | null
@@ -71481,6 +71486,9 @@ export type Database = {
           primary_auditee_contact_id?: string | null
           quarter?: string | null
           reviewer_id?: string | null
+          schedule_version?: number
+          scheduled_at?: string | null
+          scheduled_by?: string | null
           scheduling_notes?: string | null
           scope?: string | null
           secondary_auditee_contact_ids?: Json | null
@@ -71532,6 +71540,7 @@ export type Database = {
           inclusion_rationale?: string | null
           inclusion_reason_codes?: Json | null
           inclusion_reason_notes?: string | null
+          intimation_issued_at?: string | null
           is_active?: boolean | null
           is_adhoc?: boolean | null
           launched_at?: string | null
@@ -71549,6 +71558,9 @@ export type Database = {
           primary_auditee_contact_id?: string | null
           quarter?: string | null
           reviewer_id?: string | null
+          schedule_version?: number
+          scheduled_at?: string | null
+          scheduled_by?: string | null
           scheduling_notes?: string | null
           scope?: string | null
           secondary_auditee_contact_ids?: Json | null
@@ -72760,6 +72772,36 @@ export type Database = {
           },
         ]
       }
+      ia_comms_payload_alias: {
+        Row: {
+          canonical_key: string
+          created_at: string
+          event_code: string | null
+          id: string
+          legacy_key: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_key: string
+          created_at?: string
+          event_code?: string | null
+          id?: string
+          legacy_key: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_key?: string
+          created_at?: string
+          event_code?: string | null
+          id?: string
+          legacy_key?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ia_comms_pre_release_quarantine: {
         Row: {
           correlation_id: string | null
@@ -72939,12 +72981,17 @@ export type Database = {
           acknowledged_at: string | null
           acknowledgment_required: boolean | null
           communication_id: string | null
+          communication_state: string | null
           created_at: string | null
           created_by: string | null
           delivery_status: string | null
           engagement_id: string
+          event_code: string | null
+          event_outbox_id: string | null
           id: string
           notes: string | null
+          occurrence: string | null
+          omni_comms_request_id: string | null
           recipient_email: string | null
           recipient_name: string | null
           sent_at: string | null
@@ -72958,12 +73005,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledgment_required?: boolean | null
           communication_id?: string | null
+          communication_state?: string | null
           created_at?: string | null
           created_by?: string | null
           delivery_status?: string | null
           engagement_id: string
+          event_code?: string | null
+          event_outbox_id?: string | null
           id?: string
           notes?: string | null
+          occurrence?: string | null
+          omni_comms_request_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
           sent_at?: string | null
@@ -72977,12 +73029,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledgment_required?: boolean | null
           communication_id?: string | null
+          communication_state?: string | null
           created_at?: string | null
           created_by?: string | null
           delivery_status?: string | null
           engagement_id?: string
+          event_code?: string | null
+          event_outbox_id?: string | null
           id?: string
           notes?: string | null
+          occurrence?: string | null
+          omni_comms_request_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
           sent_at?: string | null
@@ -74089,6 +74146,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ia_engagement_risk_overrides_engagement_id_fkey"
+            columns: ["engagement_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_engagement_schedule_history: {
+        Row: {
+          created_at: string
+          engagement_id: string
+          id: string
+          new_end_date: string | null
+          new_start_date: string | null
+          operation: string
+          performed_at: string
+          performed_by: string | null
+          previous_end_date: string | null
+          previous_start_date: string | null
+          reason: string | null
+          schedule_version: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          engagement_id: string
+          id?: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          operation: string
+          performed_at?: string
+          performed_by?: string | null
+          previous_end_date?: string | null
+          previous_start_date?: string | null
+          reason?: string | null
+          schedule_version: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          engagement_id?: string
+          id?: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          operation?: string
+          performed_at?: string
+          performed_by?: string | null
+          previous_end_date?: string | null
+          previous_start_date?: string | null
+          reason?: string | null
+          schedule_version?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_engagement_schedule_history_engagement_id_fkey"
             columns: ["engagement_id"]
             isOneToOne: false
             referencedRelation: "ia_audit_engagements"
@@ -124802,6 +124915,10 @@ export type Database = {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_cancel_engagement: {
+        Args: { p_engagement_id: string; p_reason: string }
+        Returns: Json
+      }
       ia_capacity_schedule_candidates: {
         Args: { p_plan_id: string }
         Returns: Json
@@ -124849,11 +124966,32 @@ export type Database = {
         Args: { _action: string; _engagement: string; _module: string }
         Returns: boolean
       }
+      ia_comms_auditee_fact: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
       ia_comms_contract_payload: {
         Args: { p_event_code: string; p_payload: Json }
         Returns: Json
       }
+      ia_comms_contract_project: {
+        Args: { p_event_code: string; p_payload: Json }
+        Returns: Json
+      }
       ia_comms_emit: {
+        Args: {
+          p_correlation_id?: string
+          p_department_id?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_event_code: string
+          p_occurrence: string
+          p_payload: Json
+          p_recipient_facts: Json
+        }
+        Returns: Json
+      }
+      ia_comms_emit_mandatory: {
         Args: {
           p_correlation_id?: string
           p_department_id?: string
@@ -125164,6 +125302,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_postpone_engagement: {
+        Args: { p_engagement_id: string; p_reason: string }
+        Returns: Json
+      }
       ia_q_action_centre_counts: { Args: { p_filters?: Json }; Returns: Json }
       ia_q_closure_blockers: { Args: { p_filters?: Json }; Returns: Json }
       ia_q_followup_queue: { Args: { p_filters?: Json }; Returns: Json }
@@ -125213,6 +125355,15 @@ export type Database = {
       }
       ia_reopen_annual_plan: {
         Args: { p_plan_id: string; p_reason: string }
+        Returns: Json
+      }
+      ia_reschedule_engagement: {
+        Args: {
+          p_engagement_id: string
+          p_planned_end_date: string
+          p_planned_start_date: string
+          p_reason: string
+        }
         Returns: Json
       }
       ia_resolve_engagement_risk: {
@@ -125265,6 +125416,16 @@ export type Database = {
       }
       ia_review_management_response: {
         Args: { p_notes?: string; p_outcome: string; p_response_id: string }
+        Returns: Json
+      }
+      ia_schedule_engagement: {
+        Args: {
+          p_engagement_id: string
+          p_notes?: string
+          p_planned_end_date: string
+          p_planned_start_date: string
+          p_scope_summary?: string
+        }
         Returns: Json
       }
       ia_seed_ssb_audit_reference_data: {
