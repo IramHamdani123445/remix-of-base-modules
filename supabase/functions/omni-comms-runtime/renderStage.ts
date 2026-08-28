@@ -57,11 +57,19 @@ function isRenderContext(value: unknown): value is RenderContext {
   );
 }
 
+export interface RenderStageDeployment {
+  /** Revision this runtime artifact actually is. */
+  deployedRevision: string | null;
+  /** Project ref of the backend this runtime is writing to. */
+  currentProjectRef: string | null;
+}
+
 export async function runRenderStage(
   admin: RpcClient,
   actorId: string,
   requestId: string,
   organizationId: string,
+  deployment?: RenderStageDeployment | null,
 ): Promise<RenderStageOutcome> {
   const { data: ctxData, error: ctxErr } = await admin.rpc(
     "omni_comms_priv_load_render_context",
@@ -71,7 +79,26 @@ export async function runRenderStage(
   if (!isRenderContext(ctxData)) throw new RenderStageError("render_context_invalid");
 
   const context = ctxData;
+
+  // Governed dispatch-certification snapshot. Absence always denies: when the
+  // snapshot cannot be read, or the deployment identity is unknown, the
+  // context stays without a certification block and every leg is held.
+  if (deployment?.deployedRevision && deployment.currentProjectRef) {
+    const { data: certData, error: certErr } = await admin.rpc(
+      "omni_comms_priv_dispatch_certification_snapshot",
+      { p_actor_id: actorId, p_request_id: requestId, p_organization_id: organizationId },
+    );
+    if (!certErr && certData && typeof certData === "object") {
+      context.dispatch_certification = {
+        ...(certData as Record<string, unknown>),
+        deployed_revision: deployment.deployedRevision,
+        current_project_ref: deployment.currentProjectRef,
+      } as typeof context.dispatch_certification;
+    }
+  }
+
   const outcome = await orchestrateRendering(context);
+
 
   const { data: persistData, error: persistErr } = await admin.rpc(
     "omni_comms_priv_persist_rendered_messages",
