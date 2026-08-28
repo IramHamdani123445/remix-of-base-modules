@@ -151,158 +151,89 @@ export function useAuditPlanWorkflow() {
     queryClient.invalidateQueries({ queryKey: ['ia_plan_engagements'] });
   };
 
+  // All submission and decision transitions run through governed server commands
+  // (ia_submit_annual_plan / ia_decide_annual_plan). These enforce permissions,
+  // readiness, segregation of duties, engagement stamping and immutable audit events.
+  const callGovernedCommand = async (fn: string, args: Record<string, any>) => {
+    const { data, error } = await supabase.rpc(fn as any, args);
+    if (error) throw error;
+    const result = (data || {}) as any;
+    if (!result.success) {
+      const blockers = Array.isArray(result.blockers) ? result.blockers : [];
+      throw new Error(
+        [result.error || 'The request could not be completed.', ...blockers].join(' '),
+      );
+    }
+    return result;
+  };
+
   const submitForApproval = useMutation({
     mutationKey: ['InternalAudit', 'ia_annual_plans', 'update'],
-    mutationFn: async ({ planId }: { planId: string }) => {
-      const { data, error } = await supabase
-        .from('ia_annual_plans' as any)
-        .update({
-          status: 'Submitted',
-          submitted_by: userCode,
-          submitted_date: new Date().toISOString(),
-          current_workflow_step: 'submitted',
-          is_locked: true,
-        })
-        .eq('id', planId)
-        .select()
-        .single();
-      if (error) throw error;
-      await logAction(planId, 'Submitted', `Plan submitted for approval by ${userCode}`);
-      return data;
-    },
+    mutationFn: async ({ planId, notes }: { planId: string; notes?: string }) =>
+      callGovernedCommand('ia_submit_annual_plan', { p_plan_id: planId, p_notes: notes ?? null }),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Plan Submitted', description: 'The plan has been submitted for approval.' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Submission Failed', description: e.message, variant: 'destructive' }),
   });
 
   const approvePlan = useMutation({
     mutationKey: ['InternalAudit', 'ia_annual_plans', 'approve'],
-    mutationFn: async ({ planId, comments, committeeName, minutesRef }: { planId: string; comments?: string; committeeName?: string; minutesRef?: string }) => {
-      // Supersede any previously approved plan for same fiscal year
-      const { data: currentPlan } = await supabase
-        .from('ia_annual_plans' as any)
-        .select('fiscal_year')
-        .eq('id', planId)
-        .single();
-
-      const fy = (currentPlan as any)?.fiscal_year;
-      if (fy) {
-        const { data: existing } = await supabase
-          .from('ia_annual_plans' as any)
-          .select('id')
-          .eq('fiscal_year', fy)
-          .eq('status', 'Approved')
-          .neq('id', planId);
-        if (existing && existing.length > 0) {
-          for (const old of existing) {
-            await supabase
-              .from('ia_annual_plans' as any)
-              .update({ status: 'Superseded' })
-              .eq('id', (old as any).id);
-            await logAction((old as any).id, 'Superseded', `Superseded by approval of plan ${planId}`);
-          }
-        }
-      }
-
-      const { data, error } = await supabase
-        .from('ia_annual_plans' as any)
-        .update({
-          status: 'Approved',
-          approved_by: userCode,
-          approved_date: new Date().toISOString(),
-          approval_comments: comments || null,
-          board_committee_name: committeeName || undefined,
-          minutes_reference: minutesRef || undefined,
-          current_workflow_step: 'approved',
-          is_locked: true,
-        })
-        .eq('id', planId)
-        .select()
-        .single();
-      if (error) throw error;
-      await syncAnnualPlanEngagementApprovalState({
-        planId,
-        status: 'Approved',
-        userCode: userCode || 'system',
-        approvedAt: (data as any)?.approved_date || new Date().toISOString(),
-        approvedVersion: (data as any)?.current_version_number || null,
-        workflowInstanceId: (data as any)?.workflow_instance_id || null,
-      });
-      await logAction(planId, 'Approved', comments || 'Plan approved');
-      return data;
-    },
-    onSuccess: () => {
+    mutationFn: async ({ planId, comments, committeeName, minutesRef }: { planId: string; comments?: string; committeeName?: string; minutesRef?: string }) =>
+      callGovernedCommand('ia_decide_annual_plan', {
+        p_plan_id: planId,
+        p_decision: 'approve',
+        p_comments: comments ?? null,
+        p_committee_name: committeeName ?? null,
+        p_minutes_reference: minutesRef ?? null,
+      }),
+    onSuccess: (result: any) => {
       invalidate();
-      toast({ title: 'Plan Approved', description: 'The annual audit plan has been approved.' });
+      toast({
+        title: 'Plan Approved',
+        description: result?.superseded_plans
+          ? `The annual audit plan has been approved. ${result.superseded_plans} earlier plan(s) superseded.`
+          : 'The annual audit plan has been approved.',
+      });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Approval Failed', description: e.message, variant: 'destructive' }),
   });
 
   const rejectPlan = useMutation({
     mutationKey: ['InternalAudit', 'ia_annual_plans', 'approve'],
-    mutationFn: async ({ planId, comments }: { planId: string; comments: string }) => {
-      const { data, error } = await supabase
-        .from('ia_annual_plans' as any)
-        .update({
-          status: 'Rejected',
-          rejected_by: userCode,
-          rejected_at: new Date().toISOString(),
-          approval_comments: comments,
-          current_workflow_step: 'rejected',
-          is_locked: false,
-        })
-        .eq('id', planId)
-        .select()
-        .single();
-      if (error) throw error;
-      await syncAnnualPlanEngagementApprovalState({
-        planId,
-        status: 'Rejected',
-        userCode: userCode || 'system',
-        workflowInstanceId: (data as any)?.workflow_instance_id || null,
-      });
-      await logAction(planId, 'Rejected', comments);
-      return data;
-    },
+    mutationFn: async ({ planId, comments }: { planId: string; comments: string }) =>
+      callGovernedCommand('ia_decide_annual_plan', {
+        p_plan_id: planId,
+        p_decision: 'reject',
+        p_comments: comments,
+        p_committee_name: null,
+        p_minutes_reference: null,
+      }),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Plan Rejected', description: 'The plan has been rejected with comments.' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'Rejection Failed', description: e.message, variant: 'destructive' }),
   });
 
   const sendBackForChanges = useMutation({
     mutationKey: ['InternalAudit', 'ia_annual_plans', 'reject'],
-    mutationFn: async ({ planId, comments }: { planId: string; comments: string }) => {
-      const { data, error } = await supabase
-        .from('ia_annual_plans' as any)
-        .update({
-          status: 'Changes Requested',
-          approval_comments: comments,
-          current_workflow_step: 'changes_requested',
-          is_locked: false,
-        })
-        .eq('id', planId)
-        .select()
-        .single();
-      if (error) throw error;
-      await syncAnnualPlanEngagementApprovalState({
-        planId,
-        status: 'Changes Requested',
-        userCode: userCode || 'system',
-        workflowInstanceId: (data as any)?.workflow_instance_id || null,
-      });
-      await logAction(planId, 'Changes Requested', comments);
-      return data;
-    },
+    mutationFn: async ({ planId, comments }: { planId: string; comments: string }) =>
+      callGovernedCommand('ia_decide_annual_plan', {
+        p_plan_id: planId,
+        p_decision: 'changes_requested',
+        p_comments: comments,
+        p_committee_name: null,
+        p_minutes_reference: null,
+      }),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Changes Requested', description: 'The plan has been sent back for revisions.' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
 
   const withdrawSubmission = useMutation({
     mutationKey: ['InternalAudit', 'ia_annual_plans', 'update'],
