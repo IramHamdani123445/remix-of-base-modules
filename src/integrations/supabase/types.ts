@@ -125129,7 +125129,11 @@ export type Database = {
         Returns: Json
       }
       ia_start_quality_review: {
-        Args: { p_engagement_id: string; p_review_type?: string }
+        Args: {
+          p_engagement_id: string
+          p_review_type?: string
+          p_reviewer_id?: string
+        }
         Returns: Json
       }
       ia_storage_class: { Args: { _name: string }; Returns: string }
