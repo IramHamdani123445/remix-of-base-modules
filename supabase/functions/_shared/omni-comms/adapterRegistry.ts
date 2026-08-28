@@ -12,6 +12,7 @@
 //     registry instead of hard-coding channel `if` branches.
 
 import { OMNI_COMMS_SECRET_REF_PATTERN } from "./resendAdapter.ts";
+
 import { OMNI_COMMS_TWILIO_SECRET_REF_PATTERN } from "./twilioSmsAdapter.ts";
 import { OMNI_COMMS_FCM_SECRET_REF_PATTERN } from "./fcmPushAdapter.ts";
 import { OMNI_COMMS_WEBHOOK_SECRET_REF_PATTERN } from "./outboundWebhookAdapter.ts";
@@ -168,24 +169,22 @@ export function deliverableChannels(): readonly string[] {
  * BEGIN GENERATED BUILD REVISION
  * Content hash of every Omni-Comms runtime, dispatcher and shared source.
  * ------------------------------------------------------------------ */
-export const OMNI_COMMS_BUILD_REVISION = "7f3b0c70d7f13932dd3893feb6ba7be98155ea83";
+export const OMNI_COMMS_BUILD_REVISION = "c969821569fc4ae4842934414ba0e270c2c13401";
 export const OMNI_COMMS_BUILD_SOURCE_FILE_COUNT = 46;
 /* END GENERATED BUILD REVISION */
 
 // DEF-13 — deployment identity truth for the Omni-Comms runtime and dispatcher.
 //
-// A deployed function must be able to state EXACTLY which build is running.
-// Two independent sources are consulted, most authoritative first:
+// The committed build artifact above is the DEFAULT deployment truth: a
+// content hash of every runtime, dispatcher and shared adapter source file,
+// so a deployed function can always state exactly which build is running.
 //
-//   1. `OMNI_COMMS_DEPLOYED_REVISION` — the platform-wide git revision stamped
-//      at deploy time. Trusted only when it is a well-formed 40-hex value.
-//   2. The committed build artifact `buildRevision.generated.ts`, whose value
-//      is a content hash of every runtime, dispatcher and shared adapter source
-//      file. It can never be absent, stale relative to the code it ships with,
-//      or silently inherited from an older deployment.
-//
-// A health report therefore never claims `revisionVerified: true` without a
-// concrete, checkable value behind it.
+// A deployment-automation stamp (`OMNI_COMMS_DEPLOYED_REVISION`) is consulted
+// only when it is a well-formed 40-hex value, and a stamp that disagrees with
+// the artifact is reported as `revisionStale` so certification fails closed —
+// an override may never hide a build mismatch. The historic
+// `OMNI_COMMS_EDGE_REVISION` variable is never consulted: a long-lived legacy
+// stamp could survive a code change and silently mask a build mismatch.
 
 export const OMNI_COMMS_REVISION_PATTERN = /^[0-9a-f]{40}$/;
 
@@ -200,21 +199,19 @@ export interface DeployedRevisionReport {
   revisionVerified: boolean;
   /** The content-hash identity of the shipped sources, always present. */
   buildRevision: string | null;
-  /** The raw environment stamp, when it is well-formed. */
+  /** The raw deployment-automation stamp, when it is well formed. */
   environmentRevision: string | null;
-  /**
-   * True when the deploy-time stamp disagrees with the content hash of the
-   * sources actually shipped — i.e. the environment stamp is stale. Reported
-   * so a reviewer can never mistake a stale stamp for deployment truth.
-   */
+  /** True when the stamp disagrees with the content hash actually shipped. */
   revisionStale: boolean;
 }
 
-export function resolveDeployedRevision(
-  envValue: string | undefined = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? undefined,
+/** Pure rule — exercised directly by the repository DEF-13 test suite. */
+export function resolveRevisionReport(
+  envValue: string | undefined,
+  buildValue: string | undefined,
 ): DeployedRevisionReport {
   const env = (envValue ?? "").trim().toLowerCase();
-  const build = (OMNI_COMMS_BUILD_REVISION ?? "").trim().toLowerCase();
+  const build = (buildValue ?? "").trim().toLowerCase();
 
   const environmentRevision = OMNI_COMMS_REVISION_PATTERN.test(env) ? env : null;
   const buildRevision = OMNI_COMMS_REVISION_PATTERN.test(build) ? build : null;
@@ -236,6 +233,14 @@ export function resolveDeployedRevision(
       environmentRevision !== buildRevision,
   };
 }
+
+export function resolveDeployedRevision(
+  envValue: string | undefined = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? undefined,
+): DeployedRevisionReport {
+  return resolveRevisionReport(envValue, OMNI_COMMS_BUILD_REVISION);
+}
+
+
 
 // DEF-14 — certification simulation adapters.
 //
