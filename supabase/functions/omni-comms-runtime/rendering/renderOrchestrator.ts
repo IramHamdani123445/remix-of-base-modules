@@ -2,14 +2,22 @@
 //
 // Consumes the persisted Slice 2c-ii resolution snapshot, revalidates it,
 // renders each eligible recipient × channel, and derives mode-aware message
-// status, held dispatch-job evidence and the final request status.
+// status, dispatch-job evidence and the final request status.
 //
 // No provider is contacted. No email is sent. No delivery attempt is created.
-// No runnable dispatch job may ever be produced by this build.
+// A dispatch job may only be proposed as runnable when the fail-closed
+// certification decision in `dispatchAuthorization.ts` authorises it; the
+// persistence RPC independently re-evaluates the same contract, so this
+// module can never widen what the database will accept.
 
 import { renderMessage } from "./renderMessage.ts";
 import { RenderingError } from "./renderingErrors.ts";
 import { revalidateSnapshot } from "./snapshotRevalidator.ts";
+import {
+  type DispatchAuthorizationContext,
+  type DispatchHoldReason,
+  evaluateDispatchAuthorization,
+} from "./dispatchAuthorization.ts";
 import type {
   MessageCandidate,
   PersistedChannelResolution,
@@ -23,9 +31,10 @@ export interface DispatchJobCandidate {
   message_index: number;
   channel: string;
   mode: RuntimeMode;
-  status: "held";
-  is_runnable: false;
-  hold_reason: string;
+  /** `queued` + `is_runnable: true` is only ever proposed for an AUTHORIZED job. */
+  status: "held" | "queued";
+  is_runnable: boolean;
+  hold_reason: string | null;
   attempt_count: 0;
 }
 
@@ -46,14 +55,85 @@ const HOLD_REASON_PRECEDENCE: Array<{ blocker: string; reason: string }> = [
   { blocker: "live_delivery_disabled", reason: "live_delivery_disabled" },
 ];
 
-export function resolveHoldReason(mode: RuntimeMode, blockers: string[]): string {
-  if (mode === "shadow") return "shadow_mode";
+/**
+ * Resolve the dispatch state for one rendered leg.
+ *
+ * Resolution-time blockers win first (they are more specific than any
+ * governance reason). Otherwise the fail-closed certification decision
+ * applies: AUTHORIZED yields a runnable job, anything else yields its exact
+ * hold reason. When no authorisation context is supplied at all — the default
+ * for every non-certification deployment — the leg stays held under
+ * `runtime_privileged_certification_pending`, exactly as before.
+ */
+export function resolveDispatchState(
+  mode: RuntimeMode,
+  blockers: string[],
+  authorization?: DispatchAuthorizationContext | null,
+): { runnable: boolean; holdReason: string | null } {
+  if (mode === "shadow") return { runnable: false, holdReason: "shadow_mode" };
   for (const entry of HOLD_REASON_PRECEDENCE) {
-    if (blockers.includes(entry.blocker)) return entry.reason;
+    if (blockers.includes(entry.blocker)) return { runnable: false, holdReason: entry.reason };
   }
-  // Privileged live-provider readiness has not been certified in this build.
-  return "runtime_privileged_certification_pending";
+  if (!authorization) {
+    return { runnable: false, holdReason: "runtime_privileged_certification_pending" };
+  }
+  const decision = evaluateDispatchAuthorization(authorization);
+  if (decision.authorized) return { runnable: true, holdReason: null };
+  return { runnable: false, holdReason: decision.reason satisfies DispatchHoldReason };
 }
+
+/** Back-compatible accessor retained for existing callers and tests. */
+export function resolveHoldReason(
+  mode: RuntimeMode,
+  blockers: string[],
+  authorization?: DispatchAuthorizationContext | null,
+): string | null {
+  return resolveDispatchState(mode, blockers, authorization).holdReason;
+}
+
+/**
+ * Build the per-leg authorisation context from the persisted render context.
+ *
+ * Returns `null` — which means HELD — whenever the render context carries no
+ * certification block, no per-channel governance snapshot, or no evaluation
+ * instant. Absence always denies, and the instant is always supplied by the
+ * Edge Function boundary so this package stays a pure function of its inputs.
+ */
+function dispatchAuthorizationFor(
+  context: RenderContext,
+  channel: string,
+  resolution: PersistedChannelResolution,
+): DispatchAuthorizationContext | null {
+  const cert = context.dispatch_certification;
+  if (!cert || !cert.as_of) return null;
+
+  const governance = (cert.channels ?? []).find((c) => c.channel === channel) ?? null;
+  if (!governance) return null;
+  return {
+    runtimeEnvironment: cert.runtime_environment ?? null,
+    markerEnvironmentKind: cert.marker_environment_kind ?? null,
+    markerAllowsControlledTestActivation: cert.marker_allows_controlled_test_activation ?? null,
+    markerProjectRef: cert.marker_project_ref ?? null,
+    currentProjectRef: cert.current_project_ref ?? null,
+    release: {
+      release_state: governance.release_state ?? null,
+      release_expires_at: governance.release_expires_at ?? null,
+      approved_commit: governance.approved_commit ?? null,
+      permitted_caller_modules: governance.permitted_caller_modules ?? null,
+      permitted_modes: governance.permitted_modes ?? null,
+    },
+    deployedRevision: cert.deployed_revision ?? null,
+    callerModuleCode: cert.caller_module_code ?? null,
+    mode: context.request.mode,
+    providerAdapterKey: resolution.provider_adapter_key ?? null,
+    recipientAllowlisted: governance.recipient_allowlisted ?? null,
+    dispatchCertifiedFrom: cert.dispatch_certified_from ?? null,
+    requestCreatedAt: cert.request_created_at ?? null,
+    quarantined: cert.quarantined ?? null,
+    asOf: cert.as_of,
+  };
+}
+
 
 function recipientContext(recipient: RenderContext["recipients"][number]): Record<string, unknown> {
   return {
@@ -219,16 +299,19 @@ export async function orchestrateRendering(context: RenderContext): Promise<Orch
 
       // Mode-aware job evidence — dry_run creates NO dispatch job at all.
       if (!blocked && mode !== "dry_run") {
+        const authorization = dispatchAuthorizationFor(context, channel, resolution);
+        const state = resolveDispatchState(mode, resolution.blockers ?? [], authorization);
         jobs.push({
           message_index: index,
           channel,
           mode,
-          status: "held",
-          is_runnable: false,
-          hold_reason: resolveHoldReason(mode, resolution.blockers ?? []),
+          status: state.runnable ? "queued" : "held",
+          is_runnable: state.runnable,
+          hold_reason: state.holdReason,
           attempt_count: 0,
         });
       }
+
     }
   }
 
