@@ -256,16 +256,19 @@ export async function orchestrateRendering(context: RenderContext): Promise<Orch
 
       // Mode-aware job evidence — dry_run creates NO dispatch job at all.
       if (!blocked && mode !== "dry_run") {
+        const authorization = dispatchAuthorizationFor(context, channel, resolution);
+        const state = resolveDispatchState(mode, resolution.blockers ?? [], authorization);
         jobs.push({
           message_index: index,
           channel,
           mode,
-          status: "held",
-          is_runnable: false,
-          hold_reason: resolveHoldReason(mode, resolution.blockers ?? []),
+          status: state.runnable ? "queued" : "held",
+          is_runnable: state.runnable,
+          hold_reason: state.holdReason,
           attempt_count: 0,
         });
       }
+
     }
   }
 
