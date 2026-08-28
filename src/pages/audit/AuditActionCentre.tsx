@@ -17,6 +17,7 @@ import type { DataTableColumn, ExportColumn } from '@/components/common';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { useIADepartments, useIAAnnualPlans } from '@/hooks/useAuditData';
 import { ActionLifecycleDialog } from '@/components/audit/actions/ActionLifecycleDialog';
+import { useInternalAuditPersona } from '@/hooks/audit/useInternalAuditPersona';
 import {
   useIaActionRegister, useIaFindingRegister, useIaMyAuditWork, useIaManagementActionsQueue,
   useIaHeadOfAuditAttention, useIaQualityReviewQueue, useIaFollowUpQueue, useIaClosureBlockers,
