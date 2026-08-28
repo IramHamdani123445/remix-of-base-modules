@@ -75947,7 +75947,7 @@ export type Database = {
           category: string | null
           created_at: string
           created_by: string | null
-          department_audit_id: string
+          department_audit_id: string | null
           engagement_id: string | null
           id: string
           is_completed: boolean | null
@@ -75960,7 +75960,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
-          department_audit_id: string
+          department_audit_id?: string | null
           engagement_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -75973,7 +75973,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
-          department_audit_id?: string
+          department_audit_id?: string | null
           engagement_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -76001,7 +76001,7 @@ export type Database = {
       ia_preparation_documents: {
         Row: {
           created_at: string
-          department_audit_id: string
+          department_audit_id: string | null
           document_type: string | null
           engagement_id: string | null
           file_name: string
@@ -76011,7 +76011,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          department_audit_id: string
+          department_audit_id?: string | null
           document_type?: string | null
           engagement_id?: string | null
           file_name: string
@@ -76021,7 +76021,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          department_audit_id?: string
+          department_audit_id?: string | null
           document_type?: string | null
           engagement_id?: string | null
           file_name?: string
@@ -125040,34 +125040,20 @@ export type Database = {
         Args: { p_reason?: string; p_triggered_by?: string }
         Returns: number
       }
-      ia_record_communication_stage:
-        | {
-            Args: {
-              p_acknowledgment_required?: boolean
-              p_created_by?: string
-              p_engagement_id: string
-              p_notes?: string
-              p_recipient_email?: string
-              p_recipient_name?: string
-              p_stage_code: string
-              p_template_id?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_acknowledgment_required?: boolean
-              p_created_by?: string
-              p_engagement_id: string
-              p_mode?: string
-              p_notes?: string
-              p_recipient_email?: string
-              p_recipient_name?: string
-              p_stage_code: string
-              p_template_id?: string
-            }
-            Returns: Json
-          }
+      ia_record_communication_stage: {
+        Args: {
+          p_acknowledgment_required?: boolean
+          p_created_by?: string
+          p_engagement_id: string
+          p_mode?: string
+          p_notes?: string
+          p_recipient_email?: string
+          p_recipient_name?: string
+          p_stage_code: string
+          p_template_id?: string
+        }
+        Returns: Json
+      }
       ia_record_management_response: {
         Args: {
           p_action_plan?: string
