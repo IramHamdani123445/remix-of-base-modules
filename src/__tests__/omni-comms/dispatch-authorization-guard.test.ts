@@ -133,10 +133,30 @@ describe('evaluateDispatchAuthorization', () => {
     expect(reasonFor({ recipientAllowlisted: null })).toBe('recipient_not_allowlisted');
   });
 
-  it('holds every external credential-bearing adapter', () => {
+  it('holds every external credential-bearing adapter without a governed approval', () => {
     for (const adapter of EXTERNAL_CREDENTIAL_ADAPTERS) {
       expect(reasonFor({ providerAdapterKey: adapter })).toBe('provider_not_certification_safe');
+      expect(
+        reasonFor({ providerAdapterKey: adapter, governedCertificationSafeAdapters: [] }),
+      ).toBe('provider_not_certification_safe');
+      expect(
+        reasonFor({
+          providerAdapterKey: adapter,
+          governedCertificationSafeAdapters: ['some_other_adapter'],
+        }),
+      ).toBe('provider_not_certification_safe');
     }
+  });
+
+  it('authorises a credential-bearing adapter only when the governed registry approves it', () => {
+    expect(
+      evaluateDispatchAuthorization(
+        authorizedContext({
+          providerAdapterKey: 'resend',
+          governedCertificationSafeAdapters: ['resend'],
+        }),
+      ),
+    ).toEqual({ authorized: true, reason: null });
   });
 
   it('holds an unknown or missing adapter', () => {
@@ -146,7 +166,7 @@ describe('evaluateDispatchAuthorization', () => {
     expect(reasonFor({ providerAdapterKey: null })).toBe('provider_credentials_unavailable');
   });
 
-  it('authorises only credential-free certification adapters', () => {
+  it('authorises credential-free certification adapters with no governed approval', () => {
     for (const adapter of CERTIFICATION_SAFE_ADAPTERS) {
       expect(evaluateDispatchAuthorization(authorizedContext({ providerAdapterKey: adapter })))
         .toEqual({ authorized: true, reason: null });
