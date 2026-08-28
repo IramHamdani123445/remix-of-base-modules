@@ -85,6 +85,13 @@ export interface DispatchAuthorizationContext {
   mode: string | null;
   /** Resolved provider adapter key for this delivery leg. */
   providerAdapterKey: string | null;
+  /**
+   * Adapters the governed database registry
+   * (`omni_comms_channel_adapter_capability.certification_safe`) currently
+   * approves for controlled-pilot dispatch. Absence denies every adapter that
+   * is not inherently credential-free.
+   */
+  governedCertificationSafeAdapters?: readonly string[] | null;
   /** Whether the resolved destination hash matched the pilot allowlist. */
   recipientAllowlisted: boolean | null;
   /** Governed activation timestamp; jobs created before it stay held. */
@@ -176,12 +183,20 @@ export function evaluateDispatchAuthorization(
   // 7. Recipient allowlist.
   if (ctx.recipientAllowlisted !== true) return deny("recipient_not_allowlisted");
 
-  // 8. Provider posture. External credential-bearing adapters are denied
-  //    outright; anything not on the certification-safe list is denied too.
+  // 8. Provider posture. An adapter is acceptable only when it is either
+  //    inherently credential-free (built-in list) OR explicitly marked
+  //    certification-safe in the governed database adapter registry, which the
+  //    persistence RPC re-evaluates inside the same write transaction.
   const adapter = norm(ctx.providerAdapterKey);
   if (!adapter) return deny("provider_credentials_unavailable");
-  if (EXTERNAL_CREDENTIAL_ADAPTERS.includes(adapter)) return deny("provider_not_certification_safe");
-  if (!CERTIFICATION_SAFE_ADAPTERS.includes(adapter)) return deny("provider_not_certification_safe");
+  const governedSafe = (ctx.governedCertificationSafeAdapters ?? []).map((a) => norm(a));
+  const inherentlySafe = CERTIFICATION_SAFE_ADAPTERS.includes(adapter);
+  if (!inherentlySafe && !governedSafe.includes(adapter)) {
+    return deny("provider_not_certification_safe");
+  }
+  if (!inherentlySafe && EXTERNAL_CREDENTIAL_ADAPTERS.includes(adapter) && governedSafe.length === 0) {
+    return deny("provider_not_certification_safe");
+  }
 
   // 9. No retroactive release. Only work created after the governed activation
   //    instant may become runnable; quarantined work never may.
