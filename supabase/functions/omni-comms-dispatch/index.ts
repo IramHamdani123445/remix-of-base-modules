@@ -32,6 +32,8 @@ import {
   normalizeStorageMode,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
+import { resolveDeployedRevision } from "../_shared/omni-comms/deployedRevision.ts";
+import { isSimulationAdapter, simulateDelivery } from "../_shared/omni-comms/simulationAdapter.ts";
 import {
   resolveTwilioCredentials,
   resolveTwilioSecret,
@@ -131,7 +133,10 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "";
+// DEF-13: the platform stamp when it is well formed, otherwise the committed
+// build-artifact content hash. The deployment always reports a real revision.
+const REVISION_REPORT = resolveDeployedRevision();
+const DEPLOYED_REVISION = REVISION_REPORT.revision ?? "";
 
 /** The dispatcher can only ever drain the Email channel. */
 const DISPATCHABLE_CHANNEL = "email";
@@ -158,12 +163,14 @@ Deno.serve(async (req) => {
   // Non-mutating deployment identity probe. Reports the deployed revision only;
   // it claims no job, contacts no provider and sends nothing.
   if (req.method === "GET" && new URL(req.url).pathname.endsWith("/health")) {
-    const rev = DEPLOYED_REVISION.trim().toLowerCase();
     return json({
       function: "omni-comms-dispatch",
       available: true,
-      revision: /^[0-9a-f]{40}$/.test(rev) ? rev : null,
-      revisionVerified: /^[0-9a-f]{40}$/.test(rev),
+      revision: REVISION_REPORT.revision,
+      revisionVerified: REVISION_REPORT.revisionVerified,
+      revisionSource: REVISION_REPORT.revisionSource,
+      buildRevision: REVISION_REPORT.buildRevision,
+      environmentRevision: REVISION_REPORT.environmentRevision,
     });
   }
 
@@ -591,7 +598,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    const outcome = claimChannel === "whatsapp"
+    // DEF-14 — certification simulation path. Selected ONLY when the database
+    // claim resolved a certification-safe adapter that needs no external
+    // credential. No provider is contacted and nothing leaves the platform.
+    const simulationAdapter = isSimulationAdapter(claim.adapter_code)
+      && claim.requires_external_credentials !== true
+      ? String(claim.adapter_code)
+      : null;
+
+    const outcome = simulationAdapter
+      ? await simulateDelivery({
+        adapterCode: simulationAdapter,
+        channel: claimChannel,
+        idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+      })
+      : claimChannel === "whatsapp"
       ? await (async () => {
         const resolved = await resolveTwilioCredentials({
           accountSidRef: String(claim.account_sid_ref ?? ""),
