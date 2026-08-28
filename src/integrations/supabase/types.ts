@@ -127525,6 +127525,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_dispatch_certification_snapshot: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_dispatch_claim_email: {
         Args: {
           p_batch_limit: number

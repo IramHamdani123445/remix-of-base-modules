@@ -79,6 +79,13 @@ const REVISION_REPORT = resolveDeployedRevision(
 );
 const DEPLOYED_REVISION = REVISION_REPORT.revision;
 const REVISION_VERIFIED = REVISION_REPORT.revisionVerified;
+
+/** Project ref of the backend this runtime is actually writing to. */
+function projectRefFromUrl(url: string): string | null {
+  const match = /^https?:\/\/([a-z0-9-]+)\.supabase\.(co|in|net)/i.exec((url ?? "").trim());
+  return match ? match[1].toLowerCase() : null;
+}
+
 /**
  * Certification is NOT read from a function secret. The database certification
  * record is the single authoritative source; this runtime only reports the
@@ -922,7 +929,12 @@ Deno.serve(async (req: Request) => {
         userId,
         row.request_id,
         canonical.organizationId,
+        {
+          deployedRevision: REVISION_VERIFIED ? DEPLOYED_REVISION : null,
+          currentProjectRef: projectRefFromUrl(SUPABASE_URL),
+        },
       );
+
       const base = buildResolvedResponse(row, finData, persistedRecipients, requestBlockers);
       return json({
         ...buildResult({

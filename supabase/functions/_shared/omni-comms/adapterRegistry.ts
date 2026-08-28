@@ -168,7 +168,7 @@ export function deliverableChannels(): readonly string[] {
  * BEGIN GENERATED BUILD REVISION
  * Content hash of every Omni-Comms runtime, dispatcher and shared source.
  * ------------------------------------------------------------------ */
-export const OMNI_COMMS_BUILD_REVISION = "3bce9462e4aad97faab772c73bdcd0a6d7440ca3";
+export const OMNI_COMMS_BUILD_REVISION = "7f3b0c70d7f13932dd3893feb6ba7be98155ea83";
 export const OMNI_COMMS_BUILD_SOURCE_FILE_COUNT = 46;
 /* END GENERATED BUILD REVISION */
 
