@@ -125087,6 +125087,7 @@ export type Database = {
         Returns: boolean
       }
       ia_is_ia_user: { Args: never; Returns: boolean }
+      ia_is_quality_reviewer: { Args: never; Returns: boolean }
       ia_issue_report: {
         Args: { p_notes?: string; p_report_id: string }
         Returns: Json
