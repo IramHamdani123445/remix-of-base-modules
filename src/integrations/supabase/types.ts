@@ -95873,6 +95873,57 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_channel_adapter_capability: {
+        Row: {
+          adapter_code: string
+          certification_safe: boolean
+          channel: string
+          contacts_external_provider: boolean
+          created_at: string
+          display_name: string
+          enabled: boolean
+          notes: string | null
+          requires_external_credentials: boolean
+          requires_verified_sender_domain: boolean
+          secret_ref_pattern: string | null
+          supports_attachments: boolean
+          supports_callbacks: boolean
+          updated_at: string
+        }
+        Insert: {
+          adapter_code: string
+          certification_safe?: boolean
+          channel: string
+          contacts_external_provider?: boolean
+          created_at?: string
+          display_name: string
+          enabled?: boolean
+          notes?: string | null
+          requires_external_credentials?: boolean
+          requires_verified_sender_domain?: boolean
+          secret_ref_pattern?: string | null
+          supports_attachments?: boolean
+          supports_callbacks?: boolean
+          updated_at?: string
+        }
+        Update: {
+          adapter_code?: string
+          certification_safe?: boolean
+          channel?: string
+          contacts_external_provider?: boolean
+          created_at?: string
+          display_name?: string
+          enabled?: boolean
+          notes?: string | null
+          requires_external_credentials?: boolean
+          requires_verified_sender_domain?: boolean
+          secret_ref_pattern?: string | null
+          supports_attachments?: boolean
+          supports_callbacks?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_channel_attachment_policy: {
         Row: {
           channel: string
@@ -97031,6 +97082,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      omni_comms_dispatch_activation: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          certified_from: string | null
+          certified_revision: string | null
+          environment_kind: string | null
+          note: string | null
+          project_ref: string | null
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          certified_from?: string | null
+          certified_revision?: string | null
+          environment_kind?: string | null
+          note?: string | null
+          project_ref?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          certified_from?: string | null
+          certified_revision?: string | null
+          environment_kind?: string | null
+          note?: string | null
+          project_ref?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       omni_comms_dispatch_job: {
         Row: {
@@ -127649,6 +127736,20 @@ export type Database = {
         Args: { p_input: string }
         Returns: string
       }
+      omni_comms_priv_evaluate_dispatch_authorization: {
+        Args: {
+          p_adapter_code: string
+          p_caller_module_code: string
+          p_channel: string
+          p_department_id: string
+          p_deployed_revision: string
+          p_mode: string
+          p_organization_id: string
+          p_recipient_hash: string
+          p_request_created_at: string
+        }
+        Returns: string
+      }
       omni_comms_priv_event_is_internal: {
         Args: { p_event_definition_id: string }
         Returns: boolean
@@ -128459,6 +128560,14 @@ export type Database = {
       }
       omni_comms_priv_sender_usage: {
         Args: { p_sender_id: string }
+        Returns: Json
+      }
+      omni_comms_priv_set_dispatch_certified_from: {
+        Args: {
+          p_certified_revision: string
+          p_note?: string
+          p_project_ref: string
+        }
         Returns: Json
       }
       omni_comms_priv_set_runtime_environment: {

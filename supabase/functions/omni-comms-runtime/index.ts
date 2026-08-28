@@ -46,6 +46,7 @@ import { runProviderDomainStatus, runProviderVerification } from "./providerVeri
 import { runSendingDomainVerification } from "./domainDnsVerification.ts";
 
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
+import { resolveDeployedRevision } from "../_shared/omni-comms/adapterRegistry.ts";
 
 
 const corsHeaders = {
@@ -67,15 +68,17 @@ const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
 // certification comparison can never disagree with itself. The historic
 // `OMNI_COMMS_EDGE_REVISION` remains a fallback only. When absent, shortened
 // or malformed the deployment is UNVERIFIED and is never treated as certified.
-const OMNI_COMMS_REVISION_PATTERN = /^[0-9a-fA-F]{40}$/;
-const DEPLOYED_REVISION = (() => {
-  const platform = (Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "").trim();
-  if (platform !== "") return platform;
-  const raw = (Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? "").trim();
-  return raw === "" ? null : raw;
-})();
-const REVISION_VERIFIED = DEPLOYED_REVISION !== null &&
-  OMNI_COMMS_REVISION_PATTERN.test(DEPLOYED_REVISION);
+// DEF-13: when the platform stamp is absent or malformed the deployment falls
+// back to the COMMITTED build artifact — a content hash of every runtime,
+// dispatcher and shared adapter source file — so a deployed function can
+// always state exactly which build is running.
+
+const REVISION_REPORT = resolveDeployedRevision(
+  ((Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "").trim() ||
+    (Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? "").trim()) || undefined,
+);
+const DEPLOYED_REVISION = REVISION_REPORT.revision;
+const REVISION_VERIFIED = REVISION_REPORT.revisionVerified;
 /**
  * Certification is NOT read from a function secret. The database certification
  * record is the single authoritative source; this runtime only reports the
@@ -231,6 +234,10 @@ Deno.serve(async (req: Request) => {
         runtimeVersion: "2c-iii",
         revision: DEPLOYED_REVISION,
         revisionVerified: REVISION_VERIFIED,
+        // DEF-13 deployment identity truth.
+        revisionSource: REVISION_REPORT.revisionSource,
+        buildRevision: REVISION_REPORT.buildRevision,
+        environmentRevision: REVISION_REPORT.environmentRevision,
         available: true,
         // Certification comes from the authoritative database record read via
         // a service-role-only, read-only RPC. This function never decides.
