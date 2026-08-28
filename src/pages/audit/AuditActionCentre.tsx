@@ -270,7 +270,7 @@ export default function AuditActionCentre() {
   const exportCols = (cols: DataTableColumn<any>[]): ExportColumn[] =>
     cols.map(col => ({ key: col.key, header: col.header }));
 
-  const tabs = [
+  const allTabs = [
     { value: 'my-work', label: 'My Audit Work', icon: ListChecks, rows: applyText(myWork.data ?? []), cols: workColumns, q: myWork, onView: (r: any) => go(r.link) },
     { value: 'management', label: 'Management Actions', icon: Users, rows: applyText(management.data ?? []), cols: managementColumns, q: management, onView: (r: any) => go(r.link) },
     { value: 'attention', label: 'Head of Audit', icon: Target, rows: applyText(attention.data ?? []), cols: attentionColumns, q: attention, onView: (r: any) => go(r.link) },
@@ -281,6 +281,16 @@ export default function AuditActionCentre() {
     { value: 'qa', label: 'Quality Review', icon: Gavel, rows: applyText(qaQueue.data ?? []), cols: qaColumns, q: qaQueue, onView: (r: any) => go(r.link) },
     { value: 'closure', label: 'Closure Readiness', icon: CheckCircle2, rows: applyText(closure.data ?? []), cols: closureColumns, q: closure, onView: (r: any) => go(r.link) },
   ];
+
+  /**
+   * Management respondents only operate their own queues (DEF-S1B-34): they must
+   * not see audit-team surfaces such as Head of Audit, Quality Review,
+   * Verification or Closure Readiness.
+   */
+  const MANAGEMENT_TABS = ['management', 'findings', 'register', 'followup'];
+  const tabs = persona.isManagementOnly
+    ? allTabs.filter(t => MANAGEMENT_TABS.includes(t.value))
+    : allTabs;
 
   const active = tabs.find(t => t.value === tab) ?? tabs[0];
 
