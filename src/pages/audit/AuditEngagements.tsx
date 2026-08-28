@@ -276,7 +276,7 @@ export default function AuditEngagements() {
             });
           }}
           filters={filterFields}
-          onReset={() => { setSearchTerm(''); setFilters({ status: 'all', risk: 'all', plan_status: 'Approved', plan_id: 'all' }); }}
+          onReset={() => { setSearchTerm(''); setFilters({ status: 'all', risk: 'all', plan_status: 'All Plans', plan_id: 'all' }); }}
         />
       </CardContent></Card>
 
