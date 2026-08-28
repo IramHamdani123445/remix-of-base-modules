@@ -28,7 +28,7 @@ export function useInternalAuditPersona(): InternalAuditPersona {
       if (!user?.id) return null;
       const { data, error } = await supabase
         .from('ia_auditors')
-        .select('id, auditor_role')
+        .select('id, role')
         .eq('profile_id', user.id)
         .maybeSingle();
       if (error) return null;
@@ -47,6 +47,6 @@ export function useInternalAuditPersona(): InternalAuditPersona {
     isAuditTeam,
     isManagementOnly: !loading && !isAuditTeam,
     auditorId: data?.id ?? null,
-    auditorRole: (data as any)?.auditor_role ?? null,
+    auditorRole: (data as any)?.role ?? null,
   };
 }
