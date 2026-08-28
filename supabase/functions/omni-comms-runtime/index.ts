@@ -46,7 +46,7 @@ import { runProviderDomainStatus, runProviderVerification } from "./providerVeri
 import { runSendingDomainVerification } from "./domainDnsVerification.ts";
 
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
-import { resolveDeployedRevision } from "../_shared/omni-comms/deployedRevision.ts";
+import { resolveDeployedRevision } from "../_shared/omni-comms/adapterRegistry.ts";
 
 
 const corsHeaders = {

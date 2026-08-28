@@ -32,8 +32,11 @@ import {
   normalizeStorageMode,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
-import { resolveDeployedRevision } from "../_shared/omni-comms/deployedRevision.ts";
-import { isSimulationAdapter, simulateDelivery } from "../_shared/omni-comms/simulationAdapter.ts";
+import {
+  isSimulationAdapter,
+  resolveDeployedRevision,
+  simulateDelivery,
+} from "../_shared/omni-comms/adapterRegistry.ts";
 import {
   resolveTwilioCredentials,
   resolveTwilioSecret,
