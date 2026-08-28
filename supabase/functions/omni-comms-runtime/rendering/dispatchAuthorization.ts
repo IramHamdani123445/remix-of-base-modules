@@ -96,15 +96,20 @@ export interface DispatchAuthorizationContext {
   asOf: string;
 }
 
-export type DispatchAuthorizationDecision =
-  | { authorized: true }
-  | { authorized: false; reason: DispatchHoldReason };
+export interface DispatchAuthorizationDecision {
+  /** True only when EVERY authorization condition passed. */
+  authorized: boolean;
+  /** The single hold reason to persist; null when authorized. */
+  reason: DispatchHoldReason | null;
+}
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 
 function deny(reason: DispatchHoldReason): DispatchAuthorizationDecision {
   return { authorized: false, reason };
 }
+
+const ALLOW: DispatchAuthorizationDecision = { authorized: true, reason: null };
 
 function norm(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase();
@@ -185,5 +190,5 @@ export function evaluateDispatchAuthorization(
   if (certifiedFrom === null) return deny("runtime_privileged_certification_pending");
   if (createdAt === null || createdAt < certifiedFrom) return deny("historical_job_not_authorized");
 
-  return { authorized: true };
+  return ALLOW;
 }

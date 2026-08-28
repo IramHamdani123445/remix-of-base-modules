@@ -684,6 +684,27 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Voice — inbound dynamic self-service IVR',
   },
 
+  {
+    name: 'omni_comms_channel_adapter_capability',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Authoritative capability record for one delivery adapter: the channel it serves, whether it needs external provider credentials, and whether it is certification-safe (an internal simulation path that contacts no provider). The dispatch claim reads it instead of hard-coding provider names.',
+    status: 'AVAILABLE',
+    introductionStory: 'Runtime Delivery Foundation — capability-based dispatch claim',
+  },
+  {
+    name: 'omni_comms_dispatch_activation',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Single governed activation record naming the exact release, environment, module scope and adapter class runtime dispatch is open for. Absent or unmatched, dispatch authorization fails closed and every job is held as certification pending.',
+    status: 'AVAILABLE',
+    introductionStory: 'Runtime Delivery Foundation — database dispatch authority',
+  },
+
 ] as const;
 
 

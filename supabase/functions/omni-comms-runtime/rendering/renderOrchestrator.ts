@@ -78,7 +78,9 @@ export function resolveDispatchState(
     return { runnable: false, holdReason: "runtime_privileged_certification_pending" };
   }
   const decision = evaluateDispatchAuthorization(authorization);
-  if (decision.authorized) return { runnable: true, holdReason: null };
+  if (decision.authorized || decision.reason === null) {
+    return { runnable: true, holdReason: null };
+  }
   return { runnable: false, holdReason: decision.reason satisfies DispatchHoldReason };
 }
 
