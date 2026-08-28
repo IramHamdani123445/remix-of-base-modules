@@ -55,6 +55,8 @@ export function AuditOverviewTab({
   getDeptName, getFunctionName, getAuditorName, getPlanTitle,
   workspaceCounts, onNavigateTab,
 }: AuditOverviewTabProps) {
+  const auditPermissions = useInternalAuditPermissions();
+
   const sourceLabel = audit?.engagement_type === 'Ad Hoc' ? 'Ad Hoc Audit' :
     audit?.engagement_type === 'Supplementary' ? 'Supplementary Plan' :
     audit?.annual_plan_id ? 'Annual Plan' : 'Ad Hoc Audit';
