@@ -100413,27 +100413,6 @@ export type Database = {
         }
         Relationships: []
       }
-      omni_comms_tmp_prereq_probe: {
-        Row: {
-          captured_at: string | null
-          channel: string | null
-          payload: Json | null
-          seq: number | null
-        }
-        Insert: {
-          captured_at?: string | null
-          channel?: string | null
-          payload?: Json | null
-          seq?: number | null
-        }
-        Update: {
-          captured_at?: string | null
-          channel?: string | null
-          payload?: Json | null
-          seq?: number | null
-        }
-        Relationships: []
-      }
       omni_comms_voice_ivr_result: {
         Row: {
           attempt_number: number
