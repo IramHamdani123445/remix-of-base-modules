@@ -124849,9 +124849,14 @@ export type Database = {
         Args: { _action: string; _engagement: string; _module: string }
         Returns: boolean
       }
+      ia_comms_contract_payload: {
+        Args: { p_event_code: string; p_payload: Json }
+        Returns: Json
+      }
       ia_comms_emit: {
         Args: {
           p_correlation_id?: string
+          p_department_id?: string
           p_entity_id: string
           p_entity_type: string
           p_event_code: string
