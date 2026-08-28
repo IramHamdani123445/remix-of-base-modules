@@ -129,6 +129,7 @@ function dispatchAuthorizationFor(
     mode: context.request.mode,
     providerAdapterKey:
       resolution.provider_adapter_key ?? governance.provider_adapter_key ?? null,
+    governedCertificationSafeAdapters: cert.certification_safe_adapters ?? null,
     recipientAllowlisted: governance.recipient_allowlisted ?? null,
     dispatchCertifiedFrom: cert.dispatch_certified_from ?? null,
     requestCreatedAt: cert.request_created_at ?? null,
