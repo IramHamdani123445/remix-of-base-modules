@@ -130,7 +130,7 @@ function dispatchAuthorizationFor(
     dispatchCertifiedFrom: cert.dispatch_certified_from ?? null,
     requestCreatedAt: cert.request_created_at ?? null,
     quarantined: cert.quarantined ?? null,
-    asOf: cert.as_of ?? new Date().toISOString(),
+    asOf: cert.as_of,
   };
 }
 
