@@ -102,6 +102,9 @@ export interface PersistedChannelResolution {
   provider_id: string | null;
   provider_account_id: string | null;
   sender_channel_ready: boolean;
+  /** Adapter key of the resolved provider, when the snapshot carries one. */
+  provider_adapter_key?: string | null;
+
   live_delivery_ready: boolean;
   blockers: string[];
 }
