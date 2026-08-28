@@ -181,6 +181,12 @@ export interface DispatchCertificationSnapshot {
     permitted_caller_modules: string[] | null;
     permitted_modes: string[] | null;
     recipient_allowlisted: boolean | null;
+    /**
+     * Adapter the database resolved for this channel on this request. Supplied
+     * so the dispatch decision can distinguish internal/simulation delivery
+     * from credential-bearing external providers. Absence denies.
+     */
+    provider_adapter_key?: string | null;
   }>;
 }
 

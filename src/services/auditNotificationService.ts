@@ -186,17 +186,39 @@ export async function notifyFindingCreated(findingTitle: string, departmentId?: 
   });
 }
 
+/**
+ * DEF-17 — action-owner identity propagation.
+ *
+ * Action owners are captured as a free-text email on the action record, so the
+ * in-app leg previously carried no user reference and always failed closed with
+ * `recipient_not_allowlisted`. We now resolve the platform profile behind that
+ * email (identity fact only) and pass it through as the recipient user id.
+ */
+async function resolveProfileIdByEmail(email?: string | null): Promise<string | null> {
+  const normalised = (email ?? '').trim().toLowerCase();
+  if (!normalised || !normalised.includes('@')) return null;
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .ilike('email', normalised)
+    .maybeSingle();
+  return (data as { id?: string } | null)?.id ?? null;
+}
+
 export async function notifyActionAssigned(
   actionDescription: string,
   responsibleEmail: string,
   dueDate?: string,
+  responsibleProfileId?: string | null,
 ) {
+  const profileId = responsibleProfileId ?? (await resolveProfileIdByEmail(responsibleEmail));
   await raise({
     eventCode: 'INTERNAL_AUDIT.ACTION.ASSIGNED',
     entityId: `${responsibleEmail}:${actionDescription.slice(0, 120)}`,
     recipientName: 'Action owner',
     reference: actionDescription.slice(0, 80),
     recipientEmail: responsibleEmail,
+    recipientUserId: profileId,
     values: { actionSummary: actionDescription, dueDate: dueDate ?? null },
   });
 }
@@ -205,7 +227,9 @@ export async function notifyActionOverdue(
   actionDescription: string,
   responsibleEmail: string,
   dueDate: string,
+  responsibleProfileId?: string | null,
 ) {
+  const profileId = responsibleProfileId ?? (await resolveProfileIdByEmail(responsibleEmail));
   await raise({
     eventCode: 'INTERNAL_AUDIT.ACTION.OVERDUE',
     entityId: `${responsibleEmail}:${actionDescription.slice(0, 120)}`,
@@ -213,6 +237,7 @@ export async function notifyActionOverdue(
     recipientName: 'Action owner',
     reference: actionDescription.slice(0, 80),
     recipientEmail: responsibleEmail,
+    recipientUserId: profileId,
     values: { actionSummary: actionDescription, dueDate },
   });
 }
@@ -222,7 +247,9 @@ export async function notifyActionReminder(
   responsibleEmail: string,
   dueDate: string,
   daysRemaining: number,
+  responsibleProfileId?: string | null,
 ) {
+  const profileId = responsibleProfileId ?? (await resolveProfileIdByEmail(responsibleEmail));
   await raise({
     eventCode: 'INTERNAL_AUDIT.ACTION.DUE_SOON',
     entityId: `${responsibleEmail}:${actionDescription.slice(0, 120)}`,
@@ -230,9 +257,11 @@ export async function notifyActionReminder(
     recipientName: 'Action owner',
     reference: actionDescription.slice(0, 80),
     recipientEmail: responsibleEmail,
+    recipientUserId: profileId,
     values: { actionSummary: actionDescription, dueDate, daysRemaining },
   });
 }
+
 
 // ══════════════════════════════════════════════════════════════
 // Management responses
