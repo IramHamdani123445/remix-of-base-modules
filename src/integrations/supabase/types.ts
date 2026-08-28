@@ -127953,6 +127953,11 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_html_to_text: { Args: { _html: string }; Returns: string }
+      omni_comms_priv_in_app_title: {
+        Args: { _html: string; _subject: string; _text: string }
+        Returns: string
+      }
       omni_comms_priv_inbound_voice_digits: {
         Args: { p_value: string }
         Returns: string
