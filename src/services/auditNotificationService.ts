@@ -205,22 +205,21 @@ async function resolveProfileIdByEmail(email?: string | null): Promise<string | 
   return (data as { id?: string } | null)?.id ?? null;
 }
 
+/**
+ * DEF-S1B-48 / DEF-S1B-21 (duplicate producers).
+ *
+ * `INTERNAL_AUDIT.ACTION.ASSIGNED` is now owned by the database: the
+ * `ia_action_tracking` command path raises the obligation inside the same
+ * transaction that records the owner. This UI helper is retained only so
+ * existing call sites keep compiling; it deliberately emits nothing.
+ */
 export async function notifyActionAssigned(
-  actionDescription: string,
-  responsibleEmail: string,
-  dueDate?: string,
-  responsibleProfileId?: string | null,
+  _actionDescription: string,
+  _responsibleEmail: string,
+  _dueDate?: string,
+  _responsibleProfileId?: string | null,
 ) {
-  const profileId = responsibleProfileId ?? (await resolveProfileIdByEmail(responsibleEmail));
-  await raise({
-    eventCode: 'INTERNAL_AUDIT.ACTION.ASSIGNED',
-    entityId: `${responsibleEmail}:${actionDescription.slice(0, 120)}`,
-    recipientName: 'Action owner',
-    reference: actionDescription.slice(0, 80),
-    recipientEmail: responsibleEmail,
-    recipientUserId: profileId,
-    values: { actionSummary: actionDescription, dueDate: dueDate ?? null },
-  });
+  return;
 }
 
 export async function notifyActionOverdue(
@@ -306,32 +305,29 @@ export async function notifyReportGenerated(auditTitle: string, departmentId?: s
   });
 }
 
-export async function notifyQuerySent(question: string, departmentId: string, auditTitle?: string) {
-  const head = await getDepartmentHead(departmentId);
-  if (!head.email && !head.profileId) return;
-  await raise({
-    eventCode: 'INTERNAL_AUDIT.REQUEST.ISSUED',
-    entityId: `${departmentId}:${question.slice(0, 120)}`,
-    recipientName: head.name || 'Department Head',
-    reference: auditTitle || 'Information Request',
-    recipientEmail: head.email,
-    recipientUserId: head.profileId,
-    values: { question, auditTitle: auditTitle ?? null },
-  });
+/**
+ * DEF-S1B-51 — an audit query is its own business act.
+ *
+ * Issuance is owned by the database (`ia_audit_queries` insert raises
+ * `INTERNAL_AUDIT.QUERY.ISSUED`). Retained as a no-op so existing call sites
+ * cannot create a second, competing producer for the same act.
+ */
+export async function notifyQuerySent(
+  _question: string,
+  _departmentId: string,
+  _auditTitle?: string,
+) {
+  return;
 }
 
-export async function notifyQueryResponse(question: string, auditorId?: string) {
-  if (!auditorId) return;
-  const auditor = await getAuditor(auditorId);
-  if (!auditor.email && !auditor.profileId) return;
-  await raise({
-    eventCode: 'INTERNAL_AUDIT.REQUEST.REMINDER',
-    entityId: `${auditorId}:${question.slice(0, 120)}`,
-    occurrence: 'response_received',
-    recipientName: auditor.name || 'Auditor',
-    reference: question.slice(0, 80),
-    recipientEmail: auditor.email,
-    recipientUserId: auditor.profileId,
-    values: { question },
-  });
+/**
+ * DEF-S1B-47 — an auditee reply is a *response received*, never a chase-up.
+ *
+ * The database now raises `INTERNAL_AUDIT.QUERY.RESPONSE_RECEIVED` (or
+ * `INTERNAL_AUDIT.REQUEST.RESPONSE_RECEIVED` for a document call-up) to the
+ * responsible auditor when the reply is recorded. This helper no longer
+ * publishes anything, and in particular no longer misuses `REQUEST.REMINDER`.
+ */
+export async function notifyQueryResponse(_question: string, _auditorId?: string) {
+  return;
 }

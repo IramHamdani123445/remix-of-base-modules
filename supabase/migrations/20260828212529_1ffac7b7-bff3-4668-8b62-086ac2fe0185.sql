@@ -1,0 +1,10 @@
+GRANT EXECUTE ON FUNCTION public.ia_comms_contract_project(text, jsonb) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_comms_ctx(uuid) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_comms_policy_days(text, integer) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_comms_auditee_fact(uuid) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_comms_emit_mandatory(text,text,text,text,jsonb,jsonb,text,uuid) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_comms_generate_request_reminders(date) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_schedule_engagement(uuid, date, date, text, text) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_reschedule_engagement(uuid, date, date, text) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_postpone_engagement(uuid, text) TO postgres;
+GRANT EXECUTE ON FUNCTION public.ia_cancel_engagement(uuid, text) TO postgres;

@@ -182,8 +182,11 @@ export function DocumentRequestsTab({ engagementId, departmentId, engagementName
         const summary = selectedDocs
           .map((d: any) => `${d.document_title}${d.due_date ? ` (due ${formatDateForDisplay(d.due_date)})` : ''}`)
           .join('; ');
+        // DEF-S1B-51 / §22: issuance is owned by the database when the request
+        // row is created. An operator "send" is a governed reminder, never a
+        // second issuance producer for the same business act.
         const result = await emitInternalAuditCommunication({
-          eventCode: 'INTERNAL_AUDIT.REQUEST.ISSUED',
+          eventCode: 'INTERNAL_AUDIT.REQUEST.REMINDER',
           entityId: engagementId,
           occurrence: `consolidated:${selectedDocIds.slice().sort().join(',')}`,
           recipientName: recipientName || 'Department Head',
@@ -206,8 +209,9 @@ export function DocumentRequestsTab({ engagementId, departmentId, engagementName
           const docEmail = doc.requested_from_email || recipientEmail;
           const docName = doc.requested_from || recipientName;
           const result = await emitInternalAuditCommunication({
-            eventCode: 'INTERNAL_AUDIT.REQUEST.ISSUED',
+            eventCode: 'INTERNAL_AUDIT.REQUEST.REMINDER',
             entityId: String(doc.id),
+            occurrence: `reminder:${new Date().toISOString().slice(0, 10)}`,
             recipientName: docName || 'Department Head',
             recipientEmail: docEmail,
             reference: engagementName || engagementId,
