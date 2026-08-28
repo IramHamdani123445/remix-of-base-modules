@@ -72760,6 +72760,36 @@ export type Database = {
           },
         ]
       }
+      ia_comms_payload_alias: {
+        Row: {
+          canonical_key: string
+          created_at: string
+          event_code: string | null
+          id: string
+          legacy_key: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_key: string
+          created_at?: string
+          event_code?: string | null
+          id?: string
+          legacy_key: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_key?: string
+          created_at?: string
+          event_code?: string | null
+          id?: string
+          legacy_key?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ia_comms_pre_release_quarantine: {
         Row: {
           correlation_id: string | null
@@ -72939,12 +72969,17 @@ export type Database = {
           acknowledged_at: string | null
           acknowledgment_required: boolean | null
           communication_id: string | null
+          communication_state: string | null
           created_at: string | null
           created_by: string | null
           delivery_status: string | null
           engagement_id: string
+          event_code: string | null
+          event_outbox_id: string | null
           id: string
           notes: string | null
+          occurrence: string | null
+          omni_comms_request_id: string | null
           recipient_email: string | null
           recipient_name: string | null
           sent_at: string | null
@@ -72958,12 +72993,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledgment_required?: boolean | null
           communication_id?: string | null
+          communication_state?: string | null
           created_at?: string | null
           created_by?: string | null
           delivery_status?: string | null
           engagement_id: string
+          event_code?: string | null
+          event_outbox_id?: string | null
           id?: string
           notes?: string | null
+          occurrence?: string | null
+          omni_comms_request_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
           sent_at?: string | null
@@ -72977,12 +73017,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledgment_required?: boolean | null
           communication_id?: string | null
+          communication_state?: string | null
           created_at?: string | null
           created_by?: string | null
           delivery_status?: string | null
           engagement_id?: string
+          event_code?: string | null
+          event_outbox_id?: string | null
           id?: string
           notes?: string | null
+          occurrence?: string | null
+          omni_comms_request_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
           sent_at?: string | null
@@ -124850,6 +124895,10 @@ export type Database = {
         Returns: boolean
       }
       ia_comms_contract_payload: {
+        Args: { p_event_code: string; p_payload: Json }
+        Returns: Json
+      }
+      ia_comms_contract_project: {
         Args: { p_event_code: string; p_payload: Json }
         Returns: Json
       }
