@@ -205,22 +205,21 @@ async function resolveProfileIdByEmail(email?: string | null): Promise<string | 
   return (data as { id?: string } | null)?.id ?? null;
 }
 
+/**
+ * DEF-S1B-48 / DEF-S1B-21 (duplicate producers).
+ *
+ * `INTERNAL_AUDIT.ACTION.ASSIGNED` is now owned by the database: the
+ * `ia_action_tracking` command path raises the obligation inside the same
+ * transaction that records the owner. This UI helper is retained only so
+ * existing call sites keep compiling; it deliberately emits nothing.
+ */
 export async function notifyActionAssigned(
-  actionDescription: string,
-  responsibleEmail: string,
-  dueDate?: string,
-  responsibleProfileId?: string | null,
+  _actionDescription: string,
+  _responsibleEmail: string,
+  _dueDate?: string,
+  _responsibleProfileId?: string | null,
 ) {
-  const profileId = responsibleProfileId ?? (await resolveProfileIdByEmail(responsibleEmail));
-  await raise({
-    eventCode: 'INTERNAL_AUDIT.ACTION.ASSIGNED',
-    entityId: `${responsibleEmail}:${actionDescription.slice(0, 120)}`,
-    recipientName: 'Action owner',
-    reference: actionDescription.slice(0, 80),
-    recipientEmail: responsibleEmail,
-    recipientUserId: profileId,
-    values: { actionSummary: actionDescription, dueDate: dueDate ?? null },
-  });
+  return;
 }
 
 export async function notifyActionOverdue(
