@@ -125087,6 +125087,7 @@ export type Database = {
         Returns: boolean
       }
       ia_is_ia_user: { Args: never; Returns: boolean }
+      ia_is_quality_reviewer: { Args: never; Returns: boolean }
       ia_issue_report: {
         Args: { p_notes?: string; p_report_id: string }
         Returns: Json
@@ -127951,6 +127952,11 @@ export type Database = {
           p_organization_id: string
         }
         Returns: Json
+      }
+      omni_comms_priv_html_to_text: { Args: { _html: string }; Returns: string }
+      omni_comms_priv_in_app_title: {
+        Args: { _html: string; _subject: string; _text: string }
+        Returns: string
       }
       omni_comms_priv_inbound_voice_digits: {
         Args: { p_value: string }
