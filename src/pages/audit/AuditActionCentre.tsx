@@ -38,6 +38,8 @@ const FINDING_STATUSES = ['Draft', 'Under Review', 'Confirmed', 'Released', 'Res
 
 export default function AuditActionCentre() {
   const navigate = useNavigate();
+  const persona = useInternalAuditPersona();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('tab') || 'my-work';
 
