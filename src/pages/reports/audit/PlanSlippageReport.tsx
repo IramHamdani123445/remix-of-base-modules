@@ -15,7 +15,8 @@ import { formatDateForDisplay } from '@/lib/format-config';
 import { differenceInDays, parseISO } from 'date-fns';
 
 const exportColumns: ExportColumn[] = [
-  { header: 'Engagement', key: 'title', width: 30 },
+  { header: 'Engagement', key: 'engagement_code', width: 16 },
+  { header: 'Title', key: 'title', width: 30 },
   { header: 'Status', key: 'status', width: 15 },
   { header: 'Planned Start', key: 'planned_start', width: 18 },
   { header: 'Actual Start', key: 'actual_start', width: 18 },
@@ -32,12 +33,12 @@ export default function PlanSlippageReport() {
     queryKey: ['ia_plan_slippage_report', filters],
     queryFn: async () => {
       let query = supabase
-        .from('ia_engagements' as any)
-        .select('id, title, status, planned_start_date, planned_end_date, actual_start_date, actual_end_date, department_id, plan_id')
+        .from('ia_audit_engagements' as any)
+        .select('id, engagement_code, engagement_name, status, execution_status, planned_start_date, planned_end_date, actual_start_date, actual_end_date, department_id, annual_plan_id')
         .order('planned_start_date', { ascending: false });
 
       if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+        query = query.eq('execution_status', filters.status);
       }
       const { data, error } = await query.limit(500);
       if (error) throw error;
@@ -54,6 +55,8 @@ export default function PlanSlippageReport() {
       : null;
     return {
       ...e,
+      title: e.engagement_name,
+      status: e.execution_status || e.status,
       planned_start: e.planned_start_date,
       actual_start: e.actual_start_date,
       planned_end: e.planned_end_date,
@@ -96,10 +99,10 @@ export default function PlanSlippageReport() {
   const filterFields = [
     { name: 'status', label: 'Engagement Status', type: 'select' as const, options: [
       { label: 'All', value: 'all' },
-      { label: 'Planning', value: 'Planning' },
-      { label: 'In Progress', value: 'In Progress' },
-      { label: 'Completed', value: 'Completed' },
-      { label: 'On Hold', value: 'On Hold' },
+      { label: 'Planned', value: 'Planned' },
+      { label: 'Fieldwork In Progress', value: 'Fieldwork In Progress' },
+      { label: 'Final Report Issued', value: 'Final Report Issued' },
+      { label: 'Closed', value: 'Closed' },
     ]},
   ];
 
