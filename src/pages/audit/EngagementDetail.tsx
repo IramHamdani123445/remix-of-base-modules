@@ -83,10 +83,12 @@ function SmartAlertsBanner({ audit, auditFindings, auditResponses, auditActions 
     alerts.push({ type: 'error', message: `${overdueActions.length} overdue action item(s).` });
   }
 
-  const findingsWithoutEvidence = auditFindings.filter(f =>
+  const isEngagementClosed = ['Closed', 'Closed – Actions Pending', 'Closed - Actions Pending', 'Cancelled'].includes(execStatus);
+  const findingsWithoutEvidence = isEngagementClosed ? [] : auditFindings.filter(f =>
     f.status !== 'Closed' && (!f.evidence_ids || (Array.isArray(f.evidence_ids) && f.evidence_ids.length === 0))
   );
   if (findingsWithoutEvidence.length > 0) {
+
     alerts.push({ type: 'info', message: `${findingsWithoutEvidence.length} finding(s) have no supporting evidence attached.` });
   }
 

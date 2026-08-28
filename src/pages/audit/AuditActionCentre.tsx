@@ -346,7 +346,11 @@ export default function AuditActionCentre() {
           >
             <ClipboardList className="h-4 w-4 mr-2" />Audit action summary
           </Button>
+          <span className="text-xs text-muted-foreground self-center whitespace-nowrap">
+            {active.rows.length} record{active.rows.length === 1 ? '' : 's'}
+          </span>
           <ExportDropdown
+
             data={active.rows}
             columns={exportCols(active.cols)}
             fileName={`internal-audit-${active.value}`}

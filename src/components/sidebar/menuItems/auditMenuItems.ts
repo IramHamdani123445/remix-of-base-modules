@@ -136,6 +136,28 @@ const auditMenuItemsRaw = [
         requiresPermission: "generate_reports",
         description: "Create and manage audit reports"
       },
+      {
+        title: "Engagement Summary",
+        url: "/audit/reports/engagement-summary",
+        icon: BarChart3,
+        requiresPermission: "generate_reports",
+        description: "Engagement register with governed finding counts"
+      },
+      {
+        title: "Overdue Actions",
+        url: "/audit/reports/overdue-actions",
+        icon: Clock,
+        requiresPermission: "generate_reports",
+        description: "Overdue corrective actions and aging, from the Action Centre read model"
+      },
+      {
+        title: "Plan Slippage",
+        url: "/audit/reports/plan-slippage",
+        icon: Timer,
+        requiresPermission: "generate_reports",
+        description: "Planned versus actual engagement timelines"
+      },
+
       // ── Resources ──
       {
         title: "Resources",
