@@ -19,6 +19,7 @@
 export const CERTIFICATION_SAFE_ADAPTERS: readonly string[] = [
   "simulation_email",
   "simulation_in_app",
+  "simulation_inapp",
   "simulation_sms",
   "internal_in_app",
 ];

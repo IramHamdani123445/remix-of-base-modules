@@ -127,7 +127,8 @@ function dispatchAuthorizationFor(
     deployedRevision: cert.deployed_revision ?? null,
     callerModuleCode: cert.caller_module_code ?? null,
     mode: context.request.mode,
-    providerAdapterKey: resolution.provider_adapter_key ?? null,
+    providerAdapterKey:
+      resolution.provider_adapter_key ?? governance.provider_adapter_key ?? null,
     recipientAllowlisted: governance.recipient_allowlisted ?? null,
     dispatchCertifiedFrom: cert.dispatch_certified_from ?? null,
     requestCreatedAt: cert.request_created_at ?? null,
