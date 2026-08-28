@@ -72772,6 +72772,36 @@ export type Database = {
           },
         ]
       }
+      ia_comms_obligation_policy: {
+        Row: {
+          created_at: string
+          days: number
+          description: string | null
+          id: string
+          is_enabled: boolean
+          policy_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days: number
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          policy_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days?: number
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          policy_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ia_comms_payload_alias: {
         Row: {
           canonical_key: string
@@ -74489,6 +74519,9 @@ export type Database = {
           recommendation: string | null
           released_at: string | null
           released_by: string | null
+          response_due_date: string | null
+          response_requested_at: string | null
+          response_requested_by: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           risk_rating: string | null
@@ -74533,6 +74566,9 @@ export type Database = {
           recommendation?: string | null
           released_at?: string | null
           released_by?: string | null
+          response_due_date?: string | null
+          response_requested_at?: string | null
+          response_requested_by?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           risk_rating?: string | null
@@ -74577,6 +74613,9 @@ export type Database = {
           recommendation?: string | null
           released_at?: string | null
           released_by?: string | null
+          response_due_date?: string | null
+          response_requested_at?: string | null
+          response_requested_by?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           risk_rating?: string | null
@@ -124978,6 +125017,7 @@ export type Database = {
         Args: { p_event_code: string; p_payload: Json }
         Returns: Json
       }
+      ia_comms_ctx: { Args: { p_engagement_id: string }; Returns: Json }
       ia_comms_emit: {
         Args: {
           p_correlation_id?: string
@@ -125031,6 +125071,14 @@ export type Database = {
       ia_comms_generate_reminders: {
         Args: { p_limit?: number; p_today?: string }
         Returns: Json
+      }
+      ia_comms_generate_request_reminders: {
+        Args: { p_today?: string }
+        Returns: Json
+      }
+      ia_comms_policy_days: {
+        Args: { p_code: string; p_default: number }
+        Returns: number
       }
       ia_comms_priv_quarantine_pre_release_outbox: {
         Args: { p_correlation_id?: string; p_reason_code?: string }
