@@ -9,18 +9,37 @@
  *   3. that the committed build artifact is not stale relative to the
  *      Omni-Comms runtime / dispatcher / shared source tree.
  */
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import {
-  OMNI_COMMS_REVISION_PATTERN,
-  resolveRevisionReport,
-} from "../../../supabase/functions/_shared/omni-comms/adapterRegistry";
-
 const ROOT = resolve(__dirname, "../../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
+
+// Imported at runtime only: the adapter registry is Deno source and must not
+// be pulled into the browser typecheck graph.
+const REGISTRY_MODULE =
+  "../../../supabase/functions/_shared/omni-comms/adapterRegistry.ts";
+
+let OMNI_COMMS_REVISION_PATTERN: RegExp;
+let resolveRevisionReport: (
+  env: string | undefined,
+  build: string | undefined,
+) => {
+  revision: string | null;
+  revisionSource: string;
+  revisionVerified: boolean;
+  buildRevision: string | null;
+  environmentRevision: string | null;
+  revisionStale: boolean;
+};
+
+beforeAll(async () => {
+  const mod = await import(/* @vite-ignore */ REGISTRY_MODULE);
+  OMNI_COMMS_REVISION_PATTERN = mod.OMNI_COMMS_REVISION_PATTERN;
+  resolveRevisionReport = mod.resolveRevisionReport;
+});
 
 const BUILD = "a".repeat(40);
 const OTHER = "b".repeat(40);
