@@ -168,7 +168,7 @@ export function deliverableChannels(): readonly string[] {
  * BEGIN GENERATED BUILD REVISION
  * Content hash of every Omni-Comms runtime, dispatcher and shared source.
  * ------------------------------------------------------------------ */
-export const OMNI_COMMS_BUILD_REVISION = "f1354594ce1d714cef1b51cf280c9cdea1eedfcc";
+export const OMNI_COMMS_BUILD_REVISION = "3bce9462e4aad97faab772c73bdcd0a6d7440ca3";
 export const OMNI_COMMS_BUILD_SOURCE_FILE_COUNT = 46;
 /* END GENERATED BUILD REVISION */
 
@@ -202,6 +202,12 @@ export interface DeployedRevisionReport {
   buildRevision: string | null;
   /** The raw environment stamp, when it is well-formed. */
   environmentRevision: string | null;
+  /**
+   * True when the deploy-time stamp disagrees with the content hash of the
+   * sources actually shipped — i.e. the environment stamp is stale. Reported
+   * so a reviewer can never mistake a stale stamp for deployment truth.
+   */
+  revisionStale: boolean;
 }
 
 export function resolveDeployedRevision(
@@ -226,6 +232,8 @@ export function resolveDeployedRevision(
     revisionVerified: revision !== null,
     buildRevision,
     environmentRevision,
+    revisionStale: environmentRevision !== null && buildRevision !== null &&
+      environmentRevision !== buildRevision,
   };
 }
 

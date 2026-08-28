@@ -174,6 +174,7 @@ Deno.serve(async (req) => {
       revisionSource: REVISION_REPORT.revisionSource,
       buildRevision: REVISION_REPORT.buildRevision,
       environmentRevision: REVISION_REPORT.environmentRevision,
+      revisionStale: REVISION_REPORT.revisionStale,
     });
   }
 

@@ -52,12 +52,12 @@ function authorizedContext(
 function reasonFor(overrides: Partial<DispatchAuthorizationContext>): string {
   const decision = evaluateDispatchAuthorization(authorizedContext(overrides));
   expect(decision.authorized).toBe(false);
-  return decision.authorized ? '' : decision.reason;
+  return decision.reason ?? '';
 }
 
 describe('evaluateDispatchAuthorization', () => {
   it('authorises TEST + controlled_pilot + simulation + allowlisted + current revision', () => {
-    expect(evaluateDispatchAuthorization(authorizedContext())).toEqual({ authorized: true });
+    expect(evaluateDispatchAuthorization(authorizedContext())).toEqual({ authorized: true, reason: null });
   });
 
   it('holds in production', () => {
@@ -149,7 +149,7 @@ describe('evaluateDispatchAuthorization', () => {
   it('authorises only credential-free certification adapters', () => {
     for (const adapter of CERTIFICATION_SAFE_ADAPTERS) {
       expect(evaluateDispatchAuthorization(authorizedContext({ providerAdapterKey: adapter })))
-        .toEqual({ authorized: true });
+        .toEqual({ authorized: true, reason: null });
     }
     expect(CERTIFICATION_SAFE_ADAPTERS).not.toContain('resend');
     expect(CERTIFICATION_SAFE_ADAPTERS).not.toContain('twilio');

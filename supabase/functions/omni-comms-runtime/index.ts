@@ -238,6 +238,7 @@ Deno.serve(async (req: Request) => {
         revisionSource: REVISION_REPORT.revisionSource,
         buildRevision: REVISION_REPORT.buildRevision,
         environmentRevision: REVISION_REPORT.environmentRevision,
+        revisionStale: REVISION_REPORT.revisionStale,
         available: true,
         // Certification comes from the authoritative database record read via
         // a service-role-only, read-only RPC. This function never decides.
