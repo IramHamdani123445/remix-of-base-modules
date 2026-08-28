@@ -466,7 +466,7 @@ export default function AuditActionCentre() {
         </CardContent>
       </Card>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={active?.value ?? tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto">
           {tabs.map(t => (
             <TabsTrigger key={t.value} value={t.value} className="gap-1.5">
