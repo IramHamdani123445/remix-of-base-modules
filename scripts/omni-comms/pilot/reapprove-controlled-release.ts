@@ -22,13 +22,17 @@ async function main() {
   const actorId = auth?.user?.id;
   if (!actorId) throw new Error('No authenticated actor');
 
-  const { data: releases, error } = await supabase
-    .from('omni_comms_channel_release_control')
-    .select('id, channel, updated_at, release_fingerprint, release_state')
-    .in('channel', ['email', 'in_app']);
-  if (error) throw error;
+  // Release rows are governed and not directly readable by an operator; the
+  // caller supplies the optimistic-concurrency facts explicitly.
+  const releases = JSON.parse(process.env.OMNI_APPROVE_RELEASES ?? '[]') as Array<{
+    id: string;
+    channel: string;
+    updated_at: string;
+    release_fingerprint: string;
+  }>;
+  if (releases.length === 0) throw new Error('OMNI_APPROVE_RELEASES is required');
 
-  for (const r of releases ?? []) {
+  for (const r of releases) {
     const { data, error: rpcError } = await supabase.rpc(
       'omni_comms_priv_channel_release_approve_activate',
       {
