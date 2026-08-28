@@ -75947,7 +75947,7 @@ export type Database = {
           category: string | null
           created_at: string
           created_by: string | null
-          department_audit_id: string
+          department_audit_id: string | null
           engagement_id: string | null
           id: string
           is_completed: boolean | null
@@ -75960,7 +75960,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
-          department_audit_id: string
+          department_audit_id?: string | null
           engagement_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -75973,7 +75973,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
-          department_audit_id?: string
+          department_audit_id?: string | null
           engagement_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -76001,7 +76001,7 @@ export type Database = {
       ia_preparation_documents: {
         Row: {
           created_at: string
-          department_audit_id: string
+          department_audit_id: string | null
           document_type: string | null
           engagement_id: string | null
           file_name: string
@@ -76011,7 +76011,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          department_audit_id: string
+          department_audit_id?: string | null
           document_type?: string | null
           engagement_id?: string | null
           file_name: string
@@ -76021,7 +76021,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          department_audit_id?: string
+          department_audit_id?: string | null
           document_type?: string | null
           engagement_id?: string | null
           file_name?: string
