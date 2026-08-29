@@ -296,8 +296,8 @@ export default function ContributionExemptions() {
             </DialogDescription>
           </DialogHeader>
           <div>
-            <Label>Revocation Reason</Label>
-            <Textarea value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
+            <Label htmlFor="ex-revoke-reason">Revocation Reason</Label>
+            <Textarea id="ex-revoke-reason" value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRevoking(null)}>Cancel</Button>
@@ -320,9 +320,9 @@ export default function ContributionExemptions() {
             <DialogDescription>Exemptions are scoped to person + employer + fund + effective period.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Person SSN</Label><Input value={form.person_ssn} onChange={e => setForm({ ...form, person_ssn: e.target.value })} /></div>
-            <div><Label>Person Name (optional)</Label><Input value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} /></div>
-            <div><Label>Employer ID</Label><Input value={form.employer_id} onChange={e => setForm({ ...form, employer_id: e.target.value })} placeholder="Employer this exemption applies to" /></div>
+            <div><Label htmlFor="ex-ssn">Person SSN</Label><Input id="ex-ssn" value={form.person_ssn} onChange={e => setForm({ ...form, person_ssn: e.target.value })} /></div>
+            <div><Label htmlFor="ex-name">Person Name (optional)</Label><Input id="ex-name" value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} /></div>
+            <div><Label htmlFor="ex-employer">Employer ID</Label><Input id="ex-employer" value={form.employer_id} onChange={e => setForm({ ...form, employer_id: e.target.value })} placeholder="Employer this exemption applies to" /></div>
             <div>
               <Label>Fund</Label>
               <Select value={form.fund_code} onValueChange={v => setForm({ ...form, fund_code: v })}>
@@ -330,8 +330,8 @@ export default function ContributionExemptions() {
                 <SelectContent>{FUNDS.map(f => <SelectItem key={f.code} value={f.code}>{f.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Effective From</Label><Input type="date" value={form.effective_from} onChange={e => setForm({ ...form, effective_from: e.target.value })} /></div>
-            <div><Label>Effective To (optional)</Label><Input type="date" value={form.effective_to} onChange={e => setForm({ ...form, effective_to: e.target.value })} /></div>
+            <div><Label htmlFor="ex-from">Effective From</Label><Input id="ex-from" type="date" value={form.effective_from} onChange={e => setForm({ ...form, effective_from: e.target.value })} /></div>
+            <div><Label htmlFor="ex-to">Effective To (optional)</Label><Input id="ex-to" type="date" value={form.effective_to} onChange={e => setForm({ ...form, effective_to: e.target.value })} /></div>
             <div>
               <Label>Status</Label>
               <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
@@ -339,10 +339,10 @@ export default function ContributionExemptions() {
                 <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Authority Reference</Label><Input value={form.authority_reference} onChange={e => setForm({ ...form, authority_reference: e.target.value })} /></div>
-            <div><Label>Granting Authority</Label><Input value={form.granting_authority} onChange={e => setForm({ ...form, granting_authority: e.target.value })} /></div>
-            <div><Label>Evidence Reference</Label><Input value={form.evidence_reference} onChange={e => setForm({ ...form, evidence_reference: e.target.value })} /></div>
-            <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+            <div><Label htmlFor="ex-authref">Authority Reference</Label><Input id="ex-authref" value={form.authority_reference} onChange={e => setForm({ ...form, authority_reference: e.target.value })} /></div>
+            <div><Label htmlFor="ex-authority">Granting Authority</Label><Input id="ex-authority" value={form.granting_authority} onChange={e => setForm({ ...form, granting_authority: e.target.value })} /></div>
+            <div><Label htmlFor="ex-evidence">Evidence Reference</Label><Input id="ex-evidence" value={form.evidence_reference} onChange={e => setForm({ ...form, evidence_reference: e.target.value })} /></div>
+            <div className="col-span-2"><Label htmlFor="ex-notes">Notes</Label><Textarea id="ex-notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
