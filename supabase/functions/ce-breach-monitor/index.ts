@@ -35,10 +35,46 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const asOfDate = body.as_of_date || new Date().toISOString().slice(0, 10);
-    const graceDays = body.grace_days ?? 5;
     const actor = body.checked_by || "SYSTEM";
     const isDryRun = body.dry_run ?? false;
     const force = body.force ?? false;
+
+    // ── Grace period is owned by configuration (ce_arrangement_policies).
+    //    Explicit request override wins; otherwise the active policy governs.
+    //    No hard-coded business fallback: if nothing is configured we fail closed.
+    let graceSource = "request";
+    let gracePolicyCode: string | null = null;
+    let graceDays: number | null =
+      body.grace_days === undefined || body.grace_days === null
+        ? null
+        : Number(body.grace_days);
+
+    if (graceDays === null) {
+      const { data: policy } = await supabase
+        .from("ce_arrangement_policies")
+        .select("policy_code, breach_grace_days")
+        .eq("is_active", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (policy && policy.breach_grace_days !== null) {
+        graceDays = Number(policy.breach_grace_days);
+        gracePolicyCode = policy.policy_code;
+        graceSource = "ce_arrangement_policies";
+      }
+    }
+
+    if (graceDays === null || Number.isNaN(graceDays)) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "configuration_error",
+          message:
+            "No active ce_arrangement_policies row with breach_grace_days; configure Payment Arrangement Rules before running the breach monitor.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // ── Idempotency ──────────────────────────────────────
     const runKey = isDryRun
