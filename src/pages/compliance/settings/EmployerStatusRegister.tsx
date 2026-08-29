@@ -33,21 +33,31 @@ interface StatusState {
   changed_at: string;
 }
 
-const STATUSES = ['Active', 'Inactive', 'Closed', 'Ceased'];
-const EVIDENCE_TYPES = [
-  'Inspector visit',
-  'Employer form',
-  'Registry notice',
-  'Court order',
-  'Other documented',
+// Canonical vocabulary — must match ce_set_employer_status_v1 exactly.
+const STATUSES = [
+  { code: 'ACTIVE', label: 'Active' },
+  { code: 'INACTIVE', label: 'Inactive' },
+  { code: 'CLOSED', label: 'Closed' },
+  { code: 'CEASED', label: 'Ceased' },
 ];
+const EVIDENCE_TYPES = [
+  { code: 'INSPECTOR_VISIT', label: 'Inspector visit' },
+  { code: 'EMPLOYER_FORM', label: 'Employer form' },
+  { code: 'REGISTRY_NOTICE', label: 'Registry notice' },
+  { code: 'COURT_ORDER', label: 'Court order' },
+  { code: 'OTHER_DOCUMENTED', label: 'Other documented' },
+];
+const statusLabel = (code?: string | null) =>
+  STATUSES.find(s => s.code === code)?.label || code || '—';
+const evidenceLabel = (code?: string | null) =>
+  EVIDENCE_TYPES.find(e => e.code === code)?.label || code || '—';
 
 function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (status) {
-    case 'Active': return 'default';
-    case 'Inactive': return 'secondary';
-    case 'Closed': return 'outline';
-    case 'Ceased': return 'destructive';
+    case 'ACTIVE': return 'default';
+    case 'INACTIVE': return 'secondary';
+    case 'CLOSED': return 'outline';
+    case 'CEASED': return 'destructive';
     default: return 'outline';
   }
 }
@@ -59,7 +69,7 @@ export default function EmployerStatusRegister() {
   const [selectedEmployer, setSelectedEmployer] = useState<EmployerLite | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({
-    status: 'Active',
+    status: 'ACTIVE',
     evidence_type: '',
     evidence_reference: '',
     clearance_certificate_reference: '',
@@ -138,7 +148,7 @@ export default function EmployerStatusRegister() {
 
   const openChangeDialog = () => {
     setForm({
-      status: currentState?.status || 'Active',
+      status: currentState?.status || 'ACTIVE',
       evidence_type: '',
       evidence_reference: '',
       clearance_certificate_reference: '',
@@ -216,7 +226,7 @@ export default function EmployerStatusRegister() {
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">Current status:</span>
                 {currentState ? (
-                  <Badge variant={statusVariant(currentState.status)}>{currentState.status}</Badge>
+                  <Badge variant={statusVariant(currentState.status)}>{statusLabel(currentState.status)}</Badge>
                 ) : (
                   <Badge variant="outline">No status recorded</Badge>
                 )}
@@ -285,7 +295,7 @@ export default function EmployerStatusRegister() {
               <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {STATUSES.map(s => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -298,7 +308,7 @@ export default function EmployerStatusRegister() {
               <Select value={form.evidence_type} onValueChange={v => setForm({ ...form, evidence_type: v })}>
                 <SelectTrigger><SelectValue placeholder="Select evidence type" /></SelectTrigger>
                 <SelectContent>
-                  {EVIDENCE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {EVIDENCE_TYPES.map(t => <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -306,7 +316,7 @@ export default function EmployerStatusRegister() {
               <Label>Evidence Reference</Label>
               <Input value={form.evidence_reference} onChange={e => setForm({ ...form, evidence_reference: e.target.value })} placeholder="e.g. Visit report #, form ID, gazette notice" />
             </div>
-            {(form.status === 'Closed' || form.status === 'Ceased') && (
+            {(form.status === 'CLOSED' || form.status === 'CEASED') && (
               <div>
                 <Label>Clearance Certificate Reference (optional)</Label>
                 <Input value={form.clearance_certificate_reference} onChange={e => setForm({ ...form, clearance_certificate_reference: e.target.value })} />
