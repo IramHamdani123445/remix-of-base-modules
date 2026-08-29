@@ -922,8 +922,14 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
     // Process each rule
     for (const rule of enrichedRules) {
+      // Fail-closed on configuration: a rule whose required parameters cannot
+      // be resolved from configuration is NOT executed with a code default —
+      // it is skipped and reported, so every produced violation is explainable.
+      if (configErrorRuleIds.has(rule.id)) continue;
+      const params = paramsByRuleId.get(rule.id) ?? {};
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
       const asOfPeriod = asOfDate.slice(0, 7);
+
 
       /** Emit one violation row per qualifying period (deduped). */
       const pushPeriod = (emp: any, ym: string, summary: string) => {
