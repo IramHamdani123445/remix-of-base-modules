@@ -113,12 +113,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get employers with outstanding balances
+    // Employers with outstanding contribution PRINCIPAL.
+    // Checkpoint C-L1: penalties are charged on unpaid principal, never on the
+    // generic cached balance (which also contains penalties and interest).
     const { data: employers, error: empError } = await supabase
-      .from("ce_ledger_periods")
-      .select("employer_id, balance, principal_due")
+      .from("ce_v_ledger_period_balances")
+      .select("employer_id, principal_due, principal_outstanding, total_outstanding")
       .eq("fund_type", fundType)
-      .gt("balance", 0);
+      .gt("principal_outstanding", 0);
+
 
     if (empError) throw empError;
 
