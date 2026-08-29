@@ -52,10 +52,16 @@ describe("compliance rule parameter contract", () => {
   });
 
   it("flags required fields in the admin draft validator", () => {
-    const errs = validateRuleParameterDraft(DETECTION_PARAM_SPEC.payment_partial, {}, null);
-    expect(errs.min_shortfall_amount_xcd).toBeTruthy();
-    expect(errs.min_shortfall_percent).toBeTruthy();
+    const errs = validateRuleParameterDraft(DETECTION_PARAM_SPEC.levy_omission_check, {}, null);
+    expect(errs.min_outstanding_amount_xcd).toBeTruthy();
   });
+
+  it("DR-004 no longer exposes any shortfall threshold to configure", () => {
+    const keys = DETECTION_PARAM_SPEC.payment_partial.map((f) => f.key);
+    expect(keys).not.toContain("min_shortfall_amount_xcd");
+    expect(keys).not.toContain("min_shortfall_percent");
+  });
+
 
   it("treats policy-owned fields as satisfied when the policy supplies them", () => {
     const errs = validateRuleParameterDraft(
