@@ -493,6 +493,7 @@ Deno.serve(async (req) => {
           completed_at: new Date().toISOString(),
           records_processed: rows.length,
           records_affected: persisted + noticesCreated,
+          summary,
           execution_log: summary,
         } as any)
         .eq("id", runId);
@@ -514,7 +515,8 @@ Deno.serve(async (req) => {
         .update({
           run_status: "FAILED",
           completed_at: new Date().toISOString(),
-          error_message: message,
+          errors_count: 1,
+          error_details: { message, configuration_error: configurationError },
         } as any)
         .eq("id", runId);
     }
