@@ -941,6 +941,46 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     }
 
     /**
+     * DR-004 partial payment authorities. A governed approval suspends both
+     * the partial-payment violation and the non-payment violation for the
+     * period it covers — the two rules must never contradict each other.
+     */
+    const authorityByEmp = new Map<string, Map<string, CePartialPaymentAuthority>>();
+    {
+      let q = supabase
+        .from("ce_partial_payment_requests")
+        .select(
+          "employer_id, wage_period, status, approved_amount, settled_amount, authority_expires_on, grace_extended_to, requested_at",
+        )
+        .in("status", ["PENDING_APPROVAL", "APPROVED", "SETTLED", "EXPIRED"])
+        .order("requested_at", { ascending: true });
+      if (employerFilter) q = q.eq("employer_id", employerFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      for (const row of data ?? []) {
+        const regno = String(row.employer_id);
+        const ym = String(row.wage_period).slice(0, 7);
+        let m = authorityByEmp.get(regno);
+        if (!m) {
+          m = new Map();
+          authorityByEmp.set(regno, m);
+        }
+        // Later rows win: the most recent governed decision is authoritative.
+        m.set(ym, {
+          status: row.status as CePartialPaymentAuthority["status"],
+          approved_amount: row.approved_amount == null ? null : Number(row.approved_amount),
+          settled_amount: row.settled_amount == null ? null : Number(row.settled_amount),
+          authority_expires_on: row.authority_expires_on ?? null,
+          grace_extended_to: row.grace_extended_to ?? null,
+        });
+      }
+    }
+    const authorityFor = (regno: string, ym: string): CePartialPaymentAuthority | null =>
+      authorityByEmp.get(regno)?.get(ym) ?? null;
+
+
+
+    /**
      * Period window for an employer: [startYm, lastCompleteYm].
      * Rules driven by actual C3 rows iterate their own (small) period set and
      * only test membership here — iterating up to 120 synthetic months per
