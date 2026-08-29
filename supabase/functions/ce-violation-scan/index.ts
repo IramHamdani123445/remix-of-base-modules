@@ -1083,12 +1083,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
           case "payment_partial": {
             // Per-period shortfall between declared C3 and money received.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const minAmt = Number(rule.parameters?.min_shortfall_amount_xcd ?? 0);
-            const minPct = Number(rule.parameters?.min_shortfall_percent ?? 0);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const minAmt = Number(params.min_shortfall_amount_xcd);
+            const minPct = Number(params.min_shortfall_percent);
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
             if (c3 && paid) {
