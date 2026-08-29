@@ -35433,6 +35433,13 @@ export type Database = {
             referencedRelation: "ce_automation_jobs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_automation_job_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_automation_job_schedule_truth"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ce_automation_jobs: {
@@ -35547,10 +35554,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_automation_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_automation_job_schedule_truth"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_ce_automation_runs_job"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "ce_automation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_automation_runs_job"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_automation_job_schedule_truth"
             referencedColumns: ["id"]
           },
         ]
@@ -114696,6 +114717,23 @@ export type Database = {
           },
         ]
       }
+      ce_v_automation_job_schedule_truth: {
+        Row: {
+          active_cron: string | null
+          configured_cron: string | null
+          cron_active: boolean | null
+          edge_function: string | null
+          id: string | null
+          is_enabled: boolean | null
+          is_scheduled: boolean | null
+          job_code: string | null
+          last_run_at: string | null
+          last_run_status: string | null
+          name: string | null
+          sync_state: string | null
+        }
+        Relationships: []
+      }
       ce_v_c3_aggregate_stats: {
         Row: {
           total_late: number | null
@@ -121896,6 +121934,7 @@ export type Database = {
           visit_date: string
         }[]
       }
+      ce_managed_cron_jobname: { Args: { p_job_code: string }; Returns: string }
       ce_mark_payment_observed: {
         Args: {
           p_employer_id: string
@@ -122055,6 +122094,7 @@ export type Database = {
           status: string
         }[]
       }
+      ce_sync_automation_job_schedules: { Args: never; Returns: Json }
       ce_sync_c3_to_ledger: {
         Args: {
           p_dry_run?: boolean
