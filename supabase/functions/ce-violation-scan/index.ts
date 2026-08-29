@@ -1433,6 +1433,8 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           employers_done: sliceEnd,
           progress_percent: Math.round((sliceEnd / Math.max(1, totalEmployers)) * 100),
           sample_violations: cumulative.sample_violations,
+          rule_diagnostics: ruleDiagnostics,
+          configuration_errors: ruleDiagnostics.filter((d) => d.status !== "ok"),
         },
       })
       .eq("id", runId);
