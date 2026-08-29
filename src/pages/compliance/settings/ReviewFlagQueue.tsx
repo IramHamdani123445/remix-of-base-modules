@@ -125,9 +125,42 @@ export default function ReviewFlagQueue() {
     },
   });
 
+  /** Officers that a flag may be assigned to. */
+  const { data: officers = [] } = useQuery({
+    queryKey: ['ce_review_flag_assignable_officers'],
+    enabled: !!assignTarget,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ce_inspectors')
+        .select('id, inspector_code, profile_id')
+        .eq('is_active', true)
+        .eq('status', 'ACTIVE')
+        .order('inspector_code');
+      if (error) throw error;
+      const rows = (data || []).filter((r: any) => r.profile_id);
+      const ids = rows.map((r: any) => r.profile_id);
+      const nameMap = new Map<string, string>();
+      if (ids.length) {
+        const { data: profs } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+        (profs || []).forEach((p: any) => p.full_name && nameMap.set(p.id, p.full_name));
+      }
+      return rows.map((r: any) => ({
+        userId: r.profile_id as string,
+        label: nameMap.get(r.profile_id) ? `${nameMap.get(r.profile_id)} (${r.inspector_code})` : r.inspector_code,
+      }));
+    },
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['ce_compliance_review_flags'] });
+    qc.invalidateQueries({ queryKey: ['ce_review_flag_events'] });
+  };
+
   const dispositionMutation = useMutation({
     mutationFn: async ({ flag, disposition, notes }: { flag: ReviewFlag; disposition: Disposition; notes: string }) => {
-      if (disposition === 'dismiss' && !notes.trim()) throw new Error('A reason is required to dismiss a flag');
+      if (disposition !== 'UNDER_REVIEW' && !notes.trim()) {
+        throw new Error('A written reason is required for this action');
+      }
       const { error } = await supabase.rpc('ce_review_flag_disposition_v1', {
         p_flag_id: flag.id,
         p_disposition: disposition,
@@ -136,17 +169,52 @@ export default function ReviewFlagQueue() {
       if (error) throw error;
     },
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ['ce_compliance_review_flags'] });
-      qc.invalidateQueries({ queryKey: ['ce_review_flag_events'] });
-      toast.success(
-        vars.disposition === 'confirm' ? 'Flag confirmed — violation raised'
-        : vars.disposition === 'dismiss' ? 'Flag dismissed'
-        : 'Note added to flag'
-      );
+      invalidate();
+      toast.success(DISPOSITION_SUCCESS[vars.disposition]);
       setActionTarget(null);
       setNotes('');
     },
     onError: (e: any) => toast.error('Action failed', { description: e.message }),
+  });
+
+  const convertMutation = useMutation({
+    mutationFn: async ({ flag, notes }: { flag: ReviewFlag; notes: string }) => {
+      if (!notes.trim()) throw new Error('A conversion justification is required');
+      const { data, error } = await supabase.rpc('ce_review_flag_convert_to_violation_v1', {
+        p_flag_id: flag.id,
+        p_notes: notes,
+      });
+      if (error) throw error;
+      return data as unknown as string;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Violation raised from the confirmed flag');
+      setConvertTarget(null);
+      setNotes('');
+    },
+    onError: (e: any) => toast.error('Conversion failed', { description: e.message }),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ flag, userId, notes }: { flag: ReviewFlag; userId: string; notes: string }) => {
+      if (!userId) throw new Error('Select an officer');
+      const { error } = await supabase.rpc('ce_review_flag_assign_v1', {
+        p_flag_id: flag.id,
+        p_assignee_user_id: userId,
+        p_assignee_name: officers.find(o => o.userId === userId)?.label ?? null,
+        p_notes: notes || undefined,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Flag assigned');
+      setAssignTarget(null);
+      setAssigneeId('');
+      setNotes('');
+    },
+    onError: (e: any) => toast.error('Assignment failed', { description: e.message }),
   });
 
   const flagTypes = [...new Set(flags.map(f => f.flag_type))];
