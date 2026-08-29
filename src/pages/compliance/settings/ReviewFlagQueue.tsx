@@ -245,7 +245,7 @@ export default function ReviewFlagQueue() {
           <ShieldQuestion className="h-5 w-5 text-warning shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground">A FLAG is not a confirmed violation.</p>
-            <p>Every row below is a system-raised signal awaiting human review. It carries no penalty and creates no obligation until an authorized reviewer confirms it, at which point a violation is raised. Dismissing a flag requires a documented reason; annotations are for context only and do not change the flag's status.</p>
+            <p>Every row below is a system-raised signal awaiting human review. It carries no penalty and creates no obligation. Confirming a flag records the reviewer's judgement only — a violation is raised solely by the explicit <span className="font-medium text-foreground">Convert to violation</span> action, which carries the originating rule code and de-duplication key onto the violation. Dismissing requires a documented reason and excludes the flag from risk scoring; notes are for context and never change status.</p>
           </div>
         </CardContent>
       </Card>
