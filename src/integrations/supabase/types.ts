@@ -75260,6 +75260,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_comms_recovery_probe: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
       ia_comms_reminder_policy: {
         Row: {
           created_at: string
