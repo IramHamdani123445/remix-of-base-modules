@@ -113,6 +113,11 @@ export default function ComplianceLegalReferralWizard() {
   const [acceptedNonFinancial, setAcceptedNonFinancial] = useState(false);
   const [overrideMissingDocs, setOverrideMissingDocs] = useState("");
 
+  // Legal handoff rule evaluation (ce_legal_handoff_rules is the authority)
+  const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [handoffOverride, setHandoffOverride] = useState("");
+
   // --- initial load ------------------------------------------------------
   useEffect(() => {
     (async () => {
