@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { isRetiredCalculationRule } from "../_shared/compliance/detectionRuleParameterSpec.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -186,6 +187,9 @@ Deno.serve(async (req) => {
           period, fund_type: fundType, rules_applied: rules.length,
           employers_processed: processed, penalties_posted: affected,
           errors: errors.slice(0, 20),
+          configuration_errors: configurationErrors,
+          retired_rules_skipped: retiredSkipped,
+          generic_late_payment_penalty: "retired (CR-001) — not applied",
         },
       })
       .eq("id", run.id);
