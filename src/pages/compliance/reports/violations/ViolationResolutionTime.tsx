@@ -1,36 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ViolationReportShell from './ViolationReportShell';
-import { ViolationReportRow } from '@/services/violationReportsService';
 
-function daysBetween(a: string | null, b: string | null): number | null {
-  if (!a || !b) return null;
-  const d = (new Date(b).getTime() - new Date(a).getTime()) / 86400000;
-  if (!Number.isFinite(d) || d < 0) return null;
-  return Math.round(d);
-}
-
-function stats(values: number[]) {
-  if (values.length === 0) return { avg: 0, median: 0, min: 0, max: 0 };
-  const sorted = [...values].sort((a, b) => a - b);
-  const avg = Math.round(sorted.reduce((s, v) => s + v, 0) / sorted.length);
-  const mid = Math.floor(sorted.length / 2);
-  const median = sorted.length % 2 === 0
-    ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
-    : sorted[mid];
-  return { avg, median, min: sorted[0], max: sorted[sorted.length - 1] };
-}
-
-function groupBy<T>(items: T[], key: (t: T) => string) {
-  const m = new Map<string, T[]>();
-  items.forEach(i => {
-    const k = key(i);
-    const arr = m.get(k) || [];
-    arr.push(i);
-    m.set(k, arr);
-  });
-  return m;
-}
+const fmt = (n: number | null | undefined) => (n == null ? '—' : Math.round(n).toLocaleString());
 
 export default function ViolationResolutionTimeReport() {
   return (
@@ -38,6 +10,7 @@ export default function ViolationResolutionTimeReport() {
       title="Violation Resolution Time"
       subtitle="Average days from discovery to resolution. Unresolved violations are excluded from timing stats and reported separately."
       breadcrumbLabel="Violation Resolution Time"
+      dimension="type"
       filters={['dateRange', 'type', 'fund', 'zone', 'severity']}
       exportFilename="violation_resolution_time"
       exportColumns={[
@@ -49,41 +22,32 @@ export default function ViolationResolutionTimeReport() {
         { header: 'Min Days', key: 'min', width: 12 },
         { header: 'Max Days', key: 'max', width: 12 },
       ]}
+      mapExportRow={(r) => ({
+        type: r.bucket,
+        resolved: r.resolved_count,
+        unresolved: r.unresolved_count,
+        avg: r.avg_resolution_days ?? '',
+        median: r.median_resolution_days ?? '',
+        min: r.min_resolution_days ?? '',
+        max: r.max_resolution_days ?? '',
+      })}
       renderBody={(rows) => {
-        const resolved = rows.filter(r => r.resolved_at);
-        const unresolved = rows.filter(r => !r.resolved_at);
-
-        const overall = stats(
-          resolved
-            .map(r => daysBetween(r.discovered_date || r.created_at?.slice(0, 10) || null, r.resolved_at))
-            .filter((n): n is number => n !== null)
-        );
-
-        const byType = groupBy(rows, r => r.violation_type_name || 'Unspecified');
-        const tableRows = Array.from(byType.entries()).map(([type, list]) => {
-          const days = list
-            .filter(r => r.resolved_at)
-            .map(r => daysBetween(r.discovered_date || r.created_at?.slice(0, 10) || null, r.resolved_at))
-            .filter((n): n is number => n !== null);
-          const s = stats(days);
-          return {
-            type,
-            resolved: days.length,
-            unresolved: list.length - days.length,
-            avg: s.avg,
-            median: s.median,
-            min: s.min,
-            max: s.max,
-          };
-        }).sort((a, b) => b.avg - a.avg);
+        const resolved = rows.reduce((s, r) => s + r.resolved_count, 0);
+        const unresolved = rows.reduce((s, r) => s + r.unresolved_count, 0);
+        const weightedAvg = resolved
+          ? rows.reduce((s, r) => s + (r.avg_resolution_days ?? 0) * r.resolved_count, 0) / resolved
+          : null;
+        const mins = rows.map(r => r.min_resolution_days).filter((n): n is number => n != null);
+        const maxs = rows.map(r => r.max_resolution_days).filter((n): n is number => n != null);
+        const sorted = [...rows].sort((a, b) => (b.avg_resolution_days ?? -1) - (a.avg_resolution_days ?? -1));
 
         return (
           <>
             <div className="grid gap-4 md:grid-cols-4">
-              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Avg Days</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-primary">{overall.avg}</div></CardContent></Card>
-              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Median Days</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{overall.median}</div></CardContent></Card>
-              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Min / Max</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{overall.min} / {overall.max}</div></CardContent></Card>
-              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Resolved / Unresolved</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{resolved.length} / {unresolved.length}</div></CardContent></Card>
+              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Avg Days</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-primary">{fmt(weightedAvg)}</div></CardContent></Card>
+              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Groups Reported</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{rows.length}</div></CardContent></Card>
+              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Min / Max</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{fmt(mins.length ? Math.min(...mins) : null)} / {fmt(maxs.length ? Math.max(...maxs) : null)}</div></CardContent></Card>
+              <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Resolved / Unresolved</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{resolved.toLocaleString()} / {unresolved.toLocaleString()}</div></CardContent></Card>
             </div>
 
             <Card>
@@ -108,15 +72,15 @@ export default function ViolationResolutionTimeReport() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tableRows.map(r => (
-                      <TableRow key={r.type}>
-                        <TableCell className="font-medium">{r.type}</TableCell>
-                        <TableCell className="text-right">{r.resolved}</TableCell>
-                        <TableCell className="text-right">{r.unresolved}</TableCell>
-                        <TableCell className="text-right">{r.resolved ? r.avg : '—'}</TableCell>
-                        <TableCell className="text-right">{r.resolved ? r.median : '—'}</TableCell>
-                        <TableCell className="text-right">{r.resolved ? r.min : '—'}</TableCell>
-                        <TableCell className="text-right">{r.resolved ? r.max : '—'}</TableCell>
+                    {sorted.map(r => (
+                      <TableRow key={r.bucket}>
+                        <TableCell className="font-medium">{r.bucket}</TableCell>
+                        <TableCell className="text-right">{r.resolved_count.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{r.unresolved_count.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{fmt(r.avg_resolution_days)}</TableCell>
+                        <TableCell className="text-right">{fmt(r.median_resolution_days)}</TableCell>
+                        <TableCell className="text-right">{fmt(r.min_resolution_days)}</TableCell>
+                        <TableCell className="text-right">{fmt(r.max_resolution_days)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
