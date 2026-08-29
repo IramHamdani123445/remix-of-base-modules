@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
 import { Card } from '@/components/ui/card';
 import { EnhancedDetectionRuleDialog } from '@/components/compliance/detection/DetectionRuleDialog';
 import { EnhancedCalculationRuleDialog } from '@/components/compliance/detection/CalculationRuleDialog';
