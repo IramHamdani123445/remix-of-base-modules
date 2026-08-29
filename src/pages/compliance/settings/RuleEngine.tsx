@@ -1197,6 +1197,7 @@ const RuleEngine = () => {
 
           <TabsContent value="calculation">
             <div className="space-y-3">
+              <RuleRuntimeHealthPanel codePrefix="CR-" />
               <p className="text-sm text-muted-foreground mb-4">Calculation rules define how penalties, interest, and fines are computed. Financial rates are referenced from C3 Configuration.</p>
               {calculationRules.length === 0 && <p className="text-center text-muted-foreground py-8">No calculation rules configured. Click "Add Rule" to create one.</p>}
               {calculationRules.map(rule => {
