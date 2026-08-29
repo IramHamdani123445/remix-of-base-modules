@@ -21,6 +21,10 @@ import {
   loadComplianceHistory,
   type ComplianceContext,
 } from "@/services/legal/legalReferralHistoryService";
+import {
+  evaluateEligibility,
+  type EligibilityResult,
+} from "@/services/legalHandoffService";
 import type { ReferralDocumentDraft } from "@/services/legal/coreLegalReferralDocumentService";
 import ReferralDocumentSelector from "@/components/legal/lg/ReferralDocumentSelector";
 import HistoryTimelinePanel from "@/components/legal/lg/HistoryTimelinePanel";
