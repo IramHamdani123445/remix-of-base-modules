@@ -14,6 +14,12 @@ import {
   normalizeObligationPolicy,
   resolveObligationTimeline,
 } from "../_shared/compliance/obligationDeadlineResolver.ts";
+import {
+  type CePartialPaymentAuthority,
+  evaluatePartialPaymentObligation,
+  isPartialPaymentViolation,
+  partialPaymentSuppressesNonPayment,
+} from "../_shared/compliance/partialPaymentAllocation.ts";
 
 
 const corsHeaders = {
@@ -941,6 +947,46 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     }
 
     /**
+     * DR-004 partial payment authorities. A governed approval suspends both
+     * the partial-payment violation and the non-payment violation for the
+     * period it covers — the two rules must never contradict each other.
+     */
+    const authorityByEmp = new Map<string, Map<string, CePartialPaymentAuthority>>();
+    {
+      let q = supabase
+        .from("ce_partial_payment_requests")
+        .select(
+          "employer_id, wage_period, status, approved_amount, settled_amount, authority_expires_on, grace_extended_to, requested_at",
+        )
+        .in("status", ["PENDING_APPROVAL", "APPROVED", "SETTLED", "EXPIRED"])
+        .order("requested_at", { ascending: true });
+      if (employerFilter) q = q.eq("employer_id", employerFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      for (const row of data ?? []) {
+        const regno = String(row.employer_id);
+        const ym = String(row.wage_period).slice(0, 7);
+        let m = authorityByEmp.get(regno);
+        if (!m) {
+          m = new Map();
+          authorityByEmp.set(regno, m);
+        }
+        // Later rows win: the most recent governed decision is authoritative.
+        m.set(ym, {
+          status: row.status as CePartialPaymentAuthority["status"],
+          approved_amount: row.approved_amount == null ? null : Number(row.approved_amount),
+          settled_amount: row.settled_amount == null ? null : Number(row.settled_amount),
+          authority_expires_on: row.authority_expires_on ?? null,
+          grace_extended_to: row.grace_extended_to ?? null,
+        });
+      }
+    }
+    const authorityFor = (regno: string, ym: string): CePartialPaymentAuthority | null =>
+      authorityByEmp.get(regno)?.get(ym) ?? null;
+
+
+
+    /**
      * Period window for an employer: [startYm, lastCompleteYm].
      * Rules driven by actual C3 rows iterate their own (small) period set and
      * only test membership here — iterating up to 120 synthetic months per
@@ -1143,6 +1189,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                   asOf: asOfDate,
                 });
                 if (outcome === "NOT_PAID") {
+                  // DR-003 must stand down where a governed partial payment
+                  // authority (or a pending decision) covers the period.
+                  if (partialPaymentSuppressesNonPayment(authorityFor(emp.regno, ym), asOfDate)) continue;
                   pushPeriod(
                     emp,
                     ym,
@@ -1156,10 +1205,18 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "payment_partial": {
-            // Per-period shortfall between declared C3 and money received.
+            // DR-004 Partial Payment: a shortfall against the declared
+            // liability that has passed the resolved payment deadline WITHOUT
+            // a live approved payment authority. There is no percentage or
+            // amount threshold — a partial payment is a governed event, and
+            // approval (not size) decides whether it is a violation.
+            if (obligationPolicyError) {
+              markObligationConfigError(rule.rule_code, obligationPolicyError);
+              shouldFlag = false;
+              break;
+            }
             const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
-            const minAmt = Number(params.min_shortfall_amount_xcd);
-            const minPct = Number(params.min_shortfall_percent);
+            const policy = timelinePolicyFor(Number(params.grace_period_days), params.payment_due_day);
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
             if (c3 && paid) {
@@ -1167,21 +1224,31 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
               for (const [ym, rec] of c3) {
                 if (rec.declared <= 0 || ym < win.from || ym > win.to) continue;
                 const amountPaid = paid.get(ym) || 0;
-                if (amountPaid <= 0) continue; // handled by non-payment rule
+                const timeline = resolveObligationTimeline(ym, policy, "CONTRIBUTION_PAYMENT");
+                const authority = authorityFor(emp.regno, ym);
+                const outcome = evaluatePartialPaymentObligation({
+                  graceEndDate: timeline.grace_end_date,
+                  declaredAmount: rec.declared,
+                  paidAmount: amountPaid,
+                  asOf: asOfDate,
+                  authority,
+                });
+                if (!isPartialPaymentViolation(outcome)) continue;
                 const shortfall = rec.declared - amountPaid;
-                if (shortfall <= 0) continue;
-                const pct = (shortfall / rec.declared) * 100;
-                if (shortfall < minAmt || pct < minPct) continue;
+                const reason = outcome === "AUTHORITY_EXPIRED"
+                  ? `the approved payment authority expired on ${authority?.authority_expires_on}`
+                  : "no approved partial payment authority exists";
                 pushPeriod(
                   emp,
                   ym,
-                  `Partial payment: ${ym} declared $${rec.declared.toLocaleString()}, paid $${amountPaid.toLocaleString()}, shortfall $${shortfall.toLocaleString()} (${pct.toFixed(1)}%).`,
+                  `Partial payment: ${ym} declared $${rec.declared.toLocaleString()}, paid $${amountPaid.toLocaleString()}, shortfall $${shortfall.toLocaleString()} unsettled after ${timeline.grace_end_date} — ${reason}.`,
                 );
               }
             }
 
             shouldFlag = false;
             break;
+
           }
 
 

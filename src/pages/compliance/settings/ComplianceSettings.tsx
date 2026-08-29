@@ -45,6 +45,7 @@ import {
 } from "@/services/compliancePolicyService";
 import { format } from "date-fns";
 import { ObligationReminderRulesCard } from "@/components/compliance/settings/ObligationReminderRulesCard";
+import { PartialPaymentPolicyCard } from "@/components/compliance/settings/PartialPaymentPolicyCard";
 
 
 export default function ComplianceSettings() {
@@ -209,6 +210,11 @@ export default function ComplianceSettings() {
 
       {/* Obligation Reminder Notices */}
       <ObligationReminderRulesCard />
+
+      {/* Partial Payment Policy (DR-004) */}
+      <PartialPaymentPolicyCard />
+
+
 
 
       {/* Payment & Penalty Settings */}

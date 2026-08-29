@@ -155,6 +155,7 @@ const ComplianceBreachMonitoring = lazy(() => import('@/pages/compliance/arrange
 const ComplianceLegalQueue = lazy(() => import('@/pages/compliance/legal/LegalQueue'));
 const ComplianceLegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedingsPage'));
 const ComplianceWaivers = lazy(() => import('@/pages/compliance/legal/WaiversOverrides'));
+const CompliancePartialPayments = lazy(() => import('@/pages/compliance/payments/PartialPaymentRequests'));
 const ComplianceJobConfiguration = lazy(() => import('@/pages/compliance/automation/JobConfiguration'));
 const ComplianceJobHistory = lazy(() => import('@/pages/compliance/automation/JobHistory'));
 const ComplianceRuleEngine = lazy(() => import('@/pages/compliance/settings/RuleEngine'));
@@ -1539,6 +1540,9 @@ export const AppRoutes = () => {
       <Route path="/compliance/enforcement/arrangements" element={<PaymentArrangements />} />
       <Route path="/compliance/enforcement/breaches" element={<ComplianceBreachMonitoring />} />
       <Route path="/compliance/enforcement/waivers" element={<ComplianceFeatureGate flagKey="compliance.payment.waiver_requests" title="Waiver Requests"><ComplianceWaivers /></ComplianceFeatureGate>} />
+      <Route path="/compliance/enforcement/partial-payments" element={<ComplianceFeatureGate flagKey="compliance.payment.partial_payment" title="Partial Payment Requests"><CompliancePartialPayments /></ComplianceFeatureGate>} />
+
+
 
 
       {/* ── Reports (unchanged paths) ── */}
