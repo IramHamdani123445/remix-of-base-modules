@@ -211,7 +211,13 @@ describe("reminder timing is configuration, not code", () => {
     expect(plans).toHaveLength(1);
     expect(plans[0].employer_id).toBe("E9");
     expect(plans[0].rule_code).toBe("REM-C3-D20");
-    expect(plans[0].periods.map((p) => p.wage_period)).toEqual(["2025-10", "2025-11", "2025-12"]);
+    // One notice per employer per cycle, covering every outstanding period and
+    // both obligation types — never one email per period.
+    expect([...new Set(plans[0].periods.map((p) => p.wage_period))]).toEqual([
+      "2025-10",
+      "2025-11",
+      "2025-12",
+    ]);
     expect(describeOutstandingPeriods(plans[0].periods)).toContain("2025-10");
   });
 });
