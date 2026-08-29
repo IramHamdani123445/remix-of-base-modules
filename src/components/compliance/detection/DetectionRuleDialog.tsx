@@ -13,6 +13,13 @@ import { Loader2, PlusCircle, X, Database, Settings2, Filter, Zap, BarChart3, In
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { resolveMany, buildSnapshot, type ResolvedVariable } from '@/services/compliance/policyResolver';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  DETECTION_PARAM_SPEC,
+  validateRuleParameterDraft,
+  type CeParamSpec,
+} from '@/lib/compliance/detectionRuleParameterSpec';
+
 
 // ── Types ──
 
