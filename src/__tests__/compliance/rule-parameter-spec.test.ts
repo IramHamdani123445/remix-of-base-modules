@@ -83,8 +83,19 @@ describe("compliance rule parameter contract", () => {
 
   it("defines the CR-003 estimation basis as configuration", () => {
     const keys = CALCULATION_PARAM_SPEC["CR-003"].map((s) => s.key);
-    expect(keys).toEqual(["history_period_count", "estimate_multiplier"]);
+    // Checkpoint C widened the contract: history depth, multiplier and the
+    // exclusion rules are all configuration, never code.
+    expect(keys).toEqual([
+      "history_period_count",
+      "estimate_multiplier",
+      "minimum_history_periods",
+      "exclude_zero_periods",
+      "exclude_amended_periods",
+      "exclude_statuses",
+      "outlier_deviation_multiple",
+    ]);
   });
+
 
   it("leaves no business-policy fallback literals in the scanner", () => {
     const src = readFileSync(SCANNER, "utf8");
