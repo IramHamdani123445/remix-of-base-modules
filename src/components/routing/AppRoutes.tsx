@@ -161,6 +161,8 @@ const ComplianceRuleEngine = lazy(() => import('@/pages/compliance/settings/Rule
 const ComplianceViolationTypes = lazy(() => import('@/pages/compliance/settings/ViolationTypes'));
 const ComplianceNumberTemplates = lazy(() => import('@/pages/compliance/settings/NumberTemplates'));
 const ComplianceRiskScoringConfig = lazy(() => import('@/pages/compliance/settings/RiskScoringConfig'));
+const ComplianceCommTriggerRulesPage = lazy(() => import('@/pages/compliance/admin/CommTriggerRulesPage'));
+
 const ComplianceTemplates = lazy(() => import('@/pages/compliance/settings/ComplianceTemplates'));
 const AuditCommunicationTemplatesPage = lazy(() => import('@/pages/compliance/admin/AuditCommunicationTemplatesPage'));
 const AuditCommunicationTemplateEditorPage = lazy(() => import('@/pages/compliance/admin/AuditCommunicationTemplateEditorPage'));
