@@ -95,89 +95,43 @@ const TRIGGER_EVENTS: TriggerEventDef[] = [
   { value: 'benefit_fraud_indicator', label: 'Benefit Fraud Indicator', description: 'Suspicious benefit claim patterns detected', category: 'pattern' },
 ];
 
-// ── Dynamic Parameter Definitions per Trigger ──
+// ── Parameter definitions: derived from the canonical runtime contract ──
+//
+// The scanner (ce-violation-scan) resolves rule parameters through
+// DETECTION_PARAM_SPEC. This dialog renders exactly those fields, so an
+// administrator can never configure a key the engine ignores, and can never
+// leave a required threshold unset in the belief that "a default applies" —
+// there are no code defaults, only configuration.
 
-interface ParamFieldDef {
-  key: string;
-  label: string;
-  type: 'number' | 'text' | 'boolean';
-  placeholder?: string;
-  helpText?: string;
-  defaultValue?: any;
+type ParamFieldDef = CeParamSpec;
+
+/** Triggers listed in the picker but not yet implemented by the scanner. */
+const TRIGGERS_WITHOUT_RUNTIME = TRIGGER_EVENTS.map((t) => t.value).filter(
+  (t) => !DETECTION_PARAM_SPEC[t],
+);
+
+/** Read-only view of the statutory values owned by the active policy. */
+function useActiveCompliancePolicy(enabled: boolean) {
+  const [policy, setPolicy] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('ce_compliance_policies')
+        .select('policy_code, c3_submission_deadline_day, payment_due_date_day, c3_grace_period_days')
+        .eq('is_active', true)
+        .order('effective_from', { ascending: false })
+        .limit(1);
+      if (!cancelled) setPolicy((data?.[0] as any) ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+  return policy;
 }
 
-const TRIGGER_PARAM_DEFS: Record<string, ParamFieldDef[]> = {
-  c3_deadline_passed: [
-    { key: 'grace_period_days', label: 'Grace Period (Days)', type: 'number', placeholder: '14', helpText: 'Days after deadline before triggering', defaultValue: 14 },
-    { key: 'ignore_dormant', label: 'Ignore Dormant Employers', type: 'boolean', defaultValue: false },
-  ],
-  c3_missing_30_days: [
-    { key: 'additional_days_threshold', label: 'Additional Days Threshold', type: 'number', placeholder: '30', helpText: 'Days past deadline to consider missing', defaultValue: 30 },
-    { key: 'minimum_missing_periods', label: 'Minimum Missing Periods', type: 'number', placeholder: '1', helpText: 'Minimum consecutive missing periods', defaultValue: 1 },
-    { key: 'ignore_dormant', label: 'Ignore Dormant Employers', type: 'boolean', defaultValue: true },
-  ],
-  contribution_gap_detected: [
-    { key: 'gap_threshold_months', label: 'Gap Threshold (Months)', type: 'number', placeholder: '3', helpText: 'Minimum months of gap to flag', defaultValue: 3 },
-    { key: 'check_active_only', label: 'Active Employers Only', type: 'boolean', defaultValue: true },
-  ],
-  payment_not_received: [
-    { key: 'days_after_due', label: 'Days After Due Date', type: 'number', placeholder: '7', helpText: 'Days past due before triggering', defaultValue: 7 },
-    { key: 'minimum_amount', label: 'Minimum Amount ($)', type: 'number', placeholder: '100', helpText: 'Minimum owed to trigger' },
-    { key: 'ignore_if_plan', label: 'Ignore if Active Payment Plan', type: 'boolean', defaultValue: true },
-  ],
-  payment_partial: [
-    { key: 'minimum_shortfall_amount', label: 'Minimum Shortfall Amount ($)', type: 'number', placeholder: '50', helpText: 'Minimum dollar shortfall to trigger' },
-    { key: 'minimum_shortfall_pct', label: 'Minimum Shortfall %', type: 'number', placeholder: '10', helpText: 'Minimum percentage shortfall' },
-    { key: 'ignore_if_plan', label: 'Ignore if Active Payment Plan', type: 'boolean', defaultValue: false },
-  ],
-  installment_overdue: [
-    { key: 'grace_period_days', label: 'Grace Period (Days)', type: 'number', placeholder: '5', defaultValue: 5 },
-    { key: 'minimum_overdue_amount', label: 'Minimum Overdue Amount ($)', type: 'number', placeholder: '50' },
-  ],
-  levy_omission_check: [
-    { key: 'minimum_wage_threshold', label: 'Minimum Wage Threshold ($)', type: 'number', placeholder: '500', helpText: 'Minimum wages to expect levy' },
-    { key: 'check_active_only', label: 'Active Employers Only', type: 'boolean', defaultValue: true },
-  ],
-  severance_omission_check: [
-    { key: 'minimum_employee_count', label: 'Minimum Employee Count', type: 'number', placeholder: '1', helpText: 'Min employees to expect severance' },
-    { key: 'check_active_only', label: 'Active Employers Only', type: 'boolean', defaultValue: true },
-  ],
-  employee_underreporting: [
-    { key: 'variance_threshold_pct', label: 'Variance Threshold %', type: 'number', placeholder: '20', helpText: 'Percentage difference to flag' },
-    { key: 'minimum_employees', label: 'Minimum Employee Count', type: 'number', placeholder: '3' },
-  ],
-  wage_underreporting: [
-    { key: 'variance_threshold_pct', label: 'Variance Threshold %', type: 'number', placeholder: '25' },
-    { key: 'use_industry_benchmark', label: 'Compare to Industry Benchmark', type: 'boolean', defaultValue: true },
-  ],
-  registration_not_found: [
-    { key: 'lookback_months', label: 'Lookback Period (Months)', type: 'number', placeholder: '6', helpText: 'How far back to search for activity' },
-  ],
-  employer_cessation: [
-    { key: 'outstanding_balance_min', label: 'Min Outstanding Balance ($)', type: 'number', placeholder: '100' },
-    { key: 'include_pending_claims', label: 'Include Pending Claims', type: 'boolean', defaultValue: true },
-  ],
-  repeat_violation_check: [
-    { key: 'rolling_period_months', label: 'Rolling Period (Months)', type: 'number', placeholder: '12', defaultValue: 12 },
-    { key: 'minimum_violations', label: 'Minimum Violations', type: 'number', placeholder: '3', defaultValue: 3 },
-  ],
-  benefit_fraud_indicator: [
-    { key: 'anomaly_score_threshold', label: 'Anomaly Score Threshold', type: 'number', placeholder: '75', helpText: 'Minimum anomaly score (0-100)' },
-    { key: 'review_required', label: 'Require Manual Review', type: 'boolean', defaultValue: true },
-  ],
-  audit_discrepancy_found: [
-    { key: 'severity_threshold', label: 'Minimum Severity', type: 'text', placeholder: 'Medium' },
-  ],
-  late_registration: [
-    { key: 'days_after_start', label: 'Days After Employment Start', type: 'number', placeholder: '30', helpText: 'Days after employment begins' },
-  ],
-};
-
-// Fallback for unknown triggers
-const DEFAULT_PARAM_DEFS: ParamFieldDef[] = [
-  { key: 'threshold', label: 'Threshold', type: 'number', placeholder: '0' },
-  { key: 'enabled', label: 'Enabled', type: 'boolean', defaultValue: true },
-];
 
 // ── Quick Condition Templates ──
 
