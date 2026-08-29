@@ -1130,7 +1130,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       for (const key of installmentsByEmp.keys()) {
         if (!key || known.has(key)) continue;
         known.add(key);
-        allEmployers.push({ regno: key, name: key });
+        allEmployers.push({ regno: key, name: key, arrangement_only: true });
       }
     }
 
@@ -1573,6 +1573,10 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       };
 
       for (const emp of batchEmployers) {
+        // Employers pulled in only because they hold an instalment arrangement
+        // have no filing facts; evaluating filing/payment rules against them
+        // would manufacture false non-filing violations.
+        if ((emp as any).arrangement_only && rule.trigger_event !== "installment_overdue") continue;
         const filing = filingMap.get(emp.regno) as any;
         const payment = paymentMap.get(emp.regno) as any;
         const arrear = arrearMap.get(emp.regno) as any;
