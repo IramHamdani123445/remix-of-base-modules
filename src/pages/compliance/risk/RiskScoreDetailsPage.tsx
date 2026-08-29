@@ -23,6 +23,7 @@ import {
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
 import { Activity, AlertCircle, ShieldOff, Edit3 } from 'lucide-react';
 import OpenDecisionNotice from '@/components/compliance/governance/OpenDecisionNotice';
+import RiskExplainabilityPanel from '@/components/compliance/risk/RiskExplainabilityPanel';
 
 const PERMISSION = 'manage_compliance';
 const BANDS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
