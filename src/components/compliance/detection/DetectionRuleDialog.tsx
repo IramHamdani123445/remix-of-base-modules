@@ -776,14 +776,14 @@ export const EnhancedDetectionRuleDialog = ({
     const ev = TRIGGER_EVENTS.find(e => e.value === val);
     // Auto-set category from trigger
     if (ev) setTriggerCategory(ev.category);
-    // Initialize default params for this trigger
-    const defaultParams: Record<string, any> = {};
-    const defs = TRIGGER_PARAM_DEFS[val] || [];
-    defs.forEach(d => {
-      if (d.defaultValue !== undefined) defaultParams[d.key] = d.defaultValue;
+    // Seed the administrator's draft with the contract's suggested values.
+    // These are only editor suggestions — the engine applies no defaults.
+    const seeded: Record<string, any> = {};
+    (DETECTION_PARAM_SPEC[val] ?? []).forEach(d => {
+      if (d.suggested !== undefined) seeded[d.key] = d.suggested;
     });
-    // Merge existing params with defaults (existing take precedence for edits)
-    const mergedParams = isEdit ? { ...defaultParams, ...(rule?.trigger_event === val ? (rule?.parameters || {}) : {}) } : defaultParams;
+    // Merge existing params with suggestions (existing take precedence for edits)
+    const mergedParams = isEdit ? { ...seeded, ...(rule?.trigger_event === val ? (rule?.parameters || {}) : {}) } : seeded;
     setForm(p => ({
       ...p,
       trigger_event: val === '__pick__' ? '' : val,
@@ -791,6 +791,7 @@ export const EnhancedDetectionRuleDialog = ({
       parameters: mergedParams,
     }));
   };
+
 
   const handleSave = async () => {
     if (!form.name || !form.trigger_event) {
