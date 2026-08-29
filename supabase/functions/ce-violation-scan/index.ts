@@ -1170,13 +1170,21 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "employer_cessation": {
-            if (arrear?.has_arrears && filing?.employer_status && ["I", "D"].includes(filing.employer_status)) {
+            const ceasedStatuses: string[] = params.trigger_on_status;
+            const minOutstanding = Number(params.min_outstanding_amount_xcd);
+            const outstanding = Number(arrear?.total_outstanding ?? 0);
+            if (
+              filing?.employer_status &&
+              ceasedStatuses.includes(String(filing.employer_status)) &&
+              outstanding > minOutstanding
+            ) {
               shouldFlag = true;
-              summary = `Cessation without clearance: Employer status '${filing.employer_status}' with outstanding balance $${Number(arrear.total_outstanding).toLocaleString()}.`;
+              summary = `Cessation without clearance: Employer status '${filing.employer_status}' with outstanding balance $${outstanding.toLocaleString()} (threshold $${minOutstanding.toLocaleString()}).`;
               periodFrom = asOfPeriod;
             }
             break;
           }
+
 
           case "severance_omission_check": {
             break;
