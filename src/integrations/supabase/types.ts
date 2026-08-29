@@ -124207,6 +124207,23 @@ export type Database = {
           status: Database["public"]["Enums"]["ce_ledger_status"]
         }[]
       }
+      ce_generate_stage_notice_core: {
+        Args: {
+          p_actor: string
+          p_delivery_method: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
+      }
+      ce_generate_stage_notice_system_v1: {
+        Args: {
+          p_delivery_method?: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
+      }
       ce_generate_stage_notice_v1: {
         Args: {
           p_delivery_method?: string
