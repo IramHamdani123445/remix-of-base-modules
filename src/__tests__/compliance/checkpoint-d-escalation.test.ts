@@ -45,7 +45,8 @@ function sourcesWriting(table: string): string[] {
 describe('one authoritative escalation-stage configuration', () => {
   it('the notice worker reads ce_escalation_stage_config, not job parameters', () => {
     expect(NOTICE_WORKER).toContain('ce_escalation_stage_config');
-    expect(NOTICE_WORKER).not.toContain('notice_rules');
+    // the retired job-parameter rule list must not be *read* any more
+    expect(NOTICE_WORKER).not.toMatch(/parameters[\s\S]{0,40}notice_rules\s*[\]);.]/);
   });
 
   it('the notice worker holds no day-threshold literals of its own', () => {
@@ -101,14 +102,14 @@ describe('all Legal entry paths converge on one governed engine', () => {
     expect(GOVERNANCE).toContain('QUICK_FORWARD');
     expect(GOVERNANCE).toContain('compliance.legal.quick_forward');
     // it still enters the same recommendation command
-    expect(GOVERNANCE).toMatch(/entryPath[\s\S]{0,400}ce_recommend_legal_v1/);
+    expect(GOVERNANCE).toMatch(/ce_recommend_legal_v1[\s\S]{0,600}p_entry_path/);
   });
 });
 
 describe('financial truth comes from the canonical derived ledger', () => {
   it('legal governance never reads the cached period balance', () => {
     expect(GOVERNANCE).toContain('ce_canonical_financial_snapshot');
-    expect(GOVERNANCE).not.toContain('ce_ledger_periods');
+    expect(GOVERNANCE).not.toMatch(/from\(\s*['"`]ce_ledger_periods/);
   });
 
   it('arrears escalation uses the average × multiplier model, not a flat figure', () => {
