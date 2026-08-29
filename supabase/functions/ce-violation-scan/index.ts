@@ -563,6 +563,7 @@ interface ScanCarry {
   by_rule: Array<{ rule_code: string; rule_name: string; detected: number; skipped: number; total: number }>;
   sample_violations: any[];
   review_flags_created: number;
+  review_flags_would_create: number;
 }
 
 interface ExecuteScanArgs {
