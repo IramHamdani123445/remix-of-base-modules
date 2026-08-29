@@ -70,6 +70,7 @@ describe('communication trigger rules respect configuration', () => {
       cooldown_hours: 0,
       max_per_visit: 0,
       condition_json: undefined,
+      ...over,
     }) as unknown as CommTriggerRule;
 
   it('skips inactive rules and matches active ones', () => {
