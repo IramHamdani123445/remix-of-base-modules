@@ -994,13 +994,10 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "contribution_gap_detected": {
             // Per-period emission: flag every missing month independently so each
             // gap (e.g. February only) gets its own violation row.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const minMissed = Number(rule.parameters?.min_missed_months ?? 1);
-            const graceDays = Number(rule.parameters?.days_past_deadline ?? 30);
-            const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const minMissed = Number(params.min_missed_months);
+            const graceDays = Number(params.days_past_deadline);
+            const dueDay = Number(params.submission_due_day);
 
             // Filed periods come from the bulk prefetch above — no per-employer query.
             const filedSet = filedPeriodsByEmp.get(emp.regno) ?? new Set<string>();
