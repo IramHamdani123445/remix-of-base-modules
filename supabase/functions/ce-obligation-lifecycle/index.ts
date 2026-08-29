@@ -268,10 +268,16 @@ Deno.serve(async (req) => {
     }
 
     // ── 6. Idempotent persistence (one row per employer/type/period) ──
+    // Collapse duplicates first: the employer view can legitimately return more
+    // than one row per registration number, and a batch upsert may not touch
+    // the same conflict target twice.
+    const uniqueRows = Array.from(
+      new Map(rows.map((r) => [`${r.employer_id}|${r.obligation_type}|${r.wage_period}`, r])).values(),
+    );
     let persisted = 0;
     if (!dryRun) {
-      for (let i = 0; i < rows.length; i += UPSERT_BATCH) {
-        const slice = rows.slice(i, i + UPSERT_BATCH).map((r) => ({
+      for (let i = 0; i < uniqueRows.length; i += UPSERT_BATCH) {
+        const slice = uniqueRows.slice(i, i + UPSERT_BATCH).map((r) => ({
           employer_id: r.employer_id,
           employer_name: r.employer_name,
           obligation_type: r.obligation_type,
