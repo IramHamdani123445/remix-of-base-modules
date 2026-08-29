@@ -242,7 +242,9 @@ export default function ViolationDetails() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ce_violation_assignments')
-        .select('*, ce_assignment_queues(queue_code, queue_name, queue_type), ce_inspectors(inspector_code)')
+        // ce_violation_assignments has two FKs to ce_inspectors (assigned_to / reassigned_from),
+        // so the embed must name the constraint or PostgREST returns 300 (ambiguous relationship).
+        .select('*, ce_assignment_queues(queue_code, queue_name, queue_type), ce_inspectors!ce_violation_assignments_assigned_to_inspector_id_fkey(inspector_code)')
         .eq('violation_id', id!)
         .order('assigned_at', { ascending: false });
       if (error) return [];
