@@ -106,6 +106,15 @@ const ScheduleSettings = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => syncSchedules.mutate()}
+            disabled={syncSchedules.isPending}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${syncSchedules.isPending ? "animate-spin" : ""}`} />
+            Reconcile Scheduler
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/admin/scheduler">
               <ExternalLink className="h-4 w-4 mr-1" /> Central Scheduler
@@ -119,7 +128,22 @@ const ScheduleSettings = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {outOfSync.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              {outOfSync.length} job{outOfSync.length === 1 ? "" : "s"} not executing as configured
+            </CardTitle>
+            <CardDescription>
+              {outOfSync.map((j) => j.job_code).join(", ")} — use Reconcile Scheduler, or bind a runtime function in
+              Job Configuration for jobs reported as having no runtime binding.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Scheduled jobs</CardDescription>
@@ -134,11 +158,18 @@ const ScheduleSettings = () => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
+            <CardDescription>Out of sync</CardDescription>
+            <CardTitle className={`text-3xl ${outOfSync.length ? "text-destructive" : ""}`}>{outOfSync.length}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
             <CardDescription>On-demand / event-driven</CardDescription>
             <CardTitle className="text-3xl">{onDemand.length}</CardTitle>
           </CardHeader>
         </Card>
       </div>
+
 
       <Card>
         <CardHeader>
