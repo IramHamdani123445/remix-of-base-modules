@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, ChevronDown, ChevronUp, AlertOctagon, CheckCircle2, XCircle, MessageSquarePlus, ShieldQuestion } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronUp, AlertOctagon, CheckCircle2, XCircle, MessageSquarePlus, ShieldQuestion, UserCheck, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
