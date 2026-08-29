@@ -33239,6 +33239,7 @@ export type Database = {
           notes: string | null
           policy_code: string
           policy_name: string
+          scope_key: string
           updated_at: string
           updated_by: string | null
         }
@@ -33257,6 +33258,7 @@ export type Database = {
           notes?: string | null
           policy_code: string
           policy_name: string
+          scope_key?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -33275,6 +33277,7 @@ export type Database = {
           notes?: string | null
           policy_code?: string
           policy_name?: string
+          scope_key?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -44404,39 +44407,48 @@ export type Database = {
       ce_rule_history: {
         Row: {
           action: string
+          actor_user_id: string | null
           after_value: Json | null
           before_value: Json | null
           changed_at: string
           changed_by: string | null
           id: string
           notes: string | null
+          reason: string | null
           rule_code: string | null
           rule_id: string
           rule_table: string
+          scope: Json | null
         }
         Insert: {
           action: string
+          actor_user_id?: string | null
           after_value?: Json | null
           before_value?: Json | null
           changed_at?: string
           changed_by?: string | null
           id?: string
           notes?: string | null
+          reason?: string | null
           rule_code?: string | null
           rule_id: string
           rule_table: string
+          scope?: Json | null
         }
         Update: {
           action?: string
+          actor_user_id?: string | null
           after_value?: Json | null
           before_value?: Json | null
           changed_at?: string
           changed_by?: string | null
           id?: string
           notes?: string | null
+          reason?: string | null
           rule_code?: string | null
           rule_id?: string
           rule_table?: string
+          scope?: Json | null
         }
         Relationships: []
       }
@@ -45774,10 +45786,12 @@ export type Database = {
           created_by: string | null
           description: string | null
           enabled: boolean
+          escalated_approval_role: string
           id: string
           max_percentage: number | null
           name: string
           notes: string | null
+          required_approval_role: string
           required_documents: Json
           sort_order: number
           updated_at: string
@@ -45796,10 +45810,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           enabled?: boolean
+          escalated_approval_role?: string
           id?: string
           max_percentage?: number | null
           name: string
           notes?: string | null
+          required_approval_role?: string
           required_documents?: Json
           sort_order?: number
           updated_at?: string
@@ -45818,10 +45834,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           enabled?: boolean
+          escalated_approval_role?: string
           id?: string
           max_percentage?: number | null
           name?: string
           notes?: string | null
+          required_approval_role?: string
           required_documents?: Json
           sort_order?: number
           updated_at?: string
@@ -45840,9 +45858,11 @@ export type Database = {
           approver_comments: string | null
           approver_decision: string | null
           approver_id: string | null
+          approver_user_id: string | null
           case_id: string | null
           created_at: string | null
           created_by: string | null
+          decision_context: Json | null
           employer_id: string
           id: string
           justification: string
@@ -45854,6 +45874,7 @@ export type Database = {
           reviewer_comments: string | null
           reviewer_decision: string | null
           reviewer_id: string | null
+          rule_snapshot: Json | null
           source: string | null
           status: string | null
           supporting_documents: Json | null
@@ -45873,9 +45894,11 @@ export type Database = {
           approver_comments?: string | null
           approver_decision?: string | null
           approver_id?: string | null
+          approver_user_id?: string | null
           case_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          decision_context?: Json | null
           employer_id: string
           id?: string
           justification: string
@@ -45887,6 +45910,7 @@ export type Database = {
           reviewer_comments?: string | null
           reviewer_decision?: string | null
           reviewer_id?: string | null
+          rule_snapshot?: Json | null
           source?: string | null
           status?: string | null
           supporting_documents?: Json | null
@@ -45906,9 +45930,11 @@ export type Database = {
           approver_comments?: string | null
           approver_decision?: string | null
           approver_id?: string | null
+          approver_user_id?: string | null
           case_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          decision_context?: Json | null
           employer_id?: string
           id?: string
           justification?: string
@@ -45920,6 +45946,7 @@ export type Database = {
           reviewer_comments?: string | null
           reviewer_decision?: string | null
           reviewer_id?: string | null
+          rule_snapshot?: Json | null
           source?: string | null
           status?: string | null
           supporting_documents?: Json | null
@@ -121652,6 +121679,14 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_approve_waiver_v1: {
+        Args: {
+          p_approved_amount: number
+          p_comments?: string
+          p_waiver_id: string
+        }
+        Returns: Json
+      }
       ce_arrangement_blocking_lookup: {
         Args: { p_employer_id: string }
         Returns: {
@@ -121661,7 +121696,9 @@ export type Database = {
           status: string
         }[]
       }
-      ce_arrangement_grace_days: { Args: never; Returns: number }
+      ce_arrangement_grace_days:
+        | { Args: never; Returns: number }
+        | { Args: { p_scope_key?: string }; Returns: number }
       ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
       ce_batch_recompute_compliance: {
         Args: {
@@ -121696,6 +121733,10 @@ export type Database = {
           waivers: number
           write_offs: number
         }[]
+      }
+      ce_cancel_waiver_v1: {
+        Args: { p_reason?: string; p_waiver_id: string }
+        Returns: Json
       }
       ce_case_command_audit: {
         Args: {
@@ -121907,6 +121948,7 @@ export type Database = {
           warning_message: string
         }[]
       }
+      ce_is_trusted_session: { Args: never; Returns: boolean }
       ce_list_case_documents: {
         Args: { p_case_id: string }
         Returns: {
@@ -122018,6 +122060,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ce_reject_waiver_v1: {
+        Args: { p_comments?: string; p_reason: string; p_waiver_id: string }
+        Returns: Json
+      }
       ce_request_case_action: {
         Args: {
           p_case_id: string
@@ -122029,6 +122075,23 @@ export type Database = {
           p_target_case_id?: string
         }
         Returns: Json
+      }
+      ce_request_waiver_v1: {
+        Args: {
+          p_amount_requested: number
+          p_case_id?: string
+          p_employer_id: string
+          p_fund?: string
+          p_justification: string
+          p_reason_code?: string
+          p_source?: string
+          p_supporting_documents?: Json
+          p_violation_id?: string
+          p_waiver_rule_id?: string
+          p_waiver_type: string
+          p_workflow_definition_id?: string
+        }
+        Returns: string
       }
       ce_reverse_financial_event: {
         Args: {
@@ -122094,6 +122157,7 @@ export type Database = {
           status: string
         }[]
       }
+      ce_set_change_reason: { Args: { p_reason: string }; Returns: undefined }
       ce_sync_automation_job_schedules: { Args: never; Returns: Json }
       ce_sync_c3_to_ledger: {
         Args: {
@@ -122117,6 +122181,16 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_waiver_deny: {
+        Args: {
+          p_code: string
+          p_detail: Json
+          p_uid: string
+          p_waiver_id: string
+        }
+        Returns: undefined
+      }
+      ce_waiver_role_capability: { Args: { p_role: string }; Returns: string }
       cease_voluntary_contributor: {
         Args: { p_reason?: string; p_ssn: string }
         Returns: Json
