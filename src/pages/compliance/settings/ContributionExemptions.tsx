@@ -32,6 +32,16 @@ interface Exemption {
   recorded_by: string | null;
 }
 
+interface AuditEntry {
+  id: string;
+  action: string;
+  entity_id: string;
+  user_name: string | null;
+  timestamp: string;
+  payload_json: Record<string, unknown> | null;
+}
+
+
 const FUNDS = [
   { code: 'LV', label: 'Levy' },
   { code: 'SV', label: 'Severance' },
@@ -64,6 +74,8 @@ export default function ContributionExemptions() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Exemption | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [revoking, setRevoking] = useState<Exemption | null>(null);
+  const [revokeReason, setRevokeReason] = useState('');
 
   const { data: exemptions = [], isLoading } = useQuery({
     queryKey: ['ce_contribution_exemptions'],
@@ -76,6 +88,23 @@ export default function ContributionExemptions() {
       return (data || []) as unknown as Exemption[];
     },
   });
+
+  // Grant / amend / revoke actions are written to the canonical compliance
+  // audit trail by the governed commands; this is the read-only history view.
+  const { data: history = [] } = useQuery({
+    queryKey: ['ce_contribution_exemption_history'],
+    queryFn: async (): Promise<AuditEntry[]> => {
+      const { data, error } = await supabase
+        .from('system_audit_trail')
+        .select('id, action, entity_id, user_name, timestamp, payload_json')
+        .eq('entity_type', 'ce_contribution_exemptions')
+        .order('timestamp', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data || []) as unknown as AuditEntry[];
+    },
+  });
+
 
   // Granting, amending and revoking an exemption is a governed business action:
   // the server command verifies `compliance.exemption.manage`, validates the
@@ -107,6 +136,25 @@ export default function ContributionExemptions() {
     onError: (e: any) => toast.error('Failed to save exemption', { description: e.message }),
   });
 
+  const revokeMutation = useMutation({
+    mutationFn: async () => {
+      if (!revoking) return;
+      const { error } = await supabase.rpc('ce_revoke_contribution_exemption_v1' as never, {
+        p_id: revoking.id,
+        p_reason: revokeReason,
+      } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ce_contribution_exemptions'] });
+      qc.invalidateQueries({ queryKey: ['ce_contribution_exemption_history'] });
+      toast.success('Exemption revoked');
+      setRevoking(null);
+      setRevokeReason('');
+    },
+    onError: (e: any) => toast.error('Failed to revoke exemption', { description: e.message }),
+  });
+
   const openAdd = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (e: Exemption) => {
     setEditing(e);
@@ -118,6 +166,7 @@ export default function ContributionExemptions() {
     });
     setDialogOpen(true);
   };
+
 
   if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -178,7 +227,18 @@ export default function ContributionExemptions() {
                   <TableCell><Badge variant={statusVariant(ex.status)}>{STATUS_LABELS[ex.status] || ex.status}</Badge></TableCell>
                   <TableCell className="text-xs">{ex.authority_reference || '—'}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" disabled={!canManage} onClick={() => openEdit(ex)}><Edit className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" aria-label="Edit exemption" disabled={!canManage} onClick={() => openEdit(ex)}><Edit className="h-4 w-4" /></Button>
+                    {ex.status !== 'REVOKED' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        disabled={!canManage}
+                        onClick={() => { setRevoking(ex); setRevokeReason(''); }}
+                      >
+                        Revoke
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -190,6 +250,69 @@ export default function ContributionExemptions() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Grant / Revoke History</CardTitle>
+          <CardDescription>Audit trail of exemption grants, amendments and revocations — actor, time and reason.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Actor</TableHead>
+                <TableHead>Exemption</TableHead>
+                <TableHead>Reason / Authority</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.map(h => {
+                const p = (h.payload_json ?? {}) as Record<string, any>;
+                return (
+                  <TableRow key={h.id}>
+                    <TableCell className="text-xs whitespace-nowrap">{new Date(h.timestamp).toLocaleString()}</TableCell>
+                    <TableCell className="text-xs">{h.action}</TableCell>
+                    <TableCell className="text-xs">{h.user_name || '—'}</TableCell>
+                    <TableCell className="font-mono text-[11px]">{h.entity_id}</TableCell>
+                    <TableCell className="text-xs">{p.reason || p.granting_authority || p.authority_reference || '—'}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {history.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No exemption history recorded yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!revoking} onOpenChange={o => { if (!o) setRevoking(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke Exemption</DialogTitle>
+            <DialogDescription>
+              Revoking stops this exemption from suppressing detection from now on. A reason is mandatory and is recorded in the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label htmlFor="ex-revoke-reason">Revocation Reason</Label>
+            <Textarea id="ex-revoke-reason" value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevoking(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => revokeMutation.mutate()}
+              disabled={revokeMutation.isPending || revokeReason.trim() === ''}
+            >
+              Revoke
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -197,9 +320,9 @@ export default function ContributionExemptions() {
             <DialogDescription>Exemptions are scoped to person + employer + fund + effective period.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Person SSN</Label><Input value={form.person_ssn} onChange={e => setForm({ ...form, person_ssn: e.target.value })} /></div>
-            <div><Label>Person Name (optional)</Label><Input value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} /></div>
-            <div><Label>Employer ID</Label><Input value={form.employer_id} onChange={e => setForm({ ...form, employer_id: e.target.value })} placeholder="Employer this exemption applies to" /></div>
+            <div><Label htmlFor="ex-ssn">Person SSN</Label><Input id="ex-ssn" value={form.person_ssn} onChange={e => setForm({ ...form, person_ssn: e.target.value })} /></div>
+            <div><Label htmlFor="ex-name">Person Name (optional)</Label><Input id="ex-name" value={form.person_name} onChange={e => setForm({ ...form, person_name: e.target.value })} /></div>
+            <div><Label htmlFor="ex-employer">Employer ID</Label><Input id="ex-employer" value={form.employer_id} onChange={e => setForm({ ...form, employer_id: e.target.value })} placeholder="Employer this exemption applies to" /></div>
             <div>
               <Label>Fund</Label>
               <Select value={form.fund_code} onValueChange={v => setForm({ ...form, fund_code: v })}>
@@ -207,8 +330,8 @@ export default function ContributionExemptions() {
                 <SelectContent>{FUNDS.map(f => <SelectItem key={f.code} value={f.code}>{f.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Effective From</Label><Input type="date" value={form.effective_from} onChange={e => setForm({ ...form, effective_from: e.target.value })} /></div>
-            <div><Label>Effective To (optional)</Label><Input type="date" value={form.effective_to} onChange={e => setForm({ ...form, effective_to: e.target.value })} /></div>
+            <div><Label htmlFor="ex-from">Effective From</Label><Input id="ex-from" type="date" value={form.effective_from} onChange={e => setForm({ ...form, effective_from: e.target.value })} /></div>
+            <div><Label htmlFor="ex-to">Effective To (optional)</Label><Input id="ex-to" type="date" value={form.effective_to} onChange={e => setForm({ ...form, effective_to: e.target.value })} /></div>
             <div>
               <Label>Status</Label>
               <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
@@ -216,10 +339,10 @@ export default function ContributionExemptions() {
                 <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Authority Reference</Label><Input value={form.authority_reference} onChange={e => setForm({ ...form, authority_reference: e.target.value })} /></div>
-            <div><Label>Granting Authority</Label><Input value={form.granting_authority} onChange={e => setForm({ ...form, granting_authority: e.target.value })} /></div>
-            <div><Label>Evidence Reference</Label><Input value={form.evidence_reference} onChange={e => setForm({ ...form, evidence_reference: e.target.value })} /></div>
-            <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+            <div><Label htmlFor="ex-authref">Authority Reference</Label><Input id="ex-authref" value={form.authority_reference} onChange={e => setForm({ ...form, authority_reference: e.target.value })} /></div>
+            <div><Label htmlFor="ex-authority">Granting Authority</Label><Input id="ex-authority" value={form.granting_authority} onChange={e => setForm({ ...form, granting_authority: e.target.value })} /></div>
+            <div><Label htmlFor="ex-evidence">Evidence Reference</Label><Input id="ex-evidence" value={form.evidence_reference} onChange={e => setForm({ ...form, evidence_reference: e.target.value })} /></div>
+            <div className="col-span-2"><Label htmlFor="ex-notes">Notes</Label><Textarea id="ex-notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>

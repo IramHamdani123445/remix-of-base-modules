@@ -91,7 +91,7 @@ export default function WageBenchmarks() {
     setOverrideReason('');
   };
 
-  const money = (n: number | null) => n == null ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'JMD', maximumFractionDigits: 0 }).format(n);
+  const money = (n: number | null) => n == null ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'XCD', maximumFractionDigits: 0 }).format(n);
 
   if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 

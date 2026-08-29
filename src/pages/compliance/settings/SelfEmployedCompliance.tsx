@@ -65,13 +65,13 @@ export default function SelfEmployedCompliance() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>{rule ? `${rule.rule_code} — ${rule.name}` : 'Self-Employed Non-Compliance Rule'}</CardTitle>
-              <CardDescription>
-                {rule ? (
-                  <span className="flex items-center gap-2 mt-1">
-                    <Badge variant={rule.is_enabled ? 'default' : 'secondary'}>{rule.is_enabled ? 'Enabled' : 'Disabled'}</Badge>
-                  </span>
-                ) : 'No detection rule configured yet for self-employed non-compliance.'}
-              </CardDescription>
+              {rule ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant={rule.is_enabled ? 'default' : 'secondary'}>{rule.is_enabled ? 'Enabled' : 'Disabled'}</Badge>
+                </div>
+              ) : (
+                <CardDescription>No detection rule configured yet for self-employed non-compliance.</CardDescription>
+              )}
             </div>
             <Button
               variant="outline"
