@@ -299,25 +299,49 @@ export default function ReviewFlagQueue() {
                     <TableCell className="text-xs">{f.period_key || '—'}</TableCell>
                     <TableCell><Badge variant={severityVariant(f.severity)}>{f.severity}</Badge></TableCell>
                     <TableCell>
-                      <Badge variant={f.status === 'open' || f.status === 'pending' ? 'secondary' : 'outline'} className="uppercase text-[10px]">
+                      <Badge variant={CLOSED_STATUSES.has(f.status) ? 'outline' : 'secondary'} className="uppercase text-[10px]">
                         {f.status}
                       </Badge>
+                      {f.converted_violation_id && (
+                        <Badge variant="destructive" className="ml-1 text-[10px]">VIOLATION</Badge>
+                      )}
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        {f.assigned_to_name ? `→ ${f.assigned_to_name}` : 'Unassigned'}
+                      </div>
                     </TableCell>
                     <TableCell className="text-xs max-w-[240px] truncate" title={f.summary}>{f.summary}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {canReview && f.status !== 'confirmed' && f.status !== 'dismissed' && (
+                        {canReview && !CLOSED_STATUSES.has(f.status) && (
                           <>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Confirm — raise violation" onClick={() => openAction(f, 'confirm')}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Assign / reassign officer" onClick={() => { setNotes(''); setAssigneeId(f.assigned_to_user_id ?? ''); setAssignTarget(f); }}>
+                              <UserCheck className="h-4 w-4" />
+                            </Button>
+                            {f.status !== 'UNDER_REVIEW' && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Start investigation" onClick={() => openAction(f, 'UNDER_REVIEW')}>
+                                <Search className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Confirm flag" onClick={() => openAction(f, 'CONFIRMED')}>
                               <CheckCircle2 className="h-4 w-4 text-success" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Dismiss" onClick={() => openAction(f, 'dismiss')}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Dismiss as false positive" onClick={() => openAction(f, 'DISMISSED')}>
                               <XCircle className="h-4 w-4 text-destructive" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Annotate" onClick={() => openAction(f, 'annotate')}>
-                              <MessageSquarePlus className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Resolve without violation" onClick={() => openAction(f, 'RESOLVED')}>
+                              <ShieldQuestion className="h-4 w-4" />
                             </Button>
                           </>
+                        )}
+                        {canReview && f.status === 'CONFIRMED' && !f.converted_violation_id && f.subject_type === 'EMPLOYER' && (
+                          <Button variant="outline" size="sm" className="h-8" title="Convert this confirmed flag into a violation" onClick={() => { setNotes(''); setConvertTarget(f); }}>
+                            <AlertOctagon className="h-3.5 w-3.5 mr-1" />Convert
+                          </Button>
+                        )}
+                        {canReview && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Add note / evidence" onClick={() => openAction(f, 'ANNOTATE')}>
+                            <MessageSquarePlus className="h-4 w-4" />
+                          </Button>
                         )}
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}>
                           {expandedId === f.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
