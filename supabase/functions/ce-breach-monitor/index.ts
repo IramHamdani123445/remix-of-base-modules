@@ -165,6 +165,8 @@ Deno.serve(async (req) => {
         potentially_overdue_installments: overdueInstallments?.length ?? 0,
         as_of_date: asOfDate,
         grace_days: graceDays,
+        grace_days_source: graceSource,
+        grace_policy_code: gracePolicyCode,
       };
     } else {
       // Live execution
