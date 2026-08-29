@@ -282,6 +282,7 @@ function Inner() {
                   </Table>
                 </CardContent>
               </Card>
+              </div>
             );
           })()}
 
