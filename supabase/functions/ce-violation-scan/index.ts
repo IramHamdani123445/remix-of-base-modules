@@ -962,12 +962,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "c3_deadline_passed": {
             // Per-period: every C3 that WAS filed but arrived after its
             // statutory deadline (+ grace) raises its own late-filing row.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
-            const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const graceDays = Number(params.grace_period_days);
+            const dueDay = Number(params.submission_due_day);
             const c3 = c3ByEmp.get(emp.regno);
             if (c3) {
               const win = windowFor(emp.regno, cap);
