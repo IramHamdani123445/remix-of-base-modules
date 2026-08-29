@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Target } from 'lucide-react';
+import RiskModelTab from './risk-policy/RiskModelTab';
 import RiskFactorsTab from './risk-policy/RiskFactorsTab';
 import RiskPoliciesTab from './risk-policy/RiskPoliciesTab';
 import RiskBandsTab from './risk-policy/RiskBandsTab';
