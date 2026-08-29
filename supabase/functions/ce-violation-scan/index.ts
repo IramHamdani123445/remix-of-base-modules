@@ -14,6 +14,12 @@ import {
   normalizeObligationPolicy,
   resolveObligationTimeline,
 } from "../_shared/compliance/obligationDeadlineResolver.ts";
+import {
+  type CePartialPaymentAuthority,
+  evaluatePartialPaymentObligation,
+  isPartialPaymentViolation,
+  partialPaymentSuppressesNonPayment,
+} from "../_shared/compliance/partialPaymentAllocation.ts";
 
 
 const corsHeaders = {
