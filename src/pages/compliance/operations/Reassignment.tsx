@@ -409,88 +409,23 @@ function ReassignDialog({
         if (!notes.trim()) throw new Error("Notes are required");
         if (!target) throw new Error("Invalid target");
 
-        const userCode =
-          user?.user_metadata?.user_code || user?.email || "system";
-
-        // Fetch violation IDs to move
-        let q = supabase
-          .from("ce_violations")
-          .select("id")
-          .eq("assigned_to_user_id", from.assignment_key)
-          .in("status", ACTIVE_STATUSES as unknown as string[]);
-        if (count > 0) q = q.limit(count);
-        const { data: viols, error: selErr } = await q;
-        if (selErr) throw selErr;
-        if (!viols?.length) throw new Error("No active violations to move");
-
-        const ids = viols.map((v: any) => v.id);
-        const nowIso = new Date().toISOString();
-
-        // Supersede prior current assignments for these violations
-        await supabase
-          .from("ce_violation_assignments")
-          .update({ is_current: false, superseded_at: nowIso })
-          .in("violation_id", ids)
-          .eq("is_current", true);
-
-        // Insert new assignment rows
-        const inserts = ids.map((vid) => ({
-          violation_id: vid,
-          assigned_to_inspector_id: target.inspector_id,
-          assignment_type: "REASSIGN",
-          assigned_by: userCode,
-          reassignment_reason: reason,
-          reassigned_from_inspector_id: from.inspector_id,
-          resolution_method: "MANUAL",
-          is_current: true,
-          assigned_at: nowIso,
-          notes: notes,
-        }));
-        const { error: insErr } = await supabase.from("ce_violation_assignments").insert(inserts);
-        if (insErr) throw insErr;
-
-        // Update violation header
-        const { error: updErr } = await supabase
-          .from("ce_violations")
-          .update({
-            assigned_to_user_id: target.assignment_key,
-            assigned_to_name: target.label,
-            assigned_at: nowIso,
-            assignment_method: "MANUAL",
-          } as any)
-          .in("id", ids);
-        if (updErr) throw updErr;
-
-        // Per-violation history
-        const history = ids.map((vid) => ({
-          violation_id: vid,
-          change_type: "REASSIGNED",
-          changed_by: userCode,
-          changed_by_name: user?.user_metadata?.full_name || user?.email || "System",
-          change_reason: notes,
-          new_value: target.label,
-          old_value: from.display_name,
-        } as any));
-        await supabase.from("ce_violation_history").insert(history);
-
-        // Summary audit row (best-effort)
-        await supabase.from("ce_audit_log").insert({
-          entity_type: "VIOLATION",
-          entity_id: ids[0], // anchor
-          action: "BULK_REASSIGN",
-          description: `Reassigned ${ids.length} violation(s) from ${from.display_name} to ${target.label}`,
-          new_values: {
-            from: from.display_name,
-            to: target.label,
-            count: ids.length,
-            reason,
-          },
-          performed_by: userCode,
-          reason: notes,
-        } as any);
-
-        return ids.length;
+        // Governed server-side command (Checkpoint F-S1). The database verifies the
+        // caller's compliance.violations.manage capability, validates the target
+        // officer, supersedes the prior assignments and writes history + audit
+        // atomically. Browser clients can no longer write assignment rows directly.
+        const { data, error } = await (supabase.rpc as any)("ce_violation_bulk_reassign_v1", {
+          p_from_assignment_key: from.assignment_key,
+          p_target_inspector_id: target.inspector_id,
+          p_reason: reason,
+          p_notes: notes,
+          p_limit: count > 0 ? count : 0,
+        });
+        if (error) throw error;
+        const moved = Number(data ?? 0);
+        if (moved === 0) throw new Error("No active violations to move");
+        return moved;
       },
+
       onSuccess: (n) => {
         toast.success(`${n} violation${n === 1 ? "" : "s"} reassigned`);
         onDone();
@@ -636,68 +571,21 @@ function BulkAssignDialog({
         if (!notes.trim()) throw new Error("Notes are required");
         if (effectiveCount <= 0) throw new Error("Nothing to assign");
 
-        const userCode =
-          user?.user_metadata?.user_code || user?.email || "system";
-
-        const { data: viols, error: selErr } = await supabase
-          .from("ce_violations")
-          .select("id")
-          .in("status", ACTIVE_STATUSES as unknown as string[])
-          .is("assigned_to_user_id", null)
-          .limit(effectiveCount);
-        if (selErr) throw selErr;
-        if (!viols?.length) throw new Error("No unassigned violations found");
-
-        const ids = viols.map((v: any) => v.id);
-        const nowIso = new Date().toISOString();
-
-        const inserts = ids.map((vid) => ({
-          violation_id: vid,
-          assigned_to_inspector_id: target.inspector_id,
-          assignment_type: "MANUAL",
-          assigned_by: userCode,
-          resolution_method: "MANUAL",
-          is_current: true,
-          assigned_at: nowIso,
-          notes,
-        }));
-        const { error: insErr } = await supabase.from("ce_violation_assignments").insert(inserts);
-        if (insErr) throw insErr;
-
-        const { error: updErr } = await supabase
-          .from("ce_violations")
-          .update({
-            assigned_to_user_id: target.assignment_key,
-            assigned_to_name: target.label,
-            assigned_at: nowIso,
-            assignment_method: "MANUAL_BULK",
-          } as any)
-          .in("id", ids);
-        if (updErr) throw updErr;
-
-        const history = ids.map((vid) => ({
-          violation_id: vid,
-          change_type: "ASSIGNED",
-          changed_by: userCode,
-          changed_by_name: user?.user_metadata?.full_name || user?.email || "System",
-          change_reason: notes,
-          new_value: target.label,
-          old_value: null,
-        } as any));
-        await supabase.from("ce_violation_history").insert(history);
-
-        await supabase.from("ce_audit_log").insert({
-          entity_type: "VIOLATION",
-          entity_id: ids[0],
-          action: "BULK_ASSIGN",
-          description: `Bulk assigned ${ids.length} unassigned violation(s) to ${target.label}`,
-          new_values: { to: target.label, count: ids.length },
-          performed_by: userCode,
-          reason: notes,
-        } as any);
-
-        return ids.length;
+        // Governed server-side command (Checkpoint F-S1).
+        const { data, error } = await (supabase.rpc as any)(
+          "ce_violation_bulk_assign_unassigned_v1",
+          {
+            p_target_inspector_id: target.inspector_id,
+            p_notes: notes,
+            p_limit: effectiveCount,
+          },
+        );
+        if (error) throw error;
+        const assigned = Number(data ?? 0);
+        if (assigned === 0) throw new Error("No unassigned violations found");
+        return assigned;
       },
+
       onSuccess: (n) => {
         toast.success(`${n} violation${n === 1 ? "" : "s"} assigned`);
         onDone();

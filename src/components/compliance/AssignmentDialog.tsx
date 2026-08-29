@@ -80,77 +80,33 @@ export function AssignmentDialog({ open, onOpenChange, entityType, entityId, cur
       const effFrom = new Date(effectiveFrom).toISOString();
 
       if (entityType === 'violation') {
-        // Resolve reassigned-from to a real ce_inspectors.id.
-        // currentOfficerId on the violation header is a profile/user id, NOT an inspector id,
-        // so passing it directly violates the FK ce_violation_assignments_reassigned_from_inspector_id_fkey.
-        let reassignedFromInspectorId: string | null = null;
-        if (currentOfficerId) {
-          const direct = inspectors.find((i: any) => i.id === currentOfficerId);
-          if (direct) {
-            reassignedFromInspectorId = direct.id;
-          } else {
-            const byProfile = inspectors.find((i: any) => i.profile_id === currentOfficerId);
-            if (byProfile) {
-              reassignedFromInspectorId = byProfile.id;
-            } else {
-              // Fallback: query the last current assignment for this violation
-              const { data: prior } = await supabase
-                .from('ce_violation_assignments')
-                .select('assigned_to_inspector_id')
-                .eq('violation_id', entityId)
-                .eq('is_current', true)
-                .order('assigned_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              reassignedFromInspectorId = (prior as any)?.assigned_to_inspector_id ?? null;
-            }
-          }
-        }
-
-        // Mark prior assignments as not-current
-        await supabase
+        // Governed server-side command (Checkpoint F-S1): the database resolves the
+        // previous assignment, supersedes it, creates the new one and writes
+        // history + audit atomically after verifying the caller's capability.
+        // Direct writes to ce_violation_assignments are revoked for browser clients.
+        const { data: hasCurrent } = await supabase
           .from('ce_violation_assignments')
-          .update({ is_current: false, superseded_at: new Date().toISOString() })
+          .select('id')
           .eq('violation_id', entityId)
-          .eq('is_current', true);
+          .eq('is_current', true)
+          .limit(1)
+          .maybeSingle();
 
-        // Insert new assignment
-        const { error: insErr } = await supabase.from('ce_violation_assignments').insert({
-          violation_id: entityId,
-          assigned_to_inspector_id: toInspectorId,
-          assignment_type: reassignedFromInspectorId ? 'REASSIGN' : 'MANUAL',
-          assigned_by: userCode,
-          reassignment_reason: reassignedFromInspectorId ? 'MANUAL' : null,
-          reassigned_from_inspector_id: reassignedFromInspectorId,
-          resolution_method: 'MANUAL',
-          is_current: true,
-          assigned_at: effFrom,
-          notes: reason,
-        });
-        if (insErr) throw insErr;
-
-        // Update violation header
-        const { error: updErr } = await supabase
-          .from('ce_violations')
-          .update({
-            assigned_to_user_id: selectedInspector?.profile_id || toInspectorId,
-            assigned_to_name: inspectorOptions.find(o => o.id === toInspectorId)?.label || null,
-            assigned_at: effFrom,
-            assignment_method: 'MANUAL',
-          } as any)
-          .eq('id', entityId);
-        if (updErr) throw updErr;
-
-        // History
-        await supabase.from('ce_violation_history').insert({
-          violation_id: entityId,
-          action: 'REASSIGNED',
-          performed_by: userCode,
-          from_value: currentOfficerName || null,
-          to_value: inspectorOptions.find(o => o.id === toInspectorId)?.label || toInspectorId,
-          notes: reason,
-        } as any);
+        const { error: rpcErr } = hasCurrent
+          ? await (supabase.rpc as any)('ce_violation_reassign_v1', {
+              p_violation_id: entityId,
+              p_target_inspector_id: toInspectorId,
+              p_reason: 'MANUAL',
+              p_notes: reason,
+            })
+          : await (supabase.rpc as any)('ce_violation_assign_v1', {
+              p_violation_id: entityId,
+              p_target_inspector_id: toInspectorId,
+              p_notes: reason,
+            });
+        if (rpcErr) throw rpcErr;
       } else {
+
         // case
         await supabase
           .from('ce_case_assignments')
