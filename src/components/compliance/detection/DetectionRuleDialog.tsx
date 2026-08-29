@@ -814,14 +814,29 @@ export const EnhancedDetectionRuleDialog = ({
       });
       return;
     }
-    // Clean parameters: remove empty values
+
+    // A rule cannot be saved with parameters the engine would reject at runtime.
+    const errorKeys = Object.keys(parameterErrors);
+    if (errorKeys.length > 0) {
+      toast.error('Rule parameters are incomplete or invalid', {
+        description: errorKeys.map(k => `${k}: ${parameterErrors[k]}`).join(' · '),
+        classNames: { toast: '!bg-destructive', title: '!text-white', description: '!text-white !opacity-100' },
+      });
+      return;
+    }
+
+    // Clean parameters: remove empty values and any key outside the contract
+    // (legacy keys would otherwise linger and mislead administrators).
+    const contractKeys = new Set((DETECTION_PARAM_SPEC[form.trigger_event] ?? []).map(d => d.key));
     const cleanParams: Record<string, any> = {};
     Object.entries(form.parameters).forEach(([k, v]) => {
       if (k === '_snapshot') return; // recomputed below
+      if (!contractKeys.has(k) && !k.endsWith('_override')) return;
       if (v !== '' && v !== undefined && v !== null) {
         cleanParams[k] = v;
       }
     });
+
 
     // Build / preserve the policy snapshot.
     // On EDIT: keep the existing snapshot frozen — never re-resolve from live config.
