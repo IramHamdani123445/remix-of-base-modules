@@ -188,7 +188,9 @@ const ScheduleSettings = () => {
                   <TableRow>
                     <TableHead>Job</TableHead>
                     <TableHead>Code</TableHead>
-                    <TableHead>Cron</TableHead>
+                    <TableHead>Configured</TableHead>
+                    <TableHead>Actually running</TableHead>
+                    <TableHead>Execution</TableHead>
                     <TableHead>Enabled</TableHead>
                     <TableHead>Last Run</TableHead>
                     <TableHead>Status</TableHead>
@@ -205,6 +207,11 @@ const ScheduleSettings = () => {
                       </TableCell>
                       <TableCell className="font-mono text-xs">{j.job_code}</TableCell>
                       <TableCell className="font-mono text-xs">{j.schedule_cron}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {j.active_cron ?? <span className="text-muted-foreground">not scheduled</span>}
+                      </TableCell>
+                      <TableCell>{renderSyncState(j.sync_state)}</TableCell>
+
                       <TableCell>
                         {j.is_enabled ? (
                           <span className="inline-flex items-center gap-1 text-primary text-sm">
