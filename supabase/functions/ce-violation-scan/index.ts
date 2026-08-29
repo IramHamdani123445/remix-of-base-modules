@@ -1302,11 +1302,11 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         }
       }
       for (const [empId, byPeriod] of periodTotals) {
-        const last3 = Array.from(byPeriod.entries())
+        const recent = Array.from(byPeriod.entries())
           .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-          .slice(0, 3)
+          .slice(0, historyPeriodCount)
           .map(([, v]) => v);
-        if (last3.length > 0) historyByEmp.set(empId, last3);
+        if (recent.length > 0) historyByEmp.set(empId, recent);
       }
     }
 
@@ -1317,10 +1317,12 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       const amounts = computeViolationAmounts({
         policy: activePolicy,
         history: historyByEmp.get(v.employer_id) || [],
+        estimateMultiplier,
         periodFrom: v.period_from,
         asOfDate,
         knownPrincipal: known,
       });
+
       v.principal_amount = amounts.principal;
       v.penalty_amount = amounts.penalty;
       v.interest_amount = amounts.interest;
