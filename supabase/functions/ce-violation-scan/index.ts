@@ -1806,6 +1806,16 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             // never reappears here.
             const checkFunds = (params.check_funds as CeFundCode[]) ?? [];
             const zeroThreshold = Number(params.zero_threshold ?? 0);
+            // Severance has no per-person source column on the C3 line record.
+            // Rather than fabricate an expected severance amount, the gap is
+            // reported as a configuration/data-source issue and the SV portion
+            // of the rule is skipped.
+            if (checkFunds.includes("SV" as CeFundCode)) {
+              markObligationConfigError(
+                rule.rule_code,
+                "Severance (SV) is configured in check_funds but C3 person lines carry no per-person severance contribution column; the SV portion of DR-007 is skipped until a severance line source exists.",
+              );
+            }
             const lines = fundLinesByEmp.get(emp.regno) || [];
             if (lines.length === 0) {
               markObligationConfigError(
