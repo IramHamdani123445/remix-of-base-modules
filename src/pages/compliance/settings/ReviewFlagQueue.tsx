@@ -358,6 +358,14 @@ export default function ReviewFlagQueue() {
                             <pre className="text-[11px] bg-background border border-border rounded p-2 overflow-x-auto max-h-56">{JSON.stringify(f.evidence, null, 2)}</pre>
                           </div>
                           <div>
+                            <h4 className="text-xs font-semibold text-foreground mb-1">Source &amp; De-duplication</h4>
+                            <div className="text-[11px] text-muted-foreground mb-3 space-y-0.5">
+                              <div>Rule: <span className="font-mono text-foreground">{f.rule_code || '—'}</span></div>
+                              <div className="break-all">Dedupe key: <span className="font-mono text-foreground">{f.dedupe_key}</span></div>
+                              {f.converted_violation_id && (
+                                <div>Converted violation: <span className="font-mono text-foreground">{f.converted_violation_id}</span></div>
+                              )}
+                            </div>
                             <h4 className="text-xs font-semibold text-foreground mb-1">Triggering Violation IDs</h4>
                             {f.triggering_violation_ids?.length ? (
                               <div className="flex flex-wrap gap-1">
