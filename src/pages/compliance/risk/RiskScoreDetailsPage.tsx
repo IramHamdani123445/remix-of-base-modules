@@ -221,9 +221,11 @@ function Inner() {
             const hasDetail = !!history?.calculation_details;
             const reconciles = Math.abs(diff) < 0.01;
             return (
+              <div className="space-y-4">
+              <RiskExplainabilityPanel employerId={profile.employer_id} />
               <Card>
                 <CardHeader>
-                  <CardTitle>Factor Breakdown</CardTitle>
+                  <CardTitle>Audit-Priority Factor Catalogue</CardTitle>
                   <CardDescription>
                     {breakdown.length} configured factor(s)
                     {!reconciles && (
