@@ -265,6 +265,8 @@ const administration: SubItem = {
     { title: "Reference Numbering", url: "/compliance/admin/settings/number-templates", icon: Hash, requiresPermission: "manage_compliance" },
     { title: "Notice Templates", url: "/admin/notification-templates?tab=core&module=COMPLIANCE&type=NOTICE", icon: FileText, requiresPermission: "manage_compliance" },
     { title: "Communication Templates", url: "/admin/notification-templates?tab=core&module=COMPLIANCE", icon: Mail, requiresPermission: "manage_compliance" },
+    { title: "Communication Trigger Rules", url: "/compliance/admin/comm-trigger-rules", icon: Mail, requiresPermission: "manage_compliance" },
+
     { title: "Automation Jobs", url: "/compliance/admin/automation/jobs", icon: Zap, requiresPermission: "manage_compliance" },
     { title: "Schedule Settings", url: "/compliance/admin/schedule-settings", icon: Calendar, requiresPermission: "manage_compliance", __feature: "admin.scheduleSettings" },
     { title: "Payment Arrangement Rules", url: "/compliance/admin/payment-arrangement-rules", icon: HandshakeIcon, requiresPermission: "manage_compliance", __feature: "admin.paymentArrangementRules" },
