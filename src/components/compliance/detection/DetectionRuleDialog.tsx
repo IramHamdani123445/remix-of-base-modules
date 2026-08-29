@@ -793,7 +793,19 @@ export const EnhancedDetectionRuleDialog = ({
   };
 
 
+  const activePolicy = useActiveCompliancePolicy(open);
+
+  /** Live validation against the canonical runtime contract. */
+  const parameterErrors = useMemo(
+    () =>
+      form.trigger_event && DETECTION_PARAM_SPEC[form.trigger_event]
+        ? validateRuleParameterDraft(DETECTION_PARAM_SPEC[form.trigger_event], form.parameters, activePolicy)
+        : {},
+    [form.trigger_event, form.parameters, activePolicy],
+  );
+
   const handleSave = async () => {
+
     if (!form.name || !form.trigger_event) {
       toast.error('Please check the form for valid information!', {
         description: 'Name and Trigger Event are required.',
