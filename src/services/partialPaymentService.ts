@@ -12,6 +12,21 @@ import type {
   CePartialPaymentLiability,
 } from '@/lib/compliance/partialPaymentAllocation';
 
+/**
+ * The governed partial-payment routines are newer than the generated type
+ * surface, so they are invoked through a narrow, explicitly-typed shim
+ * rather than by loosening the whole client.
+ */
+type RpcArgs = Record<string, unknown>;
+const callRpc = async <T>(fn: string, args: RpcArgs): Promise<T> => {
+  const client = supabase as unknown as {
+    rpc: (fn: string, args: RpcArgs) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+  const { data, error } = await client.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data as T;
+};
+
 export type PartialPaymentStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
@@ -173,13 +188,12 @@ export async function getOutstandingLiability(
   wagePeriod: string,
   obligationType = 'CONTRIBUTION_PAYMENT',
 ): Promise<CePartialPaymentLiability> {
-  const { data, error } = await supabase.rpc('ce_pp_liability', {
+  const data = await callRpc<CePartialPaymentLiability>('ce_pp_liability', {
     p_employer_id: employerId,
     p_wage_period: wagePeriod,
     p_obligation_type: obligationType,
   });
-  if (error) throw error;
-  const parsed = (data ?? {}) as unknown as CePartialPaymentLiability;
+  const parsed = (data ?? {}) as CePartialPaymentLiability;
   return {
     total_outstanding: Number(parsed.total_outstanding ?? 0),
     buckets: (parsed.buckets ?? []).map((b) => ({
@@ -203,20 +217,18 @@ export async function requestPartialPayment(input: {
   caseId?: string | null;
   violationId?: string | null;
 }): Promise<string> {
-  const { data, error } = await supabase.rpc('ce_request_partial_payment_v1', {
+  return await callRpc<string>('ce_request_partial_payment_v1', {
     p_employer_id: input.employerId,
     p_wage_period: input.wagePeriod,
     p_requested_amount: input.requestedAmount,
     p_justification: input.justification,
-    p_allocations: input.allocations as never,
+    p_allocations: input.allocations,
     p_source: input.source,
     p_reason_code: input.reasonCode ?? null,
     p_obligation_type: input.obligationType ?? 'CONTRIBUTION_PAYMENT',
     p_case_id: input.caseId ?? null,
     p_violation_id: input.violationId ?? null,
   });
-  if (error) throw error;
-  return data as unknown as string;
 }
 
 export async function reviewPartialPayment(input: {
@@ -224,12 +236,11 @@ export async function reviewPartialPayment(input: {
   allocations: CePartialPaymentAllocationLine[];
   comments?: string;
 }): Promise<void> {
-  const { error } = await supabase.rpc('ce_review_partial_payment_v1', {
+  await callRpc<void>('ce_review_partial_payment_v1', {
     p_request_id: input.requestId,
-    p_allocations: input.allocations as never,
+    p_allocations: input.allocations,
     p_comments: input.comments ?? null,
   });
-  if (error) throw error;
 }
 
 export interface ApprovalResult {
@@ -250,16 +261,14 @@ export async function approvePartialPayment(input: {
   comments?: string;
   expectedVersion?: number;
 }): Promise<ApprovalResult> {
-  const { data, error } = await supabase.rpc('ce_approve_partial_payment_v1', {
+  return await callRpc<ApprovalResult>('ce_approve_partial_payment_v1', {
     p_request_id: input.requestId,
     p_approved_amount: input.approvedAmount,
-    p_allocations: (input.allocations ?? null) as never,
+    p_allocations: input.allocations ?? null,
     p_grace_extension_days: input.graceExtensionDays ?? 0,
     p_comments: input.comments ?? null,
     p_expected_version: input.expectedVersion ?? null,
   });
-  if (error) throw error;
-  return data as unknown as ApprovalResult;
 }
 
 export async function rejectPartialPayment(input: {
@@ -268,21 +277,19 @@ export async function rejectPartialPayment(input: {
   comments?: string;
   expectedVersion?: number;
 }): Promise<void> {
-  const { error } = await supabase.rpc('ce_reject_partial_payment_v1', {
+  await callRpc<void>('ce_reject_partial_payment_v1', {
     p_request_id: input.requestId,
     p_reason: input.reason,
     p_comments: input.comments ?? null,
     p_expected_version: input.expectedVersion ?? null,
   });
-  if (error) throw error;
 }
 
 export async function cancelPartialPayment(requestId: string, reason?: string): Promise<void> {
-  const { error } = await supabase.rpc('ce_cancel_partial_payment_v1', {
+  await callRpc<void>('ce_cancel_partial_payment_v1', {
     p_request_id: requestId,
     p_reason: reason ?? null,
   });
-  if (error) throw error;
 }
 
 export async function settlePartialPayment(input: {
@@ -290,10 +297,9 @@ export async function settlePartialPayment(input: {
   amount: number;
   paymentReference?: string;
 }): Promise<void> {
-  const { error } = await supabase.rpc('ce_settle_partial_payment_v1', {
+  await callRpc<void>('ce_settle_partial_payment_v1', {
     p_request_id: input.requestId,
     p_amount: input.amount,
     p_payment_reference: input.paymentReference ?? null,
   });
-  if (error) throw error;
 }
