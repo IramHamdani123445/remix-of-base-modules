@@ -610,6 +610,13 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         grace_days: Number.isFinite(graceDays) ? graceDays : 0,
         fixed_day: fixedDay == null || !Number.isFinite(Number(fixedDay)) ? null : Number(fixedDay),
       });
+    /** Flag a deadline-driven rule as unrunnable (recorded once per rule). */
+    const markObligationConfigError = (ruleCode: string, message: string) => {
+      const entry = ruleDiagnostics.find((d) => d.rule_code === ruleCode);
+      if (!entry) return;
+      entry.status = "configuration_error";
+      entry.errors = Array.from(new Set([...(entry.errors ?? []), message]));
+    };
     const iso = (d: Date | string | null | undefined): string | null =>
       !d ? null : (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
 
@@ -1003,11 +1010,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             // resolved deadline (+ grace). A missing filing is NEVER late here —
             // it is DR-002 Unreported. Deadline comes from the shared resolver.
             if (obligationPolicyError) {
-              diagnostics.push({
-                rule_code: rule.rule_code,
-                status: "configuration_error",
-                message: obligationPolicyError,
-              });
+              markObligationConfigError(rule.rule_code, obligationPolicyError);
               shouldFlag = false;
               break;
             }
@@ -1046,11 +1049,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             // gets its own row. The deadline comes from the shared resolver; the
             // rule parameter only adds days AFTER the resolved breach date.
             if (obligationPolicyError) {
-              diagnostics.push({
-                rule_code: rule.rule_code,
-                status: "configuration_error",
-                message: obligationPolicyError,
-              });
+              markObligationConfigError(rule.rule_code, obligationPolicyError);
               shouldFlag = false;
               break;
             }
@@ -1124,11 +1123,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             // DR-003 Non-Payment: a declared C3 with no money received once the
             // resolved payment deadline (+ grace) has passed.
             if (obligationPolicyError) {
-              diagnostics.push({
-                rule_code: rule.rule_code,
-                status: "configuration_error",
-                message: obligationPolicyError,
-              });
+              markObligationConfigError(rule.rule_code, obligationPolicyError);
               shouldFlag = false;
               break;
             }
