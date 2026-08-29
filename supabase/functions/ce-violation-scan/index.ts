@@ -1500,8 +1500,12 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         employers_done: sliceEnd,
         progress_percent: 100,
         sample_violations: cumulative.sample_violations,
+        rule_diagnostics: ruleDiagnostics,
+        configuration_errors: ruleDiagnostics.filter((d) => d.status !== "ok"),
+        policy_snapshot: activePolicy,
         details: detected.slice(0, 100),
       },
+
     })
     .eq("id", runId);
 
