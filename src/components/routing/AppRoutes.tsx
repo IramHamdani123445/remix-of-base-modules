@@ -1627,14 +1627,16 @@ export const AppRoutes = () => {
       <Route path="/compliance/admin/waiver-rules" element={<ComplianceWaiverRulesPage />} />
       <Route path="/compliance/admin/legal-handoff-rules" element={<ComplianceLegalHandoffRulesPage />} />
       <Route path="/compliance/admin/help" element={<ComplianceHelpAdmin />} />
-      {/* Calculation Rules & Escalation Rules — canonical location is Rule Engine */}
-      <Route path="/compliance/admin/calculation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine" replace />} />
-      <Route path="/compliance/admin/escalation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine" replace />} />
+      {/* Calculation Rules & Escalation Rules — canonical location is Rule Engine (deep-linked tab) */}
+      <Route path="/compliance/admin/calculation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine?tab=calculation" replace />} />
+      <Route path="/compliance/admin/escalation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine?tab=escalation" replace />} />
+      <Route path="/compliance/admin/comm-trigger-rules" element={<ComplianceCommTriggerRulesPage />} />
       <Route path="/compliance/admin/schedule-settings" element={<ComplianceScheduleSettings />} />
       <Route path="/compliance/admin/payment-arrangement-rules" element={<CompliancePaymentArrangementRulesPage />} />
       {/* Risk Scoring aliases — canonical route is /compliance/admin/settings/risk-policy */}
-      <Route path="/compliance/admin/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy" replace />} />
-      <Route path="/compliance/admin/settings/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy" replace />} />
+      <Route path="/compliance/admin/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy?tab=factors" replace />} />
+      <Route path="/compliance/admin/settings/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy?tab=factors" replace />} />
+
 
       {/* Visible-by-default 404 fixes (menu aliases to existing working pages) */}
       <Route path="/compliance/workbench/overview" element={<Navigate to="/compliance/workbench" replace />} />
