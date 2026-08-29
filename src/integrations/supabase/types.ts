@@ -44029,13 +44029,18 @@ export type Database = {
       }
       ce_open_business_decision: {
         Row: {
+          blocker_class: string
+          client_answer_required: string | null
           confirmed_basis: string | null
           created_at: string
+          current_safe_behaviour: string | null
           decided_at: string | null
           decided_by: string | null
           decision_code: string
           decision_notes: string | null
+          demo_blocker: boolean
           id: string
+          production_blocker: boolean
           raised_by: string
           rule_code: string | null
           runtime_guard: string | null
@@ -44045,13 +44050,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          blocker_class?: string
+          client_answer_required?: string | null
           confirmed_basis?: string | null
           created_at?: string
+          current_safe_behaviour?: string | null
           decided_at?: string | null
           decided_by?: string | null
           decision_code: string
           decision_notes?: string | null
+          demo_blocker?: boolean
           id?: string
+          production_blocker?: boolean
           raised_by?: string
           rule_code?: string | null
           runtime_guard?: string | null
@@ -44061,13 +44071,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          blocker_class?: string
+          client_answer_required?: string | null
           confirmed_basis?: string | null
           created_at?: string
+          current_safe_behaviour?: string | null
           decided_at?: string | null
           decided_by?: string | null
           decision_code?: string
           decision_notes?: string | null
+          demo_blocker?: boolean
           id?: string
+          production_blocker?: boolean
           raised_by?: string
           rule_code?: string | null
           runtime_guard?: string | null
