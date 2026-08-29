@@ -50,19 +50,20 @@ interface DetectedViolation {
 /**
  * SSB penalty policy resolver — computes principal/penalty/interest for a
  * detected violation using the active ce_compliance_policies row and the
- * employer's last-3 known C3 totals (ce_calculation_rules CR-003).
+ * employer's most recent known C3 totals (ce_calculation_rules CR-003).
  *
- *   principal = avg(last_3_c3_totals) × 1.5   (fallback: 0 when no history)
+ *   principal = avg(last N c3 totals) × estimate_multiplier   (0 when no history)
  *   penalty   = principal × penalty_rate_percent% × months_overdue
  *   interest  = principal × (interest_rate_percent% / 12) × months_overdue
  *   total     = principal + penalty + interest
  *
- * Non-Filing / Non-Payment / Late-C3 rules all use this policy. Rules with
- * an explicitly known principal (e.g. arrears) override the estimate.
+ * N (history_period_count) and estimate_multiplier come from CR-003's
+ * configuration — there is no hard-coded estimation basis here.
  */
 function computeViolationAmounts(opts: {
   policy: any;
   history: number[];
+  estimateMultiplier: number;
   periodFrom?: string;
   asOfDate: string;
   knownPrincipal?: number;
@@ -75,9 +76,10 @@ function computeViolationAmounts(opts: {
     const hist = (opts.history || []).filter((v) => Number.isFinite(v) && v > 0);
     if (hist.length > 0) {
       const avg = hist.reduce((a, b) => a + b, 0) / hist.length;
-      principal = Math.round(avg * 1.5 * 100) / 100;
+      principal = Math.round(avg * opts.estimateMultiplier * 100) / 100;
     }
   }
+
 
   let monthsOverdue = 1;
   if (opts.periodFrom) {
