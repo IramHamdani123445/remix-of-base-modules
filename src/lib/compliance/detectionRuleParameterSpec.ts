@@ -20,7 +20,7 @@
  * src/__tests__/compliance/rule-parameter-spec-parity.test.ts).
  */
 
-export type CeParamType = "number" | "boolean" | "string_array";
+export type CeParamType = "number" | "boolean" | "string_array" | "date";
 
 /** Columns on the active ce_compliance_policies row usable as a policy owner. */
 export type CePolicyColumn =
