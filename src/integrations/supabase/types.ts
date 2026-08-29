@@ -124459,6 +124459,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_exemption_command_active: { Args: never; Returns: boolean }
       ce_expire_partial_payment_authorities_v1: { Args: never; Returns: number }
       ce_feature_flag_enabled: { Args: { _flag_key: string }; Returns: boolean }
       ce_fetch_unobserved_payments: {
@@ -124951,6 +124952,10 @@ export type Database = {
         Args: { p_allocations: Json; p_comments?: string; p_request_id: string }
         Returns: Json
       }
+      ce_revoke_contribution_exemption_v1: {
+        Args: { p_id: string; p_reason: string }
+        Returns: string
+      }
       ce_risk_eval_threshold: {
         Args: {
           p_max_score?: number
@@ -125075,6 +125080,23 @@ export type Database = {
           p_triggered_by?: string
         }
         Returns: Json
+      }
+      ce_upsert_contribution_exemption_v1: {
+        Args: {
+          p_authority_reference: string
+          p_effective_from: string
+          p_effective_to: string
+          p_employer_id: string
+          p_evidence_reference: string
+          p_fund_code: string
+          p_granting_authority: string
+          p_id: string
+          p_notes: string
+          p_person_name: string
+          p_person_ssn: string
+          p_status: string
+        }
+        Returns: string
       }
       ce_validate_risk_policy_v1: {
         Args: { p_policy_id: string }
