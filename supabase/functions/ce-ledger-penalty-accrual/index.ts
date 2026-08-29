@@ -13,6 +13,7 @@ import {
   type CeCompoundingBasis,
   type CeInterestAccrualStart,
   type CeInterestPolicy,
+  type CeInterestRetroactivityMode,
 } from "../_shared/compliance/calculation/interestEngine.ts";
 import { calculationIdempotencyKey } from "../_shared/compliance/calculation/calculationTrace.ts";
 
@@ -47,6 +48,15 @@ Deno.serve(async (req) => {
     const dryRun = body.dry_run ?? false;
     const triggeredBy = body.triggered_by ?? "SYSTEM";
     const accrualDate: string = body.accrual_date ?? new Date().toISOString().slice(0, 10);
+    /** Impact-analysis mode: computes figures, posts nothing. */
+    const simulate = body.simulate === true;
+
+    /* ── environment truth: production accruals are guarded ── */
+    const { data: envMarker } = await supabase
+      .from("platform_environment_marker")
+      .select("environment_kind")
+      .maybeSingle();
+    const isProduction = String(envMarker?.environment_kind ?? "").toUpperCase() === "PRODUCTION";
 
     const runId = crypto.randomUUID();
     await supabase.from("ce_job_run_log").insert({
@@ -100,6 +110,10 @@ Deno.serve(async (req) => {
       minimum_interest_principal: Number(resolved.values.minimum_interest_principal),
       accrual_start: firstOf(resolved.values.accrual_start, "grace_end") as CeInterestAccrualStart,
       max_accrual_months: resolved.values.max_accrual_months ?? null,
+      max_interest_amount: resolved.values.max_interest_amount ?? null,
+      interest_effective_from: resolved.values.interest_effective_from ?? null,
+      apply_to_pre_existing_liabilities:
+        (firstOf(resolved.values.apply_to_pre_existing_liabilities, "not_approved") as CeInterestRetroactivityMode),
       policy_version: `CR-002@${rule.updated_at ?? rule.created_at ?? "v1"}`,
     };
 
@@ -166,6 +180,8 @@ Deno.serve(async (req) => {
         as_of_date: accrualDate,
         policy,
         already_accrued: alreadyAccrued,
+        is_production: isProduction,
+        simulation: simulate,
       });
 
       const idemKey = calculationIdempotencyKey({
