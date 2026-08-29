@@ -124745,8 +124745,29 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_tolerance?: number }
         Returns: Json
       }
+      ce_run_risk_recalculation_v1: {
+        Args: {
+          p_as_of?: string
+          p_dry_run?: boolean
+          p_employer_id?: string
+          p_limit?: number
+          p_triggered_by?: string
+        }
+        Returns: Json
+      }
       ce_run_stale_employer_review: {
         Args: { p_dry_run?: boolean; p_stale_months?: number }
+        Returns: Json
+      }
+      ce_score_employer_risk_v1: {
+        Args: {
+          p_as_of?: string
+          p_employer_id: string
+          p_persist?: boolean
+          p_policy_id?: string
+          p_run_id?: string
+          p_triggered_by?: string
+        }
         Returns: Json
       }
       ce_search_merge_candidates: {
