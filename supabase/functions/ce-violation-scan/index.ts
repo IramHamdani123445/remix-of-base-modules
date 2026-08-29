@@ -1231,21 +1231,47 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
     // ── SSB penalty policy: enrich each detected row with principal/penalty/
     // interest/total using the active ce_compliance_policies row and each
-    // employer's last-3 C3 totals (ce_calculation_rules CR-003).
-    const { data: activePolicyRows } = await supabase
-      .from("ce_compliance_policies")
-      .select("penalty_rate_percent, interest_rate_percent, penalty_calc_frequency, c3_grace_period_days")
-      .eq("is_active", true)
-      .order("effective_from", { ascending: false })
+    // employer's most recent C3 totals. The estimation basis (how many periods
+    // and what multiplier) is owned by ce_calculation_rules CR-003 — nothing
+    // about the estimate is hard-coded here.
+    const { data: crRows } = await supabase
+      .from("ce_calculation_rules")
+      .select("id, rule_code, parameters, is_enabled, updated_at")
+      .eq("rule_code", "CR-003")
       .limit(1);
-    const activePolicy = activePolicyRows?.[0] ?? null;
+    const cr003 = crRows?.[0] ?? null;
+    const cr003Resolved = resolveRuleParameters(
+      CALCULATION_PARAM_SPEC["CR-003"],
+      cr003?.parameters,
+      activePolicy,
+    );
+    if (!cr003 || cr003.is_enabled === false) {
+      cr003Resolved.errors.push("Calculation rule CR-003 is missing or disabled — estimated assessments cannot be priced.");
+    }
+    const cr003Ok = cr003Resolved.errors.length === 0;
+    if (!cr003Ok) {
+      console.error(`[ce-violation-scan] CONFIGURATION ERROR CR-003: ${cr003Resolved.errors.join(" | ")}`);
+    }
+    ruleDiagnostics.push({
+      rule_code: "CR-003",
+      rule_id: cr003?.id ?? "",
+      trigger_event: "calculation:estimated_assessment",
+      config_updated_at: cr003?.updated_at ?? null,
+      effective_parameters: cr003Resolved.values,
+      parameter_sources: cr003Resolved.sources,
+      status: cr003Ok ? "ok" : "configuration_error",
+      ...(cr003Ok ? {} : { errors: cr003Resolved.errors }),
+    });
+    const historyPeriodCount = Number(cr003Resolved.values.history_period_count);
+    const estimateMultiplier = Number(cr003Resolved.values.estimate_multiplier);
 
     const empIds = Array.from(new Set(newViolations.map((v) => v.employer_id).filter(Boolean)));
     const historyByEmp = new Map<string, number[]>();
-    if (empIds.length > 0) {
+    if (cr003Ok && empIds.length > 0) {
       // Pull the employer's most recent known C3 filings. Rows are aggregated
       // per (employer, period) first — a period can carry several C3 lines —
-      // then the 3 most recent periods form the CR-003 basis.
+      // then the configured number of most recent periods forms the basis.
+
       // The employer id list is chunked: a single .in() with thousands of ids
       // overflows the request URL and silently returns no rows (which is what
       // caused every violation to be priced at 0).
