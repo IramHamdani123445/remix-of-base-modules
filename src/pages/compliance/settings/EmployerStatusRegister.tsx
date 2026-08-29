@@ -317,8 +317,8 @@ export default function EmployerStatusRegister() {
               </Select>
             </div>
             <div>
-              <Label>Effective Date</Label>
-              <Input type="date" value={form.effective_date} onChange={e => setForm({ ...form, effective_date: e.target.value })} />
+              <Label htmlFor="es-effective">Effective Date</Label>
+              <Input id="es-effective" type="date" value={form.effective_date} onChange={e => setForm({ ...form, effective_date: e.target.value })} />
             </div>
             <div>
               <Label>Evidence Type</Label>
@@ -330,18 +330,18 @@ export default function EmployerStatusRegister() {
               </Select>
             </div>
             <div>
-              <Label>Evidence Reference</Label>
-              <Input value={form.evidence_reference} onChange={e => setForm({ ...form, evidence_reference: e.target.value })} placeholder="e.g. Visit report #, form ID, gazette notice" />
+              <Label htmlFor="es-evidence-ref">Evidence Reference</Label>
+              <Input id="es-evidence-ref" value={form.evidence_reference} onChange={e => setForm({ ...form, evidence_reference: e.target.value })} placeholder="e.g. Visit report #, form ID, gazette notice" />
             </div>
             {(form.status === 'CLOSED' || form.status === 'CEASED') && (
               <div>
-                <Label>Clearance Certificate Reference (optional)</Label>
-                <Input value={form.clearance_certificate_reference} onChange={e => setForm({ ...form, clearance_certificate_reference: e.target.value })} />
+                <Label htmlFor="es-clearance">Clearance Certificate Reference (optional)</Label>
+                <Input id="es-clearance" value={form.clearance_certificate_reference} onChange={e => setForm({ ...form, clearance_certificate_reference: e.target.value })} />
               </div>
             )}
             <div>
-              <Label>Reason</Label>
-              <Textarea value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
+              <Label htmlFor="es-reason">Reason</Label>
+              <Textarea id="es-reason" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
