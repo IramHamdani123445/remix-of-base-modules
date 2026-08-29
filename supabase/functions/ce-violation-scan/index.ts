@@ -5,6 +5,16 @@ import {
   DETECTION_PARAM_SPEC,
   resolveRuleParameters,
 } from "../_shared/compliance/detectionRuleParameterSpec.ts";
+import {
+  type CeObligationPolicy,
+  CeObligationPolicyError,
+  addDays,
+  evaluateFilingObligation,
+  evaluatePaymentObligation,
+  normalizeObligationPolicy,
+  resolveObligationTimeline,
+} from "../_shared/compliance/obligationDeadlineResolver.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
