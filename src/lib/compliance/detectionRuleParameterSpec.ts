@@ -76,8 +76,9 @@ export const DETECTION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       min: 0,
       max: 365,
       integer: true,
+      policyFallback: "c3_grace_period_days",
       help: "Days allowed after the resolved C3 due date before a filing counts as late. Leave unset to inherit the Compliance Policy filing grace days.",
-      suggested: 14,
+      suggested: 0,
     },
     {
       key: "submission_due_day",
@@ -183,6 +184,7 @@ export const DETECTION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       min: 0,
       max: 365,
       integer: true,
+      policyFallback: "payment_grace_period_days",
       help: "Days allowed after the resolved payment due date before a declared but unpaid period is flagged. Leave unset to inherit the Compliance Policy payment grace days.",
       suggested: 0,
     },
