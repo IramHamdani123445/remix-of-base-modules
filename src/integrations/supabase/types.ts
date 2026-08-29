@@ -37634,51 +37634,6 @@ export type Database = {
           },
         ]
       }
-      ce_cl1_rehearsal_evidence: {
-        Row: {
-          cached_balance: number | null
-          cached_principal_due: number | null
-          credit_available: number | null
-          interest_accrued: number | null
-          interest_outstanding: number | null
-          penalty_outstanding: number | null
-          principal_due: number | null
-          principal_outstanding: number | null
-          principal_paid: number | null
-          step: string | null
-          step_no: number | null
-          total_outstanding: number | null
-        }
-        Insert: {
-          cached_balance?: number | null
-          cached_principal_due?: number | null
-          credit_available?: number | null
-          interest_accrued?: number | null
-          interest_outstanding?: number | null
-          penalty_outstanding?: number | null
-          principal_due?: number | null
-          principal_outstanding?: number | null
-          principal_paid?: number | null
-          step?: string | null
-          step_no?: number | null
-          total_outstanding?: number | null
-        }
-        Update: {
-          cached_balance?: number | null
-          cached_principal_due?: number | null
-          credit_available?: number | null
-          interest_accrued?: number | null
-          interest_outstanding?: number | null
-          penalty_outstanding?: number | null
-          principal_due?: number | null
-          principal_outstanding?: number | null
-          principal_paid?: number | null
-          step?: string | null
-          step_no?: number | null
-          total_outstanding?: number | null
-        }
-        Relationships: []
-      }
       ce_completion_gate_config: {
         Row: {
           created_at: string
