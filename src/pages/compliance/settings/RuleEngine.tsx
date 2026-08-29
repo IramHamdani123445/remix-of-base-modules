@@ -38,6 +38,7 @@ import {
 import { buildRuleExport, downloadRuleExport } from '@/lib/compliance/ruleExport';
 import RuleHistoryDialog, { RuleHistoryTable } from '@/components/compliance/detection/RuleHistoryDialog';
 import RuleActivationImpactDialog, { RuleImpactInfo } from '@/components/compliance/detection/RuleActivationImpactDialog';
+import RuleRuntimeHealthPanel from '@/components/compliance/detection/RuleRuntimeHealthPanel';
 import { History, Download, ShieldCheck } from 'lucide-react';
 
 // ── Types ──
@@ -1160,6 +1161,7 @@ const RuleEngine = () => {
 
           <TabsContent value="detection">
             <div className="space-y-3">
+              <RuleRuntimeHealthPanel codePrefix="DR-" />
               <p className="text-sm text-muted-foreground mb-4">Detection rules automatically create violations when compliance conditions are met.</p>
               {detectionRules.length === 0 && <p className="text-center text-muted-foreground py-8">No detection rules configured. Click "Add Rule" to create one.</p>}
               {detectionRules.map(rule => (
@@ -1196,6 +1198,7 @@ const RuleEngine = () => {
 
           <TabsContent value="calculation">
             <div className="space-y-3">
+              <RuleRuntimeHealthPanel codePrefix="CR-" />
               <p className="text-sm text-muted-foreground mb-4">Calculation rules define how penalties, interest, and fines are computed. Financial rates are referenced from C3 Configuration.</p>
               {calculationRules.length === 0 && <p className="text-center text-muted-foreground py-8">No calculation rules configured. Click "Add Rule" to create one.</p>}
               {calculationRules.map(rule => {

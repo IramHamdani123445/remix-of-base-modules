@@ -1,10 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import {
+  ABSOLUTE_CAP_MONTHS,
+  CALCULATION_PARAM_SPEC,
+  DETECTION_PARAM_SPEC,
+  resolveRuleParameters,
+} from "../_shared/compliance/detectionRuleParameterSpec.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
 
 interface DetectionRule {
   id: string;
@@ -43,19 +50,20 @@ interface DetectedViolation {
 /**
  * SSB penalty policy resolver — computes principal/penalty/interest for a
  * detected violation using the active ce_compliance_policies row and the
- * employer's last-3 known C3 totals (ce_calculation_rules CR-003).
+ * employer's most recent known C3 totals (ce_calculation_rules CR-003).
  *
- *   principal = avg(last_3_c3_totals) × 1.5   (fallback: 0 when no history)
+ *   principal = avg(last N c3 totals) × estimate_multiplier   (0 when no history)
  *   penalty   = principal × penalty_rate_percent% × months_overdue
  *   interest  = principal × (interest_rate_percent% / 12) × months_overdue
  *   total     = principal + penalty + interest
  *
- * Non-Filing / Non-Payment / Late-C3 rules all use this policy. Rules with
- * an explicitly known principal (e.g. arrears) override the estimate.
+ * N (history_period_count) and estimate_multiplier come from CR-003's
+ * configuration — there is no hard-coded estimation basis here.
  */
 function computeViolationAmounts(opts: {
   policy: any;
   history: number[];
+  estimateMultiplier: number;
   periodFrom?: string;
   asOfDate: string;
   knownPrincipal?: number;
@@ -68,9 +76,10 @@ function computeViolationAmounts(opts: {
     const hist = (opts.history || []).filter((v) => Number.isFinite(v) && v > 0);
     if (hist.length > 0) {
       const avg = hist.reduce((a, b) => a + b, 0) / hist.length;
-      principal = Math.round(avg * 1.5 * 100) / 100;
+      principal = Math.round(avg * opts.estimateMultiplier * 100) / 100;
     }
   }
+
 
   let monthsOverdue = 1;
   if (opts.periodFrom) {
@@ -552,11 +561,24 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     // Load enabled detection rules with violation type codes
     const { data: rules, error: rulesError } = await supabase
       .from("ce_detection_rules")
-      .select("id, rule_code, name, violation_type_id, auto_create_violation, trigger_event, parameters, priority")
+      .select("id, rule_code, name, violation_type_id, auto_create_violation, trigger_event, parameters, priority, updated_at")
       .eq("is_enabled", true)
       .order("rule_code");
 
     if (rulesError) throw rulesError;
+
+    // ── Active compliance policy (cross-rule statutory owner) ──
+    // Loaded up front: statutory due days and rates are owned here, and rule
+    // parameter resolution falls back to this row before declaring an error.
+    const { data: activePolicyRows } = await supabase
+      .from("ce_compliance_policies")
+      .select(
+        "policy_code, policy_version, penalty_rate_percent, interest_rate_percent, penalty_calc_frequency, c3_grace_period_days, c3_submission_deadline_day, payment_due_date_day",
+      )
+      .eq("is_active", true)
+      .order("effective_from", { ascending: false })
+      .limit(1);
+    const activePolicy = activePolicyRows?.[0] ?? null;
 
     // Load violation type codes for mapping
     const vtIds = (rules || []).map((r: any) => r.violation_type_id).filter(Boolean);
@@ -574,6 +596,60 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       ...r,
       violation_type_code: vtMap[r.violation_type_id] || "UNKNOWN",
     }));
+
+    // ── Runtime parameter resolution against the canonical contract ──
+    // No business-policy default is ever substituted in code. A rule with an
+    // unresolved required parameter is skipped and reported as a configuration
+    // error on the run, so a violation can always be explained later.
+    const ruleDiagnostics: Array<{
+      rule_code: string;
+      rule_id: string;
+      trigger_event: string;
+      config_updated_at: string | null;
+      effective_parameters: Record<string, any>;
+      parameter_sources: Record<string, string>;
+      status: "ok" | "configuration_error" | "not_implemented";
+      errors?: string[];
+    }> = [];
+    const paramsByRuleId = new Map<string, Record<string, any>>();
+    const configErrorRuleIds = new Set<string>();
+
+    for (const rule of enrichedRules) {
+      const specs = DETECTION_PARAM_SPEC[rule.trigger_event];
+      if (!specs) {
+        ruleDiagnostics.push({
+          rule_code: rule.rule_code,
+          rule_id: rule.id,
+          trigger_event: rule.trigger_event,
+          config_updated_at: (rule as any).updated_at ?? null,
+          effective_parameters: {},
+          parameter_sources: {},
+          status: "not_implemented",
+          errors: [`Trigger "${rule.trigger_event}" has no runtime implementation in the scanner.`],
+        });
+        configErrorRuleIds.add(rule.id);
+        continue;
+      }
+      const resolved = resolveRuleParameters(specs, rule.parameters, activePolicy);
+      if (resolved.errors.length > 0) {
+        configErrorRuleIds.add(rule.id);
+        console.error(
+          `[ce-violation-scan] CONFIGURATION ERROR ${rule.rule_code}: ${resolved.errors.join(" | ")}`,
+        );
+      }
+      paramsByRuleId.set(rule.id, resolved.values);
+      ruleDiagnostics.push({
+        rule_code: rule.rule_code,
+        rule_id: rule.id,
+        trigger_event: rule.trigger_event,
+        config_updated_at: (rule as any).updated_at ?? null,
+        effective_parameters: resolved.values,
+        parameter_sources: resolved.sources,
+        status: resolved.errors.length > 0 ? "configuration_error" : "ok",
+        ...(resolved.errors.length > 0 ? { errors: resolved.errors } : {}),
+      });
+    }
+
 
     // Load fact views with FULL pagination
     const filterCol = employerFilter ? "regno" : undefined;
@@ -618,7 +694,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       "ce_violations",
       employerFilter ? "employer_id" : undefined,
       employerFilter || undefined,
-      "employer_id, violation_type_id, period_from, status, is_deleted",
+      "employer_id, violation_type_id, period_from, status, is_deleted, discovered_date, created_at",
     );
     const unresolvedViolations = existingViolations.filter(
       (v: any) =>
@@ -846,8 +922,14 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
     // Process each rule
     for (const rule of enrichedRules) {
+      // Fail-closed on configuration: a rule whose required parameters cannot
+      // be resolved from configuration is NOT executed with a code default —
+      // it is skipped and reported, so every produced violation is explainable.
+      if (configErrorRuleIds.has(rule.id)) continue;
+      const params = paramsByRuleId.get(rule.id) ?? {};
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
       const asOfPeriod = asOfDate.slice(0, 7);
+
 
       /** Emit one violation row per qualifying period (deduped). */
       const pushPeriod = (emp: any, ym: string, summary: string) => {
@@ -886,12 +968,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "c3_deadline_passed": {
             // Per-period: every C3 that WAS filed but arrived after its
             // statutory deadline (+ grace) raises its own late-filing row.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
-            const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const graceDays = Number(params.grace_period_days);
+            const dueDay = Number(params.submission_due_day);
             const c3 = c3ByEmp.get(emp.regno);
             if (c3) {
               const win = windowFor(emp.regno, cap);
@@ -918,13 +997,10 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "contribution_gap_detected": {
             // Per-period emission: flag every missing month independently so each
             // gap (e.g. February only) gets its own violation row.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const minMissed = Number(rule.parameters?.min_missed_months ?? 1);
-            const graceDays = Number(rule.parameters?.days_past_deadline ?? 30);
-            const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const minMissed = Number(params.min_missed_months);
+            const graceDays = Number(params.days_past_deadline);
+            const dueDay = Number(params.submission_due_day);
 
             // Filed periods come from the bulk prefetch above — no per-employer query.
             const filedSet = filedPeriodsByEmp.get(emp.regno) ?? new Set<string>();
@@ -975,12 +1051,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "payment_not_received": {
             // Per-period: a declared C3 with no money received for that period
             // once the payment due date (+ grace) has passed.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
-            const dueDay = Number(rule.parameters?.payment_due_day ?? 28);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const graceDays = Number(params.grace_period_days);
+            const dueDay = Number(params.payment_due_day);
             const today = new Date(asOfDate);
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
@@ -1007,12 +1080,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
           case "payment_partial": {
             // Per-period shortfall between declared C3 and money received.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const minAmt = Number(rule.parameters?.min_shortfall_amount_xcd ?? 0);
-            const minPct = Number(rule.parameters?.min_shortfall_percent ?? 0);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const minAmt = Number(params.min_shortfall_amount_xcd);
+            const minPct = Number(params.min_shortfall_percent);
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
             if (c3 && paid) {
@@ -1039,35 +1109,59 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
 
           case "repeat_violation_check": {
-            const threshold = rule.parameters?.repeat_threshold ?? 3;
-            const empViolations = unresolvedViolations.filter(
-              (v: any) => v.employer_id === emp.regno
-            );
-            if (empViolations.length >= threshold) {
+            const threshold = Number(params.violation_count_threshold);
+            const rollingMonths = Number(params.rolling_months);
+            const sameTypeOnly = params.same_type_only === true;
+            const windowStart = new Date(asOfDate);
+            windowStart.setMonth(windowStart.getMonth() - rollingMonths);
+
+            const empViolations = unresolvedViolations.filter((v: any) => {
+              if (v.employer_id !== emp.regno) return false;
+              const seen = v.discovered_date ?? v.created_at;
+              return seen ? new Date(seen) >= windowStart : false;
+            });
+
+            let qualifying = empViolations.length;
+            let typeNote = "";
+            if (sameTypeOnly) {
+              const byType = new Map<string, number>();
+              for (const v of empViolations) {
+                byType.set(v.violation_type_id, (byType.get(v.violation_type_id) || 0) + 1);
+              }
+              qualifying = byType.size > 0 ? Math.max(...byType.values()) : 0;
+              typeNote = " of the same violation type";
+            }
+
+            if (qualifying >= threshold) {
               shouldFlag = true;
-              summary = `Repeat offender: ${empViolations.length} unresolved violations detected (threshold: ${threshold}).`;
+              summary = `Repeat offender: ${qualifying} unresolved violations${typeNote} in the last ${rollingMonths} months (threshold: ${threshold}).`;
               periodFrom = asOfPeriod;
             }
             break;
           }
 
           case "installment_overdue": {
-            const empArrangements = (arrangementMap.get(emp.regno) || []).filter(
-              (a: any) => a.health_status !== "HEALTHY" && a.health_status !== "INACTIVE"
-            );
+            const graceDays = Number(params.grace_days_after_installment);
+            const empArrangements = (arrangementMap.get(emp.regno) || []).filter((a: any) => {
+              if (a.health_status === "HEALTHY" || a.health_status === "INACTIVE") return false;
+              const overdue = Number(a.days_overdue ?? a.days_since_last_payment ?? NaN);
+              return Number.isFinite(overdue) ? overdue >= graceDays : true;
+            });
             if (empArrangements.length > 0) {
               const worst = empArrangements[0];
               shouldFlag = true;
-              summary = `Arrangement breach: ${worst.health_status} status. Missed ${worst.missed_payments || 0} payments.`;
+              summary = `Arrangement breach: ${worst.health_status} status. Missed ${worst.missed_payments || 0} payments (grace ${graceDays}d).`;
               periodFrom = asOfPeriod;
             }
             break;
           }
 
           case "levy_omission_check": {
-            if (arrear?.has_arrears && arrear.total_outstanding > 500) {
+            const minOutstanding = Number(params.min_outstanding_amount_xcd);
+            const outstanding = Number(arrear?.total_outstanding ?? 0);
+            if (arrear?.has_arrears && outstanding > minOutstanding) {
               shouldFlag = true;
-              summary = `Levy/severance contribution omission suspected. Outstanding: $${Number(arrear.total_outstanding).toLocaleString()}.`;
+              summary = `Levy/severance contribution omission suspected. Outstanding: $${outstanding.toLocaleString()} (threshold $${minOutstanding.toLocaleString()}).`;
               periodFrom = asOfPeriod;
             }
             break;
@@ -1078,14 +1172,20 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "employee_underreporting": {
-            const minDelta = rule.parameters?.min_employee_delta ?? 3;
+            const minDelta = Number(params.min_employee_delta);
+            const minPct = params.min_discrepancy_percent;
             if (wf && wf.employee_delta < -minDelta) {
-              shouldFlag = true;
-              summary = `Employee discrepancy: Registered ${wf.registered_total} but last reported ${wf.last_reported_employees} (delta: ${wf.employee_delta}).`;
-              periodFrom = wf.last_reported_period || asOfPeriod;
+              const registered = Number(wf.registered_total ?? 0);
+              const pct = registered > 0 ? (Math.abs(Number(wf.employee_delta)) / registered) * 100 : 0;
+              if (minPct === undefined || pct >= Number(minPct)) {
+                shouldFlag = true;
+                summary = `Employee discrepancy: Registered ${wf.registered_total} but last reported ${wf.last_reported_employees} (delta: ${wf.employee_delta}${minPct === undefined ? "" : `, ${pct.toFixed(1)}%`}).`;
+                periodFrom = wf.last_reported_period || asOfPeriod;
+              }
             }
             break;
           }
+
 
           case "wage_underreporting": {
             const minWage = rule.parameters?.min_wage_weekly_xcd;
@@ -1094,13 +1194,21 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "employer_cessation": {
-            if (arrear?.has_arrears && filing?.employer_status && ["I", "D"].includes(filing.employer_status)) {
+            const ceasedStatuses: string[] = params.trigger_on_status;
+            const minOutstanding = Number(params.min_outstanding_amount_xcd);
+            const outstanding = Number(arrear?.total_outstanding ?? 0);
+            if (
+              filing?.employer_status &&
+              ceasedStatuses.includes(String(filing.employer_status)) &&
+              outstanding > minOutstanding
+            ) {
               shouldFlag = true;
-              summary = `Cessation without clearance: Employer status '${filing.employer_status}' with outstanding balance $${Number(arrear.total_outstanding).toLocaleString()}.`;
+              summary = `Cessation without clearance: Employer status '${filing.employer_status}' with outstanding balance $${outstanding.toLocaleString()} (threshold $${minOutstanding.toLocaleString()}).`;
               periodFrom = asOfPeriod;
             }
             break;
           }
+
 
           case "severance_omission_check": {
             break;
@@ -1155,21 +1263,47 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
     // ── SSB penalty policy: enrich each detected row with principal/penalty/
     // interest/total using the active ce_compliance_policies row and each
-    // employer's last-3 C3 totals (ce_calculation_rules CR-003).
-    const { data: activePolicyRows } = await supabase
-      .from("ce_compliance_policies")
-      .select("penalty_rate_percent, interest_rate_percent, penalty_calc_frequency, c3_grace_period_days")
-      .eq("is_active", true)
-      .order("effective_from", { ascending: false })
+    // employer's most recent C3 totals. The estimation basis (how many periods
+    // and what multiplier) is owned by ce_calculation_rules CR-003 — nothing
+    // about the estimate is hard-coded here.
+    const { data: crRows } = await supabase
+      .from("ce_calculation_rules")
+      .select("id, rule_code, parameters, is_enabled, updated_at")
+      .eq("rule_code", "CR-003")
       .limit(1);
-    const activePolicy = activePolicyRows?.[0] ?? null;
+    const cr003 = crRows?.[0] ?? null;
+    const cr003Resolved = resolveRuleParameters(
+      CALCULATION_PARAM_SPEC["CR-003"],
+      cr003?.parameters,
+      activePolicy,
+    );
+    if (!cr003 || cr003.is_enabled === false) {
+      cr003Resolved.errors.push("Calculation rule CR-003 is missing or disabled — estimated assessments cannot be priced.");
+    }
+    const cr003Ok = cr003Resolved.errors.length === 0;
+    if (!cr003Ok) {
+      console.error(`[ce-violation-scan] CONFIGURATION ERROR CR-003: ${cr003Resolved.errors.join(" | ")}`);
+    }
+    ruleDiagnostics.push({
+      rule_code: "CR-003",
+      rule_id: cr003?.id ?? "",
+      trigger_event: "calculation:estimated_assessment",
+      config_updated_at: cr003?.updated_at ?? null,
+      effective_parameters: cr003Resolved.values,
+      parameter_sources: cr003Resolved.sources,
+      status: cr003Ok ? "ok" : "configuration_error",
+      ...(cr003Ok ? {} : { errors: cr003Resolved.errors }),
+    });
+    const historyPeriodCount = Number(cr003Resolved.values.history_period_count);
+    const estimateMultiplier = Number(cr003Resolved.values.estimate_multiplier);
 
     const empIds = Array.from(new Set(newViolations.map((v) => v.employer_id).filter(Boolean)));
     const historyByEmp = new Map<string, number[]>();
-    if (empIds.length > 0) {
+    if (cr003Ok && empIds.length > 0) {
       // Pull the employer's most recent known C3 filings. Rows are aggregated
       // per (employer, period) first — a period can carry several C3 lines —
-      // then the 3 most recent periods form the CR-003 basis.
+      // then the configured number of most recent periods forms the basis.
+
       // The employer id list is chunked: a single .in() with thousands of ids
       // overflows the request URL and silently returns no rows (which is what
       // caused every violation to be priced at 0).
@@ -1200,11 +1334,11 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         }
       }
       for (const [empId, byPeriod] of periodTotals) {
-        const last3 = Array.from(byPeriod.entries())
+        const recent = Array.from(byPeriod.entries())
           .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-          .slice(0, 3)
+          .slice(0, historyPeriodCount)
           .map(([, v]) => v);
-        if (last3.length > 0) historyByEmp.set(empId, last3);
+        if (recent.length > 0) historyByEmp.set(empId, recent);
       }
     }
 
@@ -1215,10 +1349,12 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       const amounts = computeViolationAmounts({
         policy: activePolicy,
         history: historyByEmp.get(v.employer_id) || [],
+        estimateMultiplier,
         periodFrom: v.period_from,
         asOfDate,
         knownPrincipal: known,
       });
+
       v.principal_amount = amounts.principal;
       v.penalty_amount = amounts.penalty;
       v.interest_amount = amounts.interest;
@@ -1357,6 +1493,8 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           employers_done: sliceEnd,
           progress_percent: Math.round((sliceEnd / Math.max(1, totalEmployers)) * 100),
           sample_violations: cumulative.sample_violations,
+          rule_diagnostics: ruleDiagnostics,
+          configuration_errors: ruleDiagnostics.filter((d) => d.status !== "ok"),
         },
       })
       .eq("id", runId);
@@ -1424,8 +1562,12 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         employers_done: sliceEnd,
         progress_percent: 100,
         sample_violations: cumulative.sample_violations,
+        rule_diagnostics: ruleDiagnostics,
+        configuration_errors: ruleDiagnostics.filter((d) => d.status !== "ok"),
+        policy_snapshot: activePolicy,
         details: detected.slice(0, 100),
       },
+
     })
     .eq("id", runId);
 
