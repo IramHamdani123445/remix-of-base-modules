@@ -126,7 +126,7 @@ export async function findApprovedRecommendation(caseId: string): Promise<{
     .from('ce_legal_recommendations')
     .select('id, status, legal_referral_id')
     .eq('source_case_id', caseId)
-    .in('status', ['APPROVED', 'REFERRAL_CREATED'])
+    .in('status', ['APPROVED_FOR_REFERRAL', 'REFERRAL_CREATED'])
     .order('reviewed_date', { ascending: false })
     .limit(1)
     .maybeSingle();
