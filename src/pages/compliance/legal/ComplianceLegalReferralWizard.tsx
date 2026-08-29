@@ -423,7 +423,7 @@ export default function ComplianceLegalReferralWizard() {
           description:
             "Referral to Legal requires management approval. The case will move to Legal Pack Preparation once approved.",
         });
-        navigate(`/compliance/legal/recommendations`);
+        navigate(`/compliance/enforcement/recommendation-queue`);
         return;
       }
       toast.success(`Referral ${r.referral_no} packet prepared`, {
