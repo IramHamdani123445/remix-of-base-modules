@@ -79,29 +79,27 @@ export default function ContributionExemptions() {
     },
   });
 
+  // Granting, amending and revoking an exemption is a governed business action:
+  // the server command verifies `compliance.exemption.manage`, validates the
+  // authority evidence and writes the audit trail. Direct table writes are
+  // blocked by the database guard.
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
-        person_ssn: form.person_ssn,
-        person_name: form.person_name || null,
-        employer_id: form.employer_id,
-        fund_code: form.fund_code,
-        effective_from: form.effective_from,
-        effective_to: form.effective_to || null,
-        status: form.status,
-        authority_reference: form.authority_reference || null,
-        granting_authority: form.granting_authority,
-        evidence_reference: form.evidence_reference || null,
-        notes: form.notes || null,
-        recorded_by: userCode || 'SYS',
-      };
-      if (editing) {
-        const { error } = await supabase.from('ce_contribution_exemptions').update(payload).eq('id', editing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('ce_contribution_exemptions').insert(payload);
-        if (error) throw error;
-      }
+      const { error } = await supabase.rpc('ce_upsert_contribution_exemption_v1' as never, {
+        p_id: editing?.id ?? null,
+        p_person_ssn: form.person_ssn,
+        p_person_name: form.person_name || null,
+        p_employer_id: form.employer_id,
+        p_fund_code: form.fund_code,
+        p_effective_from: form.effective_from,
+        p_effective_to: form.effective_to || null,
+        p_status: form.status,
+        p_granting_authority: form.granting_authority,
+        p_authority_reference: form.authority_reference || null,
+        p_evidence_reference: form.evidence_reference || null,
+        p_notes: form.notes || null,
+      } as never);
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['ce_contribution_exemptions'] });
