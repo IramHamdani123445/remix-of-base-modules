@@ -156,6 +156,7 @@ const ComplianceLegalQueue = lazy(() => import('@/pages/compliance/legal/LegalQu
 const ComplianceLegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedingsPage'));
 const ComplianceWaivers = lazy(() => import('@/pages/compliance/legal/WaiversOverrides'));
 const CompliancePartialPayments = lazy(() => import('@/pages/compliance/payments/PartialPaymentRequests'));
+const EmployerPartialPaymentRequest = lazy(() => import('@/pages/employer/PartialPaymentSelfService'));
 const ComplianceJobConfiguration = lazy(() => import('@/pages/compliance/automation/JobConfiguration'));
 const ComplianceJobHistory = lazy(() => import('@/pages/compliance/automation/JobHistory'));
 const ComplianceRuleEngine = lazy(() => import('@/pages/compliance/settings/RuleEngine'));
@@ -1824,6 +1825,7 @@ export const AppRoutes = () => {
       <Route path="/employer/contribution-entry" element={<ContributionEntry />} />
       <Route path="/employer/compliance" element={<ComplianceMonitoring />} />
       <Route path="/employer/contributions" element={<ContributionTracking />} />
+      <Route path="/employer/partial-payment" element={<EmployerPartialPaymentRequest />} />
 
       {/* Insured Persons Routes - Consolidated */}
       <Route path="/person/listing" element={<IPManagement />} />
