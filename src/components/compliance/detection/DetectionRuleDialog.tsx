@@ -949,7 +949,10 @@ export const EnhancedDetectionRuleDialog = ({
                 value={form.parameters}
                 onChange={v => setForm(p => ({ ...p, parameters: v }))}
                 conditionVars={enrichedVars}
+                policy={activePolicy}
+                errors={parameterErrors}
               />
+
             </div>
           </div>
 
