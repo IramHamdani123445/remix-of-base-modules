@@ -218,7 +218,7 @@ describe("reminder timing is configuration, not code", () => {
       "2025-11",
       "2025-12",
     ]);
-    expect(describeOutstandingPeriods(plans[0].periods)).toContain("2025-10");
+    expect(describeOutstandingPeriods(plans[0].periods)).toContain("October 2025");
   });
 });
 
