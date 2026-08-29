@@ -13,6 +13,7 @@ import {
   type CeCompoundingBasis,
   type CeInterestAccrualStart,
   type CeInterestPolicy,
+  type CeInterestRetroactivityMode,
 } from "../_shared/compliance/calculation/interestEngine.ts";
 import { calculationIdempotencyKey } from "../_shared/compliance/calculation/calculationTrace.ts";
 
@@ -47,6 +48,15 @@ Deno.serve(async (req) => {
     const dryRun = body.dry_run ?? false;
     const triggeredBy = body.triggered_by ?? "SYSTEM";
     const accrualDate: string = body.accrual_date ?? new Date().toISOString().slice(0, 10);
+    /** Impact-analysis mode: computes figures, posts nothing. */
+    const simulate = body.simulate === true;
+
+    /* ── environment truth: production accruals are guarded ── */
+    const { data: envMarker } = await supabase
+      .from("platform_environment_marker")
+      .select("environment_kind")
+      .maybeSingle();
+    const isProduction = String(envMarker?.environment_kind ?? "").toUpperCase() === "PRODUCTION";
 
     const runId = crypto.randomUUID();
     await supabase.from("ce_job_run_log").insert({
@@ -100,6 +110,10 @@ Deno.serve(async (req) => {
       minimum_interest_principal: Number(resolved.values.minimum_interest_principal),
       accrual_start: firstOf(resolved.values.accrual_start, "grace_end") as CeInterestAccrualStart,
       max_accrual_months: resolved.values.max_accrual_months ?? null,
+      max_interest_amount: resolved.values.max_interest_amount ?? null,
+      interest_effective_from: resolved.values.interest_effective_from ?? null,
+      apply_to_pre_existing_liabilities:
+        (firstOf(resolved.values.apply_to_pre_existing_liabilities, "not_approved") as CeInterestRetroactivityMode),
       policy_version: `CR-002@${rule.updated_at ?? rule.created_at ?? "v1"}`,
     };
 
@@ -124,7 +138,7 @@ Deno.serve(async (req) => {
       .select("employer_id, period, fund_type, principal_due, penalties, interest, payments, balance")
       .gt("balance", 0);
 
-    let read = 0, posted = 0, skipped = 0, failed = 0;
+    let read = 0, posted = 0, skipped = 0, failed = 0, review = 0, simulated = 0;
 
     for (const row of periods ?? []) {
       read++;
@@ -166,6 +180,8 @@ Deno.serve(async (req) => {
         as_of_date: accrualDate,
         policy,
         already_accrued: alreadyAccrued,
+        is_production: isProduction,
+        simulation: simulate,
       });
 
       const idemKey = calculationIdempotencyKey({
@@ -176,6 +192,58 @@ Deno.serve(async (req) => {
         fund_code: row.fund_type ?? "ALL",
         as_of: accrualDate,
       });
+
+      /* ── production guard: unapproved retroactive interest is never charged ── */
+      if (result.classification === "INTEREST_POLICY_REVIEW_REQUIRED") {
+        review++;
+        if (!dryRun) {
+          await supabase.from("ce_interest_accruals").insert({
+            employer_id: row.employer_id,
+            wage_period: wagePeriod,
+            fund_code: row.fund_type ?? "ALL",
+            as_of_date: accrualDate,
+            accrual_start_date: result.accrual_start_date,
+            principal: result.trace.principal,
+            annual_rate_percent: policy.annual_rate_percent,
+            compounding_basis: policy.compounding_basis,
+            elapsed_months: result.elapsed_months,
+            cumulative_interest: 0,
+            posted_interest: 0,
+            suppressed_reason: result.review_reason ?? result.trace.suppressed_reason ?? null,
+            classification: "INTEREST_POLICY_REVIEW_REQUIRED",
+            is_simulation: false,
+            policy_version: policy.policy_version,
+            idempotency_key: `${idemKey}:REVIEW`,
+          });
+        }
+        continue;
+      }
+
+      /* ── simulation: figures for impact analysis only, nothing posted ── */
+      if (result.is_simulation) {
+        simulated++;
+        if (!dryRun) {
+          await supabase.from("ce_interest_accruals").insert({
+            employer_id: row.employer_id,
+            wage_period: wagePeriod,
+            fund_code: row.fund_type ?? "ALL",
+            as_of_date: accrualDate,
+            accrual_start_date: result.accrual_start_date,
+            principal: result.trace.principal,
+            annual_rate_percent: policy.annual_rate_percent,
+            compounding_basis: policy.compounding_basis,
+            elapsed_months: result.elapsed_months,
+            cumulative_interest: result.cumulative_amount,
+            posted_interest: 0,
+            suppressed_reason: "SIMULATION — not posted (CR-002-RETROACTIVITY impact analysis)",
+            classification: "SIMULATED",
+            is_simulation: true,
+            policy_version: policy.policy_version,
+            idempotency_key: `${idemKey}:SIM`,
+          });
+        }
+        continue;
+      }
 
       if (result.amount <= 0) { skipped++; continue; }
       if (dryRun) { posted++; continue; }
@@ -224,6 +292,8 @@ Deno.serve(async (req) => {
         cumulative_interest: result.cumulative_amount,
         posted_interest: result.amount,
         policy_version: policy.policy_version,
+        classification: "ACCRUED",
+        is_simulation: false,
         calculation_audit_id: audit.id,
         idempotency_key: idemKey,
       });
@@ -248,7 +318,7 @@ Deno.serve(async (req) => {
 
     const message =
       `Interest accrual @ ${policy.annual_rate_percent}% p.a. (${policy.compounding_basis}, min ${policy.minimum_interest_principal}): ` +
-      `${posted} posted, ${skipped} skipped, ${failed} failed`;
+      `${posted} posted, ${skipped} skipped, ${review} awaiting interest-policy review, ${simulated} simulated, ${failed} failed`;
     await finish(failed > 0 ? "COMPLETED_WITH_ERRORS" : "COMPLETED", { read, posted, skipped, failed }, message);
 
     return json({
@@ -260,10 +330,18 @@ Deno.serve(async (req) => {
       compounding_basis: policy.compounding_basis,
       minimum_interest_principal: policy.minimum_interest_principal,
       accrual_start: policy.accrual_start,
+      environment_is_production: isProduction,
+      simulation: simulate,
+      interest_effective_from: policy.interest_effective_from ?? null,
+      apply_to_pre_existing_liabilities: policy.apply_to_pre_existing_liabilities,
+      max_accrual_months: policy.max_accrual_months ?? null,
+      max_interest_amount: policy.max_interest_amount ?? null,
       records_read: read,
       records_posted: posted,
       records_skipped: skipped,
       records_failed: failed,
+      records_review_required: review,
+      records_simulated: simulated,
     });
   } catch (err) {
     return json({ ok: false, error: (err as Error).message }, 500);
