@@ -18,9 +18,12 @@ interface ReviewFlag {
   id: string;
   flag_number: string;
   flag_type: string;
+  rule_code: string | null;
+  dedupe_key: string;
   subject_type: string;
   subject_id: string;
   subject_name: string | null;
+  employer_id: string | null;
   period_key: string | null;
   severity: string;
   status: string;
@@ -30,6 +33,9 @@ interface ReviewFlag {
   disposition: string | null;
   disposition_notes: string | null;
   converted_violation_id: string | null;
+  assigned_to_user_id: string | null;
+  assigned_to_name: string | null;
+  assigned_at: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
