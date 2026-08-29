@@ -24,7 +24,6 @@ DECLARE
   per constant varchar := '2026-01';
   v   record;
 
-  PROCEDURE_NOTE text;
 BEGIN
   -- 1. Principal charged.
   PERFORM public.ce_post_ledger_entry(emp, 'C3_DUES_POSTED', 'SS', per, 1000,
