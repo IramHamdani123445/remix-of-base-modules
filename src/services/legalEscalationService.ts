@@ -278,22 +278,23 @@ export const legalEscalationService = {
     const totalPenalties = subcases.reduce((s: number, c: any) => s + Number(c.penaltyAmount || 0), 0);
     const totalInterest = subcases.reduce((s: number, c: any) => s + Number(c.interestAmount || 0), 0);
 
-    // Generate referral number using count + timestamp for uniqueness
-    const { count } = await supabase
-      .from('ce_legal_referrals' as any)
-      .select('id', { count: 'exact', head: true });
-    const seqNum = (count || 0) + 1;
-    const referralNumber = `LR-${new Date().getFullYear()}-${String(seqNum).padStart(3, '0')}`;
+    // Checkpoint D: the referral packet is created by
+    // ce_approve_legal_referral_v1 when management approves. This path only
+    // populates the approved packet — it can never mint a referral itself.
+    if (rec.status !== 'APPROVED' && rec.status !== 'REFERRAL_CREATED') {
+      throw new Error(
+        'Management approval is required before a legal referral packet can be prepared.',
+      );
+    }
+    if (!rec.legal_referral_id) {
+      throw new Error(
+        'The approved recommendation has no referral packet. Re-approve it from the Legal Recommendation Queue.',
+      );
+    }
 
-    // Insert referral
     const { data: refData, error: refErr } = await supabase
       .from('ce_legal_referrals' as any)
-      .insert({
-        referral_number: referralNumber,
-        recommendation_id: referralData.recommendationId,
-        employer_id: rec.employer_id,
-        employer_name: rec.employer_name,
-        employer_zone: rec.employer_zone,
+      .update({
         total_principal: totalPrincipal,
         total_penalties: totalPenalties,
         total_interest: totalInterest,
@@ -302,16 +303,16 @@ export const legalEscalationService = {
         period_to: subcases[subcases.length - 1]?.periodTo || null,
         periods_count: subcases.length,
         compliance_history: referralData.complianceHistory,
-        notices_sent: 0,
-        status: 'DRAFT',
-        created_by: referralData.createdBy || 'SYSTEM',
-        created_by_name: referralData.createdByName || 'System',
+        updated_by: referralData.createdBy || 'SYSTEM',
+        updated_at: new Date().toISOString(),
       } as any)
+      .eq('id', rec.legal_referral_id)
       .select()
       .single();
     if (refErr) throw refErr;
 
     const referral = refData as any;
+
 
     // Insert referral lines
     if (subcases.length > 0) {
