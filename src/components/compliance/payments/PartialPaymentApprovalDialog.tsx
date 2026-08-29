@@ -45,6 +45,11 @@ export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Pr
     queryFn: () => getPartialPaymentEvents(request!.id),
     enabled: open && !!request?.id,
   });
+  const arrangementsQ = useQuery({
+    queryKey: ['ce-pp-arrangements', request?.employer_id],
+    queryFn: () => listEmployerArrangements(request!.employer_id),
+    enabled: open && !!request?.employer_id,
+  });
 
   useEffect(() => {
     if (!request) return;
