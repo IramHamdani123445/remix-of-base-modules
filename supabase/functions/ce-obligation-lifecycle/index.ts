@@ -507,7 +507,12 @@ Deno.serve(async (req) => {
 
     return json(summary);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "object" && err !== null
+          ? JSON.stringify(err)
+          : String(err);
     const configurationError = err instanceof CeObligationPolicyError;
     if (runId) {
       await supabase
