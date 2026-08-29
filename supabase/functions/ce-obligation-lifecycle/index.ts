@@ -411,23 +411,27 @@ Deno.serve(async (req) => {
           {
             p_organization_id: null,
             p_module_code: "COMPLIANCE",
-            p_event_code: "COMPLIANCE.C3.FILING_REMINDER",
+            // Reuse of the existing published Compliance employer event and its
+            // published contract (reference / subjectName / outstandingSummary).
+            // No new Compliance-specific communication event or template path.
+            p_event_code: "COMPLIANCE.EMPLOYER.NONCOMPLIANCE_NOTICE",
             p_entity_type: "employer",
             p_entity_id: plan.employer_id,
             p_occurrence: `${plan.rule_code}:${plan.cycle_key}`,
             p_product_id: null,
             p_department_context_id: null,
-            p_recipient_facts: { audience: plan.audience, employer_id: plan.employer_id },
-            p_payload: {
+            p_recipient_facts: {
+              audience: plan.audience,
               employer_id: plan.employer_id,
-              employer_name: plan.employer_name,
               reminder_rule: plan.rule_code,
-              template_code: plan.template_code,
-              channels: plan.channels,
-              outstanding_periods: plan.periods.map((p) => p.wage_period),
-              outstanding_periods_text: describeOutstandingPeriods(plan.periods),
-              notice_number: noticeNumber,
               cycle: plan.cycle_key,
+              notice_number: noticeNumber,
+              outstanding_periods: plan.periods.map((p) => p.wage_period),
+            },
+            p_payload: {
+              reference: plan.employer_id,
+              subjectName: plan.employer_name ?? plan.employer_id,
+              outstandingSummary: describeOutstandingPeriods(plan.periods).slice(0, 240),
             },
             p_correlation_id: noticeNumber,
           },
