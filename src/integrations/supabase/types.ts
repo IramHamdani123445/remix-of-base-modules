@@ -41071,6 +41071,51 @@ export type Database = {
           },
         ]
       }
+      ce_legal_handoff_overrides: {
+        Row: {
+          authorised_by: string
+          authorised_by_user_id: string
+          authorised_role: string | null
+          case_id: string | null
+          created_at: string
+          employer_id: string | null
+          evaluation_snapshot: Json
+          id: string
+          reason: string
+          referral_id: string | null
+          rule_codes: string[]
+          updated_at: string
+        }
+        Insert: {
+          authorised_by: string
+          authorised_by_user_id: string
+          authorised_role?: string | null
+          case_id?: string | null
+          created_at?: string
+          employer_id?: string | null
+          evaluation_snapshot?: Json
+          id?: string
+          reason: string
+          referral_id?: string | null
+          rule_codes?: string[]
+          updated_at?: string
+        }
+        Update: {
+          authorised_by?: string
+          authorised_by_user_id?: string
+          authorised_role?: string | null
+          case_id?: string | null
+          created_at?: string
+          employer_id?: string | null
+          evaluation_snapshot?: Json
+          id?: string
+          reason?: string
+          referral_id?: string | null
+          rule_codes?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_legal_handoff_rules: {
         Row: {
           applicable_funds: string[]
@@ -122059,6 +122104,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      ce_record_legal_handoff_override_v1: {
+        Args: {
+          p_case_id?: string
+          p_employer_id?: string
+          p_evaluation?: Json
+          p_reason: string
+          p_referral_id?: string
+        }
+        Returns: string
       }
       ce_reject_waiver_v1: {
         Args: { p_comments?: string; p_reason: string; p_waiver_id: string }
