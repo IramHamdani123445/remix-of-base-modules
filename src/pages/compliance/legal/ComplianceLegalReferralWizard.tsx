@@ -385,7 +385,11 @@ export default function ComplianceLegalReferralWizard() {
       const r = await createComplianceLegalReferral({
         ce_case_id: ceCaseId,
         referral_reason: reasonText.trim() +
-          (overrideMissingDocs ? ` [no-docs override: ${overrideMissingDocs}]` : ""),
+          (overrideMissingDocs ? ` [no-docs override: ${overrideMissingDocs}]` : "") +
+          (eligibility?.matchedRule
+            ? ` [handoff rule: ${eligibility.matchedRule.code}${eligibility.eligible ? " — met" : " — NOT met"}]`
+            : "") +
+          (handoffOverride.trim() ? ` [handoff override: ${handoffOverride.trim()}]` : ""),
         referral_reason_code: reasonCode,
         priority_code: priority,
         payment_arrangement_id: paymentArrangementId,
