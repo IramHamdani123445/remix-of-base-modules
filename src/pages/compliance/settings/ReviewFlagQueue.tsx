@@ -94,6 +94,9 @@ export default function ReviewFlagQueue() {
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [actionTarget, setActionTarget] = useState<{ flag: ReviewFlag; disposition: Disposition } | null>(null);
+  const [convertTarget, setConvertTarget] = useState<ReviewFlag | null>(null);
+  const [assignTarget, setAssignTarget] = useState<ReviewFlag | null>(null);
+  const [assigneeId, setAssigneeId] = useState<string>('');
   const [notes, setNotes] = useState('');
 
   const { data: flags = [], isLoading } = useQuery({
