@@ -37831,6 +37831,9 @@ export type Database = {
       }
       ce_compliance_review_flags: {
         Row: {
+          assigned_at: string | null
+          assigned_to_name: string | null
+          assigned_to_user_id: string | null
           converted_violation_id: string | null
           created_at: string
           dedupe_key: string
@@ -37859,6 +37862,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_to_name?: string | null
+          assigned_to_user_id?: string | null
           converted_violation_id?: string | null
           created_at?: string
           dedupe_key: string
@@ -37887,6 +37893,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_at?: string | null
+          assigned_to_name?: string | null
+          assigned_to_user_id?: string | null
           converted_violation_id?: string | null
           created_at?: string
           dedupe_key?: string
@@ -124694,8 +124703,25 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_review_flag_assign_v1: {
+        Args: {
+          p_assignee_name?: string
+          p_assignee_user_id: string
+          p_flag_id: string
+          p_notes?: string
+        }
+        Returns: string
+      }
+      ce_review_flag_convert_to_violation_v1: {
+        Args: { p_flag_id: string; p_notes: string }
+        Returns: string
+      }
       ce_review_flag_disposition_v1: {
         Args: { p_disposition: string; p_flag_id: string; p_notes?: string }
+        Returns: string
+      }
+      ce_review_flag_normalise_disposition: {
+        Args: { p_raw: string }
         Returns: string
       }
       ce_review_partial_payment_v1: {

@@ -1606,6 +1606,8 @@ export const AppRoutes = () => {
       <Route path="/compliance/admin/settings/violation-types" element={<ComplianceViolationTypes />} />
       <Route path="/compliance/admin/settings/employer-status-register" element={<EmployerStatusRegister />} />
       <Route path="/compliance/admin/settings/review-flag-queue" element={<ReviewFlagQueue />} />
+      {/* Operational surface for enforcement officers (same governed screen) */}
+      <Route path="/compliance/violations/review-flags" element={<ReviewFlagQueue />} />
       <Route path="/compliance/admin/settings/self-employed-compliance" element={<SelfEmployedCompliance />} />
       <Route path="/compliance/admin/settings/headcount-tiers" element={<ComplianceHeadcountTiers />} />
       <Route path="/compliance/admin/settings/wage-benchmarks" element={<ComplianceWageBenchmarks />} />
