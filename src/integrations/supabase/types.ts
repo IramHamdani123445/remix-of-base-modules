@@ -124925,7 +124925,12 @@ export type Database = {
         Returns: string
       }
       ce_violation_return_to_queue_v1: {
-        Args: { p_notes: string; p_reason: string; p_violation_id: string }
+        Args: {
+          p_notes?: string
+          p_queue_id?: string
+          p_reason: string
+          p_violation_id: string
+        }
         Returns: string
       }
       ce_waiver_deny: {
