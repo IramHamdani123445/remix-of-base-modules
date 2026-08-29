@@ -28,6 +28,13 @@ export const COMPLIANCE_CAPABILITIES = {
   WORKBENCH_ENTERPRISE: 'compliance.workbench.enterprise',
   REPORTS_OPERATIONAL: 'compliance.reports.operational',
   REPORTS_ANALYTICS: 'compliance.reports.analytics',
+  CONFIG_MANAGE: 'compliance.config.manage',
+  EXEMPTION_MANAGE: 'compliance.exemption.manage',
+  REGISTRATION_LEAD_MANAGE: 'compliance.registration_lead.manage',
+  EMPLOYER_STATUS_CHANGE: 'compliance.employer_status.change',
+  BENCHMARK_OVERRIDE: 'compliance.benchmark.override',
+  REVIEW_FLAG_REVIEW: 'compliance.review_flag.review',
+  LEGAL_RECOMMEND_APPROVE: 'compliance.legal.recommend_approve',
 } as const;
 
 export type ComplianceCapability =
