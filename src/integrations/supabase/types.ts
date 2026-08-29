@@ -33097,6 +33097,69 @@ export type Database = {
           },
         ]
       }
+      ce_allocation_policies: {
+        Row: {
+          allow_cross_fund_transfer: boolean
+          class_order: string[]
+          created_at: string
+          created_by: string
+          cross_fund_transfer_approved_at: string | null
+          cross_fund_transfer_approved_by: string | null
+          id: string
+          interest_settlement: string
+          is_active: boolean
+          notes: string | null
+          over_payment_creates_credit: boolean
+          policy_code: string
+          policy_name: string
+          policy_version: string
+          respect_partial_payment_authority: boolean
+          updated_at: string
+          updated_by: string | null
+          within_class: string
+        }
+        Insert: {
+          allow_cross_fund_transfer?: boolean
+          class_order?: string[]
+          created_at?: string
+          created_by?: string
+          cross_fund_transfer_approved_at?: string | null
+          cross_fund_transfer_approved_by?: string | null
+          id?: string
+          interest_settlement?: string
+          is_active?: boolean
+          notes?: string | null
+          over_payment_creates_credit?: boolean
+          policy_code: string
+          policy_name: string
+          policy_version?: string
+          respect_partial_payment_authority?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          within_class?: string
+        }
+        Update: {
+          allow_cross_fund_transfer?: boolean
+          class_order?: string[]
+          created_at?: string
+          created_by?: string
+          cross_fund_transfer_approved_at?: string | null
+          cross_fund_transfer_approved_by?: string | null
+          id?: string
+          interest_settlement?: string
+          is_active?: boolean
+          notes?: string | null
+          over_payment_creates_credit?: boolean
+          policy_code?: string
+          policy_name?: string
+          policy_version?: string
+          respect_partial_payment_authority?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          within_class?: string
+        }
+        Relationships: []
+      }
       ce_arrangement_breaches: {
         Row: {
           amount_outstanding_at_breach: number | null
@@ -35738,6 +35801,174 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_calculation_audit: {
+        Row: {
+          allocation_basis: string | null
+          amount: number
+          calculated_by: string
+          component: string
+          compounding_basis: string | null
+          created_at: string
+          employer_id: string | null
+          fund_code: string | null
+          id: string
+          idempotency_key: string | null
+          inputs: Json
+          multiplier: number | null
+          period_count: number
+          person_ssn: string | null
+          policy_version: string
+          principal: number
+          rate: number | null
+          rate_basis: string | null
+          raw_amount: number
+          reference_id: string | null
+          reference_type: string | null
+          rounding: string
+          rule_code: string
+          source_periods: string[]
+          steps: Json
+          suppressed_reason: string | null
+          wage_period: string | null
+        }
+        Insert: {
+          allocation_basis?: string | null
+          amount?: number
+          calculated_by?: string
+          component: string
+          compounding_basis?: string | null
+          created_at?: string
+          employer_id?: string | null
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inputs?: Json
+          multiplier?: number | null
+          period_count?: number
+          person_ssn?: string | null
+          policy_version: string
+          principal?: number
+          rate?: number | null
+          rate_basis?: string | null
+          raw_amount?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          rounding?: string
+          rule_code: string
+          source_periods?: string[]
+          steps?: Json
+          suppressed_reason?: string | null
+          wage_period?: string | null
+        }
+        Update: {
+          allocation_basis?: string | null
+          amount?: number
+          calculated_by?: string
+          component?: string
+          compounding_basis?: string | null
+          created_at?: string
+          employer_id?: string | null
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inputs?: Json
+          multiplier?: number | null
+          period_count?: number
+          person_ssn?: string | null
+          policy_version?: string
+          principal?: number
+          rate?: number | null
+          rate_basis?: string | null
+          raw_amount?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          rounding?: string
+          rule_code?: string
+          source_periods?: string[]
+          steps?: Json
+          suppressed_reason?: string | null
+          wage_period?: string | null
+        }
+        Relationships: []
+      }
+      ce_calculation_exceptions: {
+        Row: {
+          assessment_id: string | null
+          calculation_audit_id: string | null
+          created_at: string
+          detail: string
+          employer_id: string | null
+          exception_type: string
+          id: string
+          idempotency_key: string
+          indicative_amount: number
+          person_ssn: string | null
+          reason_code: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          rule_code: string
+          status: string
+          updated_at: string
+          wage_period: string | null
+        }
+        Insert: {
+          assessment_id?: string | null
+          calculation_audit_id?: string | null
+          created_at?: string
+          detail: string
+          employer_id?: string | null
+          exception_type: string
+          id?: string
+          idempotency_key: string
+          indicative_amount?: number
+          person_ssn?: string | null
+          reason_code: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_code: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Update: {
+          assessment_id?: string | null
+          calculation_audit_id?: string | null
+          created_at?: string
+          detail?: string
+          employer_id?: string | null
+          exception_type?: string
+          id?: string
+          idempotency_key?: string
+          indicative_amount?: number
+          person_ssn?: string | null
+          reason_code?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_code?: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_calculation_exceptions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_estimated_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_calculation_exceptions_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_calculation_rules: {
         Row: {
           applies_to: string
@@ -37638,13 +37869,19 @@ export type Database = {
         Row: {
           amount: number
           applied_amount: number
+          calculation_audit_id: string | null
           created_at: string
+          credit_type: string
           employer_id: string | null
           finance_handoff_at: string | null
           finance_handoff_reference: string | null
+          fund_code: string | null
           id: string
+          idempotency_key: string | null
           notes: string | null
           person_ssn: string
+          source_assessment_id: string | null
+          source_reference: string | null
           source_type: string
           status: string
           updated_at: string
@@ -37653,13 +37890,19 @@ export type Database = {
         Insert: {
           amount: number
           applied_amount?: number
+          calculation_audit_id?: string | null
           created_at?: string
+          credit_type?: string
           employer_id?: string | null
           finance_handoff_at?: string | null
           finance_handoff_reference?: string | null
+          fund_code?: string | null
           id?: string
+          idempotency_key?: string | null
           notes?: string | null
           person_ssn: string
+          source_assessment_id?: string | null
+          source_reference?: string | null
           source_type?: string
           status?: string
           updated_at?: string
@@ -37668,19 +37911,40 @@ export type Database = {
         Update: {
           amount?: number
           applied_amount?: number
+          calculation_audit_id?: string | null
           created_at?: string
+          credit_type?: string
           employer_id?: string | null
           finance_handoff_at?: string | null
           finance_handoff_reference?: string | null
+          fund_code?: string | null
           id?: string
+          idempotency_key?: string | null
           notes?: string | null
           person_ssn?: string
+          source_assessment_id?: string | null
+          source_reference?: string | null
           source_type?: string
           status?: string
           updated_at?: string
           wage_period?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ce_contribution_credits_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_contribution_credits_source_assessment_id_fkey"
+            columns: ["source_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_estimated_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_contribution_exemptions: {
         Row: {
@@ -39713,6 +39977,164 @@ export type Database = {
           },
         ]
       }
+      ce_estimated_assessment_lines: {
+        Row: {
+          allocated_amount: number
+          allocation_ratio: number
+          assessment_id: string
+          basis_periods: string[]
+          basis_wage_total: number
+          calculation_audit_id: string | null
+          capped_amount: number
+          created_at: string
+          id: string
+          periods_present: number
+          person_ssn: string
+          record_marker: string
+          wage_period: string
+        }
+        Insert: {
+          allocated_amount?: number
+          allocation_ratio?: number
+          assessment_id: string
+          basis_periods?: string[]
+          basis_wage_total?: number
+          calculation_audit_id?: string | null
+          capped_amount?: number
+          created_at?: string
+          id?: string
+          periods_present?: number
+          person_ssn: string
+          record_marker?: string
+          wage_period: string
+        }
+        Update: {
+          allocated_amount?: number
+          allocation_ratio?: number
+          assessment_id?: string
+          basis_periods?: string[]
+          basis_wage_total?: number
+          calculation_audit_id?: string | null
+          capped_amount?: number
+          created_at?: string
+          id?: string
+          periods_present?: number
+          person_ssn?: string
+          record_marker?: string
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_estimated_assessment_lines_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_estimated_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_estimated_assessment_lines_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_estimated_assessments: {
+        Row: {
+          actual_amount: number | null
+          additional_liability: number
+          average_liability: number | null
+          basis_periods: string[]
+          calculation_audit_id: string | null
+          created_at: string
+          created_by: string
+          credit_amount: number
+          difference_amount: number | null
+          employer_id: string
+          estimate_multiplier: number | null
+          estimated_amount: number
+          excluded_periods: Json
+          fund_code: string | null
+          history_period_count: number | null
+          id: string
+          idempotency_key: string
+          ledger_entry_id: string | null
+          paid_amount: number
+          policy_version: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_outcome: string | null
+          status: string
+          updated_at: string
+          wage_period: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          additional_liability?: number
+          average_liability?: number | null
+          basis_periods?: string[]
+          calculation_audit_id?: string | null
+          created_at?: string
+          created_by?: string
+          credit_amount?: number
+          difference_amount?: number | null
+          employer_id: string
+          estimate_multiplier?: number | null
+          estimated_amount?: number
+          excluded_periods?: Json
+          fund_code?: string | null
+          history_period_count?: number | null
+          id?: string
+          idempotency_key: string
+          ledger_entry_id?: string | null
+          paid_amount?: number
+          policy_version: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_outcome?: string | null
+          status?: string
+          updated_at?: string
+          wage_period: string
+        }
+        Update: {
+          actual_amount?: number | null
+          additional_liability?: number
+          average_liability?: number | null
+          basis_periods?: string[]
+          calculation_audit_id?: string | null
+          created_at?: string
+          created_by?: string
+          credit_amount?: number
+          difference_amount?: number | null
+          employer_id?: string
+          estimate_multiplier?: number | null
+          estimated_amount?: number
+          excluded_periods?: Json
+          fund_code?: string | null
+          history_period_count?: number | null
+          id?: string
+          idempotency_key?: string
+          ledger_entry_id?: string | null
+          paid_amount?: number
+          policy_version?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_outcome?: string | null
+          status?: string
+          updated_at?: string
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_estimated_assessments_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_field_activities: {
         Row: {
           case_id: string | null
@@ -41004,6 +41426,77 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
             referencedColumns: ["arrangement_id"]
+          },
+        ]
+      }
+      ce_interest_accruals: {
+        Row: {
+          accrual_start_date: string
+          annual_rate_percent: number
+          as_of_date: string
+          calculation_audit_id: string | null
+          compounding_basis: string
+          created_at: string
+          cumulative_interest: number
+          elapsed_months: number
+          employer_id: string
+          fund_code: string | null
+          id: string
+          idempotency_key: string
+          ledger_entry_id: string | null
+          policy_version: string
+          posted_interest: number
+          principal: number
+          suppressed_reason: string | null
+          wage_period: string
+        }
+        Insert: {
+          accrual_start_date: string
+          annual_rate_percent: number
+          as_of_date: string
+          calculation_audit_id?: string | null
+          compounding_basis: string
+          created_at?: string
+          cumulative_interest?: number
+          elapsed_months?: number
+          employer_id: string
+          fund_code?: string | null
+          id?: string
+          idempotency_key: string
+          ledger_entry_id?: string | null
+          policy_version: string
+          posted_interest?: number
+          principal?: number
+          suppressed_reason?: string | null
+          wage_period: string
+        }
+        Update: {
+          accrual_start_date?: string
+          annual_rate_percent?: number
+          as_of_date?: string
+          calculation_audit_id?: string | null
+          compounding_basis?: string
+          created_at?: string
+          cumulative_interest?: number
+          elapsed_months?: number
+          employer_id?: string
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string
+          ledger_entry_id?: string | null
+          policy_version?: string
+          posted_interest?: number
+          principal?: number
+          suppressed_reason?: string | null
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_interest_accruals_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
           },
         ]
       }

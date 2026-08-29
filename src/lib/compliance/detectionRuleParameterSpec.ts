@@ -598,8 +598,66 @@ export const DETECTION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
 };
 
 
-/** Calculation-rule parameters keyed by ce_calculation_rules.rule_code. */
+/**
+ * Calculation-rule parameters keyed by ce_calculation_rules.rule_code.
+ *
+ * Checkpoint C ownership:
+ *  - CR-001 (generic late-payment penalty) is RETIRED. The client does not
+ *    want a blanket penalty for lateness; fines/penalties come only from the
+ *    fund-specific rules CR-005 (SS), CR-006 (Levy) and CR-007 (Severance).
+ *    It therefore has no parameter contract and must stay disabled.
+ *  - CR-004 (under-declaration surcharge) is NOT activated. Its contract is
+ *    kept so the capability stays configurable, but the rule is disabled and
+ *    no runtime consumer may execute it.
+ */
 export const CALCULATION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
+  "CR-002": [
+    {
+      key: "annual_rate_percent",
+      label: "Annual interest rate (%)",
+      type: "number",
+      required: true,
+      min: 0,
+      max: 100,
+      help: "Nominal annual interest rate charged on overdue contribution balances. St Kitts & Nevis currently operates at 5%.",
+      suggested: 5,
+    },
+    {
+      key: "compounding_basis",
+      label: "Compounding basis",
+      type: "string_array",
+      required: true,
+      help: "One of monthly_compound, monthly_simple or annual_compound. St Kitts & Nevis compounds monthly.",
+      suggested: ["monthly_compound"],
+    },
+    {
+      key: "minimum_interest_principal",
+      label: "Minimum balance attracting interest (EC$)",
+      type: "number",
+      required: true,
+      min: 0,
+      help: "Outstanding balances below this amount never attract interest. St Kitts & Nevis currently uses EC$10.",
+      suggested: 10,
+    },
+    {
+      key: "accrual_start",
+      label: "Accrual anchor",
+      type: "string_array",
+      required: true,
+      help: "grace_end (interest starts after the statutory grace period) or due_date. Dates always come from the obligation resolver — interest never recomputes the calendar.",
+      suggested: ["grace_end"],
+    },
+    {
+      key: "max_accrual_months",
+      label: "Maximum accrual months",
+      type: "number",
+      required: false,
+      min: 1,
+      max: ABSOLUTE_CAP_MONTHS,
+      integer: true,
+      help: "Optional safety cap on how many months of interest a single balance can accrue.",
+    },
+  ],
   "CR-003": [
     {
       key: "history_period_count",
@@ -622,8 +680,126 @@ export const CALCULATION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       help: "Multiplier applied to the average of the historical periods to produce the estimated principal.",
       suggested: 1.5,
     },
+    {
+      key: "minimum_history_periods",
+      label: "Minimum usable periods before estimating",
+      type: "number",
+      required: true,
+      min: 1,
+      max: 36,
+      integer: true,
+      help: "Fewest valid periods required before an estimate may be raised. Below this the case goes to the review/exception queue instead of being estimated from unusable data.",
+      suggested: 2,
+    },
+    {
+      key: "exclude_zero_periods",
+      label: "Exclude nil/negative periods",
+      type: "boolean",
+      required: true,
+      help: "Leave periods with no declared liability out of the estimate basis rather than averaging them in.",
+      suggested: true,
+    },
+    {
+      key: "exclude_amended_periods",
+      label: "Exclude amended periods",
+      type: "boolean",
+      required: true,
+      help: "Leave amended C3 periods out of the estimate basis.",
+      suggested: false,
+    },
+    {
+      key: "exclude_statuses",
+      label: "Excluded submission statuses",
+      type: "string_array",
+      required: true,
+      help: "Source C3 statuses that disqualify a period from the estimate basis.",
+      suggested: ["DRAFT", "REJECTED", "CANCELLED"],
+    },
+    {
+      key: "outlier_deviation_multiple",
+      label: "Outlier tolerance (× median)",
+      type: "number",
+      required: false,
+      min: 1,
+      max: 100,
+      help: "Exclude a period whose declared liability deviates from the median of the candidates by more than this multiple. Leave unset to disable outlier screening.",
+    },
+  ],
+  "CR-004": [
+    {
+      key: "surcharge_rate_percent",
+      label: "Under-declaration surcharge (%)",
+      type: "number",
+      required: true,
+      min: 0,
+      max: 100,
+      help: "NOT ACTIVE. The client has not approved an under-declaration surcharge; CR-004 stays disabled. The contract exists only so the capability remains configurable if Finance later approves it.",
+    },
+  ],
+  "CR-008": [
+    {
+      key: "allocation_class_order",
+      label: "Payment allocation order",
+      type: "string_array",
+      required: true,
+      help: "Order in which a payment settles liability classes. Client direction: contributions first (oldest outstanding period first), then fines/penalties. Interest is accounted separately.",
+      suggested: ["contribution", "fine", "penalty"],
+    },
+    {
+      key: "within_class_order",
+      label: "Order within a class",
+      type: "string_array",
+      required: true,
+      help: "oldest_period_first or newest_period_first. Client direction: oldest outstanding first.",
+      suggested: ["oldest_period_first"],
+    },
+    {
+      key: "interest_settlement",
+      label: "Interest settlement",
+      type: "string_array",
+      required: true,
+      help: "separate keeps interest out of the contribution waterfall and settles it as its own component; inline lets it take a position in the class order.",
+      suggested: ["separate"],
+    },
+    {
+      key: "respect_partial_payment_authority",
+      label: "Honour approved partial-payment allocations",
+      type: "boolean",
+      required: true,
+      help: "Allocations approved through the B1 partial-payment workflow are applied exactly and are never overridden by the generic allocation engine.",
+      suggested: true,
+    },
+    {
+      key: "over_payment_creates_credit",
+      label: "Over-payment becomes a credit",
+      type: "boolean",
+      required: true,
+      help: "Money left after all liabilities are settled is recorded as a traceable credit that offsets future liabilities. Cash refunds remain a later Finance process.",
+      suggested: true,
+    },
+    {
+      key: "allow_cross_fund_transfer",
+      label: "Allow cross-fund transfer",
+      type: "boolean",
+      required: true,
+      help: "OPEN — awaiting Finance/CFO approval. Must remain false: a credit in one fund may not be moved to another fund automatically. Enabling it requires privileged approval and is fully audited.",
+      suggested: false,
+    },
   ],
 };
+
+/** Calculation rules that must never execute at runtime in this deployment. */
+export const RETIRED_CALCULATION_RULES: Record<string, string> = {
+  "CR-001":
+    "Retired at Checkpoint C — the client does not require a generic universal late-payment penalty. Fines/penalties come only from the applicable fund-specific rules (CR-005/CR-006/CR-007).",
+  "CR-004":
+    "Not activated — the proposed 2.5% under-declaration surcharge is not approved. The capability stays configurable but disabled.",
+};
+
+export function isRetiredCalculationRule(ruleCode: string): boolean {
+  return Object.prototype.hasOwnProperty.call(RETIRED_CALCULATION_RULES, ruleCode);
+}
+
 
 /**
  * Technical/runtime constants deliberately left in code — they protect the
