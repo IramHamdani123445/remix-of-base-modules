@@ -21,6 +21,18 @@ interface EmployerLite {
   name: string | null;
 }
 
+interface StatusHistoryEntry {
+  id: string;
+  employer_id: string;
+  previous_status: string | null;
+  new_status: string;
+  changed_at: string;
+  changed_by: string | null;
+  change_reason: string | null;
+  reason_detail: string | null;
+  source_event: string | null;
+}
+
 interface StatusState {
   employer_id: string;
   status: string;
@@ -106,17 +118,19 @@ export default function EmployerStatusRegister() {
     },
   });
 
+  // Authoritative change history lives in ce_employer_status_history — the
+  // state table only ever holds the single current row per employer.
   const { data: history = [], isLoading: loadingHistory } = useQuery({
     queryKey: ['ce_employer_status_history', selectedEmployer?.regno],
     enabled: !!selectedEmployer,
-    queryFn: async (): Promise<StatusState[]> => {
+    queryFn: async (): Promise<StatusHistoryEntry[]> => {
       const { data, error } = await supabase
-        .from('ce_employer_status_states')
-        .select('*')
+        .from('ce_employer_status_history')
+        .select('id, employer_id, previous_status, new_status, changed_at, changed_by, change_reason, reason_detail, source_event')
         .eq('employer_id', selectedEmployer!.regno)
         .order('changed_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as StatusState[];
+      return (data || []) as unknown as StatusHistoryEntry[];
     },
   });
 
@@ -248,29 +262,27 @@ export default function EmployerStatusRegister() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Effective</TableHead>
-                        <TableHead>Evidence Type</TableHead>
-                        <TableHead>Evidence Ref</TableHead>
+                        <TableHead>From</TableHead>
+                        <TableHead>To</TableHead>
                         <TableHead>Reason</TableHead>
+                        <TableHead>Evidence</TableHead>
                         <TableHead>Changed By</TableHead>
                         <TableHead>Changed At</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {history.map((h, i) => (
-                        <TableRow key={i}>
-                          <TableCell><Badge variant={statusVariant(h.status)}>{h.status}</Badge></TableCell>
-                          <TableCell>{h.effective_date}</TableCell>
-                          <TableCell>{h.evidence_type}</TableCell>
-                          <TableCell className="text-xs">{h.evidence_reference || '—'}</TableCell>
-                          <TableCell className="text-xs max-w-[220px] truncate" title={h.reason || ''}>{h.reason || '—'}</TableCell>
+                      {history.map(h => (
+                        <TableRow key={h.id}>
+                          <TableCell className="text-xs">{h.previous_status ? statusLabel(h.previous_status) : '—'}</TableCell>
+                          <TableCell><Badge variant={statusVariant(h.new_status)}>{statusLabel(h.new_status)}</Badge></TableCell>
+                          <TableCell className="text-xs max-w-[240px] truncate" title={h.change_reason || ''}>{h.change_reason || '—'}</TableCell>
+                          <TableCell className="text-xs max-w-[220px] truncate" title={h.reason_detail || ''}>{h.reason_detail || '—'}</TableCell>
                           <TableCell className="text-xs">{h.changed_by || '—'}</TableCell>
                           <TableCell className="text-xs">{new Date(h.changed_at).toLocaleString()}</TableCell>
                         </TableRow>
                       ))}
                       {history.length === 0 && (
-                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No status changes recorded yet.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No status changes recorded yet.</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
