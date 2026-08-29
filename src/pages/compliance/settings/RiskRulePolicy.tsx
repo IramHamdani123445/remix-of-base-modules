@@ -47,16 +47,22 @@ export default function RiskRulePolicy() {
       {/* Tabs */}
       <Card className="p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="factors">Risk Factors & Weights</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="model">Five-Factor Model</TabsTrigger>
+            <TabsTrigger value="factors">Factor Catalogue</TabsTrigger>
             <TabsTrigger value="policies">Risk Policies</TabsTrigger>
             <TabsTrigger value="bands">Risk Bands & Behaviour</TabsTrigger>
             <TabsTrigger value="escalation">Legal Escalation</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="model" className="space-y-4">
+            <RiskModelTab />
+          </TabsContent>
+
           <TabsContent value="factors" className="space-y-4">
             <RiskFactorsTab />
           </TabsContent>
+
 
           <TabsContent value="policies" className="space-y-4">
             <RiskPoliciesTab />
