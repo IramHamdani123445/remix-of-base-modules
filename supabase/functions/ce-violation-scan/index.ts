@@ -1,10 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import {
+  ABSOLUTE_CAP_MONTHS,
+  CALCULATION_PARAM_SPEC,
+  DETECTION_PARAM_SPEC,
+  resolveRuleParameters,
+} from "../_shared/compliance/detectionRuleParameterSpec.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
 
 interface DetectionRule {
   id: string;
