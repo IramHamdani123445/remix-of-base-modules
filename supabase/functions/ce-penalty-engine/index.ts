@@ -146,7 +146,8 @@ Deno.serve(async (req) => {
           }
 
           const minAmount = Number(params.min_amount ?? 0);
-          const penaltyAmount = Math.max(Number(emp.principal_due) * configuredRate, minAmount);
+          const penaltyBase = Number(emp.principal_outstanding);
+          const penaltyAmount = Math.max(penaltyBase * configuredRate, minAmount);
 
           if (penaltyAmount > 0) {
             const idemKey = `penalty-${emp.employer_id}-${period}-${fundType}-${rule.rule_code}`;
@@ -157,7 +158,7 @@ Deno.serve(async (req) => {
               p_fund_type: fundType,
               p_period: period,
               p_amount: penaltyAmount,
-              p_description: `${rule.fund_type} ${rule.applies_to}: ${rule.name} (${(configuredRate * 100).toFixed(1)}% of ${emp.principal_due})`,
+              p_description: `${rule.fund_type} ${rule.applies_to}: ${rule.name} (${(configuredRate * 100).toFixed(1)}% of outstanding principal ${penaltyBase})`,
               p_reference_type: "calculation_rule",
               p_idempotency_key: idemKey,
               p_posted_by: triggeredBy,
