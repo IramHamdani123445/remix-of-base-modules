@@ -33223,6 +33223,54 @@ export type Database = {
           },
         ]
       }
+      ce_arrangement_installment_reminders: {
+        Row: {
+          arrangement_id: string
+          created_at: string
+          dispatch_reference: string | null
+          dispatched_at: string | null
+          employer_id: string
+          failure_reason: string | null
+          id: string
+          installment_due_date: string
+          installment_id: string
+          lead_days: number
+          reminder_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          arrangement_id: string
+          created_at?: string
+          dispatch_reference?: string | null
+          dispatched_at?: string | null
+          employer_id: string
+          failure_reason?: string | null
+          id?: string
+          installment_due_date: string
+          installment_id: string
+          lead_days: number
+          reminder_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          arrangement_id?: string
+          created_at?: string
+          dispatch_reference?: string | null
+          dispatched_at?: string | null
+          employer_id?: string
+          failure_reason?: string | null
+          id?: string
+          installment_due_date?: string
+          installment_id?: string
+          lead_days?: number
+          reminder_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_arrangement_policies: {
         Row: {
           arrangement_interest_rate: number
@@ -37499,6 +37547,201 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_compliance_review_flags: {
+        Row: {
+          converted_violation_id: string | null
+          created_at: string
+          dedupe_key: string
+          disposition: string | null
+          disposition_notes: string | null
+          employer_id: string | null
+          evidence: Json
+          excluded_from_risk: boolean
+          flag_number: string
+          flag_type: string
+          id: string
+          period_key: string | null
+          required_review_capability: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rule_code: string | null
+          rule_id: string | null
+          run_id: string | null
+          severity: string
+          status: string
+          subject_id: string
+          subject_name: string | null
+          subject_type: string
+          summary: string
+          triggering_violation_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          converted_violation_id?: string | null
+          created_at?: string
+          dedupe_key: string
+          disposition?: string | null
+          disposition_notes?: string | null
+          employer_id?: string | null
+          evidence?: Json
+          excluded_from_risk?: boolean
+          flag_number: string
+          flag_type: string
+          id?: string
+          period_key?: string | null
+          required_review_capability?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_code?: string | null
+          rule_id?: string | null
+          run_id?: string | null
+          severity?: string
+          status?: string
+          subject_id: string
+          subject_name?: string | null
+          subject_type?: string
+          summary: string
+          triggering_violation_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          converted_violation_id?: string | null
+          created_at?: string
+          dedupe_key?: string
+          disposition?: string | null
+          disposition_notes?: string | null
+          employer_id?: string | null
+          evidence?: Json
+          excluded_from_risk?: boolean
+          flag_number?: string
+          flag_type?: string
+          id?: string
+          period_key?: string | null
+          required_review_capability?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_code?: string | null
+          rule_id?: string | null
+          run_id?: string | null
+          severity?: string
+          status?: string
+          subject_id?: string
+          subject_name?: string | null
+          subject_type?: string
+          summary?: string
+          triggering_violation_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_contribution_credits: {
+        Row: {
+          amount: number
+          applied_amount: number
+          created_at: string
+          employer_id: string | null
+          finance_handoff_at: string | null
+          finance_handoff_reference: string | null
+          id: string
+          notes: string | null
+          person_ssn: string
+          source_type: string
+          status: string
+          updated_at: string
+          wage_period: string | null
+        }
+        Insert: {
+          amount: number
+          applied_amount?: number
+          created_at?: string
+          employer_id?: string | null
+          finance_handoff_at?: string | null
+          finance_handoff_reference?: string | null
+          id?: string
+          notes?: string | null
+          person_ssn: string
+          source_type?: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Update: {
+          amount?: number
+          applied_amount?: number
+          created_at?: string
+          employer_id?: string | null
+          finance_handoff_at?: string | null
+          finance_handoff_reference?: string | null
+          id?: string
+          notes?: string | null
+          person_ssn?: string
+          source_type?: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Relationships: []
+      }
+      ce_contribution_exemptions: {
+        Row: {
+          authority_reference: string | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          employer_id: string
+          evidence_reference: string | null
+          fund_code: string
+          granting_authority: string
+          id: string
+          notes: string | null
+          person_name: string | null
+          person_ssn: string
+          recorded_by: string | null
+          status: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          authority_reference?: string | null
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          employer_id: string
+          evidence_reference?: string | null
+          fund_code: string
+          granting_authority: string
+          id?: string
+          notes?: string | null
+          person_name?: string | null
+          person_ssn: string
+          recorded_by?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          authority_reference?: string | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employer_id?: string
+          evidence_reference?: string | null
+          fund_code?: string
+          granting_authority?: string
+          id?: string
+          notes?: string | null
+          person_name?: string | null
+          person_ssn?: string
+          recorded_by?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       ce_detection_event_queue: {
         Row: {
           attempts: number
@@ -39106,6 +39349,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_employer_status_states: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_user_id: string | null
+          clearance_certificate_reference: string | null
+          created_at: string
+          effective_date: string
+          employer_id: string
+          evidence_document_url: string | null
+          evidence_reference: string | null
+          evidence_type: string
+          reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_user_id?: string | null
+          clearance_certificate_reference?: string | null
+          created_at?: string
+          effective_date?: string
+          employer_id: string
+          evidence_document_url?: string | null
+          evidence_reference?: string | null
+          evidence_type: string
+          reason?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_user_id?: string | null
+          clearance_certificate_reference?: string | null
+          created_at?: string
+          effective_date?: string
+          employer_id?: string
+          evidence_document_url?: string | null
+          evidence_reference?: string | null
+          evidence_type?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_employer_watchlist: {
         Row: {
           added_by: string | null
@@ -39737,6 +40028,54 @@ export type Database = {
           total_arrears?: number | null
           total_penalties?: number | null
           total_violations?: number | null
+        }
+        Relationships: []
+      }
+      ce_headcount_tiers: {
+        Row: {
+          allowed_absolute_change: number
+          created_at: string
+          id: string
+          is_enabled: boolean
+          max_employer_size: number | null
+          min_employer_size: number
+          notes: string | null
+          percentage_threshold: number | null
+          requires_client_confirmation: boolean
+          sort_order: number
+          tier_code: string
+          tier_label: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_absolute_change: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          max_employer_size?: number | null
+          min_employer_size?: number
+          notes?: string | null
+          percentage_threshold?: number | null
+          requires_client_confirmation?: boolean
+          sort_order?: number
+          tier_code: string
+          tier_label: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_absolute_change?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          max_employer_size?: number | null
+          min_employer_size?: number
+          notes?: string | null
+          percentage_threshold?: number | null
+          requires_client_confirmation?: boolean
+          sort_order?: number
+          tier_code?: string
+          tier_label?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -44477,6 +44816,53 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_review_flag_events: {
+        Row: {
+          actor: string | null
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          flag_id: string
+          from_status: string | null
+          id: string
+          notes: string | null
+          payload: Json
+          to_status: string | null
+        }
+        Insert: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          flag_id: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          payload?: Json
+          to_status?: string | null
+        }
+        Update: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          flag_id?: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          payload?: Json
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_review_flag_events_flag_id_fkey"
+            columns: ["flag_id"]
+            isOneToOne: false
+            referencedRelation: "ce_compliance_review_flags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_review_queue: {
         Row: {
           assigned_to: string | null
@@ -45359,6 +45745,141 @@ export type Database = {
           },
         ]
       }
+      ce_sector_wage_benchmarks: {
+        Row: {
+          calculated_average: number | null
+          calculated_minimum: number | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_enabled: boolean
+          overridden_at: string | null
+          overridden_by: string | null
+          override_average: number | null
+          override_minimum: number | null
+          override_reason: string | null
+          recalculated_at: string | null
+          sample_count: number
+          sector_code: string
+          sector_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          calculated_average?: number | null
+          calculated_minimum?: number | null
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          is_enabled?: boolean
+          overridden_at?: string | null
+          overridden_by?: string | null
+          override_average?: number | null
+          override_minimum?: number | null
+          override_reason?: string | null
+          recalculated_at?: string | null
+          sample_count?: number
+          sector_code: string
+          sector_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calculated_average?: number | null
+          calculated_minimum?: number | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_enabled?: boolean
+          overridden_at?: string | null
+          overridden_by?: string | null
+          override_average?: number | null
+          override_minimum?: number | null
+          override_reason?: string | null
+          recalculated_at?: string | null
+          sample_count?: number
+          sector_code?: string
+          sector_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_self_employed_obligations: {
+        Row: {
+          contributor_type: string
+          created_at: string
+          declared_amount: number
+          due_date: string | null
+          employer_reported: boolean
+          employer_reported_by: string | null
+          expected_amount: number
+          filing_received_date: string | null
+          grace_end_date: string | null
+          id: string
+          obligation_type: string
+          paid_amount: number
+          payment_received_date: string | null
+          person_name: string | null
+          person_ssn: string
+          status: string
+          suppressed: boolean
+          suppressed_at: string | null
+          suppressed_by: string | null
+          suppressed_reason: string | null
+          updated_at: string
+          wage_period: string
+        }
+        Insert: {
+          contributor_type?: string
+          created_at?: string
+          declared_amount?: number
+          due_date?: string | null
+          employer_reported?: boolean
+          employer_reported_by?: string | null
+          expected_amount?: number
+          filing_received_date?: string | null
+          grace_end_date?: string | null
+          id?: string
+          obligation_type?: string
+          paid_amount?: number
+          payment_received_date?: string | null
+          person_name?: string | null
+          person_ssn: string
+          status?: string
+          suppressed?: boolean
+          suppressed_at?: string | null
+          suppressed_by?: string | null
+          suppressed_reason?: string | null
+          updated_at?: string
+          wage_period: string
+        }
+        Update: {
+          contributor_type?: string
+          created_at?: string
+          declared_amount?: number
+          due_date?: string | null
+          employer_reported?: boolean
+          employer_reported_by?: string | null
+          expected_amount?: number
+          filing_received_date?: string | null
+          grace_end_date?: string | null
+          id?: string
+          obligation_type?: string
+          paid_amount?: number
+          payment_received_date?: string | null
+          person_name?: string | null
+          person_ssn?: string
+          status?: string
+          suppressed?: boolean
+          suppressed_at?: string | null
+          suppressed_by?: string | null
+          suppressed_reason?: string | null
+          updated_at?: string
+          wage_period?: string
+        }
+        Relationships: []
+      }
       ce_settings: {
         Row: {
           category: string | null
@@ -45397,6 +45918,161 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      ce_unregistered_employer_leads: {
+        Row: {
+          activity_type: string | null
+          business_address: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          discovered_date: string
+          escalated_at: string | null
+          escalated_to: string | null
+          estimated_employees: number | null
+          id: string
+          inspection_id: string | null
+          instructed_at: string | null
+          lead_number: string
+          legal_approved_at: string | null
+          legal_approved_by: string | null
+          legal_recommended: boolean
+          legal_recommended_at: string | null
+          legal_recommended_by: string | null
+          management_escalation_due: string | null
+          match_confidence: number | null
+          match_method: string | null
+          matched_employer_id: string | null
+          parish: string | null
+          register_by_date: string | null
+          registered_employer_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          review_flag_id: string | null
+          source_reference: string | null
+          source_type: string
+          status: string
+          trade_name: string
+          updated_at: string
+        }
+        Insert: {
+          activity_type?: string | null
+          business_address?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          discovered_date?: string
+          escalated_at?: string | null
+          escalated_to?: string | null
+          estimated_employees?: number | null
+          id?: string
+          inspection_id?: string | null
+          instructed_at?: string | null
+          lead_number: string
+          legal_approved_at?: string | null
+          legal_approved_by?: string | null
+          legal_recommended?: boolean
+          legal_recommended_at?: string | null
+          legal_recommended_by?: string | null
+          management_escalation_due?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_employer_id?: string | null
+          parish?: string | null
+          register_by_date?: string | null
+          registered_employer_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          review_flag_id?: string | null
+          source_reference?: string | null
+          source_type?: string
+          status?: string
+          trade_name: string
+          updated_at?: string
+        }
+        Update: {
+          activity_type?: string | null
+          business_address?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          discovered_date?: string
+          escalated_at?: string | null
+          escalated_to?: string | null
+          estimated_employees?: number | null
+          id?: string
+          inspection_id?: string | null
+          instructed_at?: string | null
+          lead_number?: string
+          legal_approved_at?: string | null
+          legal_approved_by?: string | null
+          legal_recommended?: boolean
+          legal_recommended_at?: string | null
+          legal_recommended_by?: string | null
+          management_escalation_due?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_employer_id?: string | null
+          parish?: string | null
+          register_by_date?: string | null
+          registered_employer_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          review_flag_id?: string | null
+          source_reference?: string | null
+          source_type?: string
+          status?: string
+          trade_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_unregistered_lead_events: {
+        Row: {
+          actor: string | null
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          from_status: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          from_status?: string | null
+          id?: string
+          lead_id: string
+          notes?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          from_status?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_unregistered_lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "ce_unregistered_employer_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_village_zone_mapping: {
         Row: {
@@ -45882,6 +46558,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_violation_resolution_types: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          excluded_from_risk_scoring: boolean
+          id: string
+          is_enabled: boolean
+          is_payment_resolution: boolean
+          label: string
+          requires_management_authorization: boolean
+          requires_note: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          excluded_from_risk_scoring?: boolean
+          id?: string
+          is_enabled?: boolean
+          is_payment_resolution?: boolean
+          label: string
+          requires_management_authorization?: boolean
+          requires_note?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          excluded_from_risk_scoring?: boolean
+          id?: string
+          is_enabled?: boolean
+          is_payment_resolution?: boolean
+          label?: string
+          requires_management_authorization?: boolean
+          requires_note?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_violation_routing_backfill_log: {
         Row: {
           batch_no: number
@@ -46016,6 +46737,7 @@ export type Database = {
           escalated_at: string | null
           escalated_to: string | null
           estimated_employees: number | null
+          excluded_from_risk: boolean
           fund_type: string | null
           id: string
           inspection_id: string | null
@@ -46036,7 +46758,10 @@ export type Database = {
           priority: string | null
           related_arrangement_id: string | null
           related_prior_violation_id: string | null
+          resolution_authorized_at: string | null
+          resolution_authorized_by: string | null
           resolution_notes: string | null
+          resolution_type_code: string | null
           resolved_at: string | null
           resolved_by: string | null
           severity: string | null
@@ -46086,6 +46811,7 @@ export type Database = {
           escalated_at?: string | null
           escalated_to?: string | null
           estimated_employees?: number | null
+          excluded_from_risk?: boolean
           fund_type?: string | null
           id?: string
           inspection_id?: string | null
@@ -46106,7 +46832,10 @@ export type Database = {
           priority?: string | null
           related_arrangement_id?: string | null
           related_prior_violation_id?: string | null
+          resolution_authorized_at?: string | null
+          resolution_authorized_by?: string | null
           resolution_notes?: string | null
+          resolution_type_code?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
@@ -46156,6 +46885,7 @@ export type Database = {
           escalated_at?: string | null
           escalated_to?: string | null
           estimated_employees?: number | null
+          excluded_from_risk?: boolean
           fund_type?: string | null
           id?: string
           inspection_id?: string | null
@@ -46176,7 +46906,10 @@ export type Database = {
           priority?: string | null
           related_arrangement_id?: string | null
           related_prior_violation_id?: string | null
+          resolution_authorized_at?: string | null
+          resolution_authorized_by?: string | null
           resolution_notes?: string | null
+          resolution_type_code?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
@@ -122348,6 +123081,15 @@ export type Database = {
         | { Args: never; Returns: number }
         | { Args: { p_scope_key?: string }; Returns: number }
       ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
+      ce_b2_audit: {
+        Args: {
+          p_action: string
+          p_entity: string
+          p_entity_id: string
+          p_payload: Json
+        }
+        Returns: undefined
+      }
       ce_batch_recompute_compliance: {
         Args: {
           p_employer_ids?: string[]
@@ -122644,6 +123386,15 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      ce_override_sector_benchmark_v1: {
+        Args: {
+          p_benchmark_id: string
+          p_override_average: number
+          p_override_minimum: number
+          p_reason: string
+        }
+        Returns: string
+      }
       ce_partial_payment_authority_for: {
         Args: { p_employer_id: string; p_wage_period: string }
         Returns: {
@@ -122785,6 +123536,15 @@ export type Database = {
         Returns: Json
       }
       ce_pp_role_rank: { Args: { p_role: string }; Returns: number }
+      ce_progress_registration_lead_v1: {
+        Args: {
+          p_action: string
+          p_lead_id: string
+          p_notes?: string
+          p_registered_employer_id?: string
+        }
+        Returns: string
+      }
       ce_recalculate_arrangement_summary: {
         Args: { p_actor?: string; p_arrangement_id: string }
         Returns: undefined
@@ -122887,6 +123647,14 @@ export type Database = {
         }
         Returns: string
       }
+      ce_resolve_violation_by_agreement_v1: {
+        Args: {
+          p_notes: string
+          p_resolution_code?: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
       ce_reverse_financial_event: {
         Args: {
           p_original_entry_id: string
@@ -122913,6 +123681,10 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      ce_review_flag_disposition_v1: {
+        Args: { p_disposition: string; p_flag_id: string; p_notes?: string }
+        Returns: string
       }
       ce_review_partial_payment_v1: {
         Args: { p_allocations: Json; p_comments?: string; p_request_id: string }
@@ -122956,6 +123728,18 @@ export type Database = {
         }[]
       }
       ce_set_change_reason: { Args: { p_reason: string }; Returns: undefined }
+      ce_set_employer_status_v1: {
+        Args: {
+          p_clearance_reference?: string
+          p_effective_date?: string
+          p_employer_id: string
+          p_evidence_reference?: string
+          p_evidence_type: string
+          p_reason?: string
+          p_status: string
+        }
+        Returns: string
+      }
       ce_settle_partial_payment_v1: {
         Args: {
           p_amount: number
@@ -122963,6 +123747,10 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      ce_suppress_self_employed_obligation_v1: {
+        Args: { p_obligation_id: string; p_reason: string }
+        Returns: string
       }
       ce_sync_automation_job_schedules: { Args: never; Returns: Json }
       ce_sync_c3_to_ledger: {

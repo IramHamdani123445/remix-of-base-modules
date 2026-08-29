@@ -19,6 +19,61 @@ import {
   evaluatePartialPaymentObligation,
   isPartialPaymentViolation,
 } from "../_shared/compliance/partialPaymentAllocation.ts";
+import { buildReviewFlag, type CeReviewFlagRecord } from "../_shared/compliance/detection/reviewFlag.ts";
+import {
+  evaluateRepeatOffender,
+  buildRepeatOffenderFlag,
+  type CeRepeatOccurrence,
+} from "../_shared/compliance/detection/repeatOffender.ts";
+import {
+  evaluateArrangementInstallments,
+  planInstallmentReminders,
+  isBreach,
+  type CeInstallment,
+} from "../_shared/compliance/detection/arrangementBreach.ts";
+import {
+  evaluateFundOmissions,
+  type CeC3PersonFundLine,
+  type CeContributionExemption,
+  type CeFundCode,
+} from "../_shared/compliance/detection/fundOmission.ts";
+import {
+  evaluateLead,
+  buildUnregisteredLeadFlag,
+  type CeScoutingLead,
+  type CeEmployerRegisterEntry,
+} from "../_shared/compliance/detection/unregisteredEmployer.ts";
+import {
+  evaluateHeadcountDiscrepancy,
+  evaluateHistoricalHeadcountAnomaly,
+  buildHeadcountFlag,
+  type CeHeadcountTier,
+  type CeHeadcountObservation,
+} from "../_shared/compliance/detection/headcountAnomaly.ts";
+import {
+  evaluateSectorBenchmark,
+  evaluateHistoricalWageVariance,
+  buildWageFlag,
+  type CeSectorBenchmark,
+  type CeWageObservation,
+} from "../_shared/compliance/detection/wageAnomaly.ts";
+import {
+  evaluateImproperCessation,
+  evaluateContributionGap,
+  type CeCessationInput,
+  type CeObligationHistoryEntry,
+} from "../_shared/compliance/detection/employerStatusRules.ts";
+import {
+  evaluateSelfEmployedObligation,
+  consolidateSelfEmployedReminders,
+  computeOverContributionCredits,
+  detectEmployerOverlap,
+  detectMultiEmployerReporting,
+  buildSelfEmployedOverlapFlag,
+  buildMultiEmployerFlag,
+  type CeSelfEmployedObligation,
+  type CeEmployerReportedPeriod,
+} from "../_shared/compliance/detection/selfEmployedCompliance.ts";
 
 
 const corsHeaders = {
@@ -507,6 +562,7 @@ interface ScanCarry {
   violations_would_create: number;
   by_rule: Array<{ rule_code: string; rule_name: string; detected: number; skipped: number; total: number }>;
   sample_violations: any[];
+  review_flags_created: number;
 }
 
 interface ExecuteScanArgs {
@@ -534,6 +590,7 @@ function emptyCarry(): ScanCarry {
     violations_would_create: 0,
     by_rule: [],
     sample_violations: [],
+    review_flags_created: 0,
   };
 }
 
@@ -759,6 +816,29 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     );
 
     const detected: DetectedViolation[] = [];
+
+    // ── Review-flag accumulator (Checkpoint B2) ──
+    // Review flags are NOT violations. Existing OPEN/UNDER_REVIEW dedupe keys
+    // are preloaded so re-running the scan against unchanged data never
+    // produces a duplicate flag.
+    const existingFlagRows = await fetchAllRows(
+      supabase,
+      "ce_compliance_review_flags",
+      employerFilter ? "employer_id" : undefined,
+      employerFilter || undefined,
+      "dedupe_key, status",
+    );
+    const existingFlagKeys = new Set<string>(
+      existingFlagRows
+        .filter((r: any) => r.status === "OPEN" || r.status === "UNDER_REVIEW")
+        .map((r: any) => r.dedupe_key),
+    );
+    const flags: CeReviewFlagRecord[] = [];
+    const pushFlag = (record: CeReviewFlagRecord) => {
+      if (existingFlagKeys.has(record.dedupe_key)) return;
+      existingFlagKeys.add(record.dedupe_key);
+      flags.push(record);
+    };
 
     // Get all unique employer regnos from filing facts (primary list)
     let allEmployers = filings.map((f: any) => ({
@@ -1249,108 +1329,246 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
 
           case "repeat_violation_check": {
-            const threshold = Number(params.violation_count_threshold);
-            const rollingMonths = Number(params.rolling_months);
-            const sameTypeOnly = params.same_type_only === true;
-            const windowStart = new Date(asOfDate);
-            windowStart.setMonth(windowStart.getMonth() - rollingMonths);
-
-            const empViolations = unresolvedViolations.filter((v: any) => {
-              if (v.employer_id !== emp.regno) return false;
-              const seen = v.discovered_date ?? v.created_at;
-              return seen ? new Date(seen) >= windowStart : false;
-            });
-
-            let qualifying = empViolations.length;
-            let typeNote = "";
-            if (sameTypeOnly) {
-              const byType = new Map<string, number>();
-              for (const v of empViolations) {
-                byType.set(v.violation_type_id, (byType.get(v.violation_type_id) || 0) + 1);
-              }
-              qualifying = byType.size > 0 ? Math.max(...byType.values()) : 0;
-              typeNote = " of the same violation type";
-            }
-
-            if (qualifying >= threshold) {
-              shouldFlag = true;
-              summary = `Repeat offender: ${qualifying} unresolved violations${typeNote} in the last ${rollingMonths} months (threshold: ${threshold}).`;
-              periodFrom = asOfPeriod;
-            }
+            // DR-005: pure repeatOffender module. Occurrences of the
+            // repeat-offender rule's OWN violation type never feed the count.
+            const occurrences: CeRepeatOccurrence[] = unresolvedViolations
+              .concat(
+                params.include_resolved_occurrences
+                  ? existingViolations.filter((v: any) => v.is_deleted === false && !unresolvedViolations.includes(v))
+                  : [],
+              )
+              .filter((v: any) => v.employer_id === emp.regno && v.violation_type_id !== rule.violation_type_id)
+              .map((v: any) => ({
+                violationId: v.id,
+                employerId: v.employer_id,
+                employerName: emp.name,
+                violationTypeId: v.violation_type_id,
+                violationTypeCode: v.violation_type_code ?? "UNKNOWN",
+                occurredOn: (v.discovered_date ?? v.created_at ?? asOfDate).slice(0, 10),
+                periodKey: v.period_from ? String(v.period_from).slice(0, 7) : undefined,
+                resolved: !["OPEN", "IN_PROGRESS", "ESCALATED", "UNDER_REVIEW"].includes(v.status),
+              }));
+            const results = evaluateRepeatOffender(
+              occurrences,
+              {
+                threshold: Number(params.violation_count_threshold),
+                rollingMonths: Number(params.rolling_months),
+                sameTypeOnly: params.same_type_only === true,
+                requireConsecutive: params.require_consecutive === true,
+                includeResolvedOccurrences: params.include_resolved_occurrences === true,
+              },
+              asOfDate,
+            );
+            for (const r of results) pushFlag(buildRepeatOffenderFlag(r, rule.rule_code, rule.id));
+            shouldFlag = false;
             break;
           }
 
           case "installment_overdue": {
-            const graceDays = Number(params.grace_days_after_installment);
-            const empArrangements = (arrangementMap.get(emp.regno) || []).filter((a: any) => {
-              if (a.health_status === "HEALTHY" || a.health_status === "INACTIVE") return false;
-              const overdue = Number(a.days_overdue ?? a.days_since_last_payment ?? NaN);
-              return Number.isFinite(overdue) ? overdue >= graceDays : true;
-            });
-            if (empArrangements.length > 0) {
-              const worst = empArrangements[0];
-              shouldFlag = true;
-              summary = `Arrangement breach: ${worst.health_status} status. Missed ${worst.missed_payments || 0} payments (grace ${graceDays}d).`;
-              periodFrom = asOfPeriod;
+            // DR-006: pure arrangementBreach module over per-installment data.
+            const config = {
+              graceDaysAfterInstallment: Number(params.grace_days_after_installment),
+              reminderLeadDays: Number(params.reminder_lead_days),
+              partialInstallmentIsBreach: params.partial_installment_is_breach === true,
+            };
+            const installmentRows = installmentsByEmp.get(emp.regno) || [];
+            const installments: CeInstallment[] = installmentRows
+              .filter((i: any) => !waivedArrangementIds.has(String(i.arrangement_id)))
+              .map((i: any) => ({
+                installmentId: i.installment_id,
+                arrangementId: i.arrangement_id,
+                employerId: emp.regno,
+                installmentNumber: Number(i.installment_number ?? 0),
+                dueDate: String(i.due_date).slice(0, 10),
+                amount: Number(i.scheduled_amount ?? 0),
+                paidAmount: Number(i.paid_amount ?? 0),
+                paidDate: i.paid_date ?? null,
+              }));
+            const evaluations = evaluateArrangementInstallments(installments, config, asOfDate);
+            for (const e of evaluations) {
+              if (!isBreach(e.outcome)) continue;
+              const ym = e.breachDate ? e.breachDate.slice(0, 7) : asOfPeriod;
+              pushPeriod(emp, ym, `Arrangement breach: ${e.summary}`);
             }
+            const reminders = planInstallmentReminders(installments, config, asOfDate);
+            if (!dryRun) {
+              for (const r of reminders) {
+                await supabase
+                  .from("ce_arrangement_installment_reminders")
+                  .upsert(
+                    {
+                      installment_id: r.installmentId,
+                      arrangement_id: r.arrangementId,
+                      employer_id: r.employerId,
+                      installment_due_date: r.installmentDueDate,
+                      reminder_date: r.reminderDate,
+                      lead_days: r.leadDays,
+                      status: "PENDING",
+                    },
+                    { onConflict: "installment_id,reminder_date", ignoreDuplicates: true },
+                  );
+              }
+            }
+            shouldFlag = false;
             break;
           }
 
-          case "levy_omission_check": {
-            const minOutstanding = Number(params.min_outstanding_amount_xcd);
-            const outstanding = Number(arrear?.total_outstanding ?? 0);
-            if (arrear?.has_arrears && outstanding > minOutstanding) {
-              shouldFlag = true;
-              summary = `Levy/severance contribution omission suspected. Outstanding: $${outstanding.toLocaleString()} (threshold $${minOutstanding.toLocaleString()}).`;
-              periodFrom = asOfPeriod;
+          case "levy_omission_check":
+          case "severance_omission_check": {
+            // DR-007: pure fundOmission module over C3 person/fund lines.
+            // The retired generic-arrears/min_outstanding_amount_xcd test
+            // never reappears here.
+            const checkFunds = (params.check_funds as CeFundCode[]) ?? [];
+            const zeroThreshold = Number(params.zero_threshold ?? 0);
+            const lines = fundLinesByEmp.get(emp.regno) || [];
+            if (lines.length === 0) {
+              markObligationConfigError(
+                rule.rule_code,
+                `No person-level C3 line data available for employer ${emp.regno}; period skipped rather than falling back to arrears.`,
+              );
+              shouldFlag = false;
+              break;
             }
+            const exemptions = exemptionsByEmp.get(emp.regno) || [];
+            const omissions = evaluateFundOmissions(
+              lines.filter((l) => checkFunds.includes(l.fundCode)),
+              exemptions,
+              { checkFunds, zeroThreshold },
+            );
+            for (const o of omissions) {
+              pushPeriod(emp, o.periodKey, o.summary);
+            }
+            shouldFlag = false;
             break;
           }
 
           case "registration_not_found": {
+            // DR-008: pure unregisteredEmployer module over scouting/inspection leads.
+            const leadRows = leadsByEmp.get(emp.regno) || [];
+            for (const lead of leadRows) {
+              const scoutingLead: CeScoutingLead = {
+                leadId: lead.id,
+                tradeName: lead.trade_name,
+                businessAddress: lead.business_address ?? undefined,
+                discoveredDate: String(lead.discovered_date).slice(0, 10),
+                sourceType: (lead.source_type as any) ?? "INSPECTION",
+                sourceReference: lead.source_reference ?? undefined,
+                status: lead.status,
+                instructedAt: lead.instructed_at,
+                registeredEmployerId: lead.registered_employer_id,
+                legalRecommended: lead.legal_recommended,
+                legalApprovedBy: lead.legal_approved_by,
+              };
+              const ev = evaluateLead(
+                scoutingLead,
+                employerRegister,
+                { matchOnTradeName: params.match_on_trade_name === true, matchOnAddress: params.match_on_address === true },
+                { registrationResponseDays: Number(params.registration_response_days), managementEscalationDays: Number(params.management_escalation_days) },
+                asOfDate,
+              );
+              if (ev.action === "RAISE_REVIEW_FLAG") {
+                pushFlag(buildUnregisteredLeadFlag(ev, scoutingLead, rule.rule_code, rule.id));
+              }
+              if (!dryRun && ev.action === "ESCALATE_TO_MANAGEMENT" && lead.status !== "ESCALATED") {
+                await supabase.from("ce_unregistered_employer_leads").update({ status: "ESCALATED", escalated_at: asOfDate }).eq("id", lead.id);
+              }
+            }
+            shouldFlag = false;
             break;
           }
 
           case "employee_underreporting": {
-            const minDelta = Number(params.min_employee_delta);
-            const minPct = params.min_discrepancy_percent;
-            if (wf && wf.employee_delta < -minDelta) {
-              const registered = Number(wf.registered_total ?? 0);
-              const pct = registered > 0 ? (Math.abs(Number(wf.employee_delta)) / registered) * 100 : 0;
-              if (minPct === undefined || pct >= Number(minPct)) {
-                shouldFlag = true;
-                summary = `Employee discrepancy: Registered ${wf.registered_total} but last reported ${wf.last_reported_employees} (delta: ${wf.employee_delta}${minPct === undefined ? "" : `, ${pct.toFixed(1)}%`}).`;
-                periodFrom = wf.last_reported_period || asOfPeriod;
-              }
+            // DR-009: pure headcountAnomaly module against configured tiers.
+            if (wf) {
+              const disc = evaluateHeadcountDiscrepancy(
+                {
+                  employerId: emp.regno,
+                  employerName: emp.name,
+                  periodKey: wf.last_reported_period ?? asOfPeriod,
+                  registeredEmployees: Number(wf.registered_total ?? 0),
+                  reportedEmployees: Number(wf.last_reported_employees ?? 0),
+                },
+                headcountTiers,
+                {
+                  useSizeTiers: params.use_size_tiers === true,
+                  fallbackMinEmployeeDelta: params.min_employee_delta,
+                  fallbackMinDiscrepancyPercent: params.min_discrepancy_percent,
+                },
+              );
+              if (disc) pushFlag(buildHeadcountFlag(disc, rule.rule_code, rule.id));
+
+              const history = headcountHistoryByEmp.get(emp.regno) || [];
+              const anomaly = evaluateHistoricalHeadcountAnomaly(
+                history,
+                { employerId: emp.regno, employerName: emp.name, periodKey: wf.last_reported_period ?? asOfPeriod, reportedEmployees: Number(wf.last_reported_employees ?? 0) },
+                {
+                  historicalBaselinePeriods: Number(params.historical_baseline_periods),
+                  minEmployerSizeForPercentage: Number(params.min_employer_size_for_percentage),
+                  historicalChangePercent: Number(params.historical_change_percent),
+                  historicalChangeAbsolute: Number(params.historical_change_absolute),
+                },
+              );
+              if (anomaly) pushFlag(buildHeadcountFlag(anomaly, rule.rule_code, rule.id));
             }
+            shouldFlag = false;
             break;
           }
 
-
           case "wage_underreporting": {
-            const minWage = rule.parameters?.min_wage_weekly_xcd;
-            if (!minWage) break;
+            // DR-010: pure wageAnomaly module against sector benchmarks and history.
+            const obs = wageObservationsByEmp.get(emp.regno);
+            if (obs) {
+              const wageConfig = {
+                enableSectorBenchmark: params.enable_sector_benchmark === true,
+                enableHistoricalVariance: params.enable_historical_variance === true,
+                benchmarkVariancePercent: Number(params.benchmark_variance_percent),
+                historicalVariancePercent: Number(params.historical_variance_percent),
+                lookbackPeriods: Number(params.lookback_periods),
+                benchmarkRecalcMonths: Number(params.benchmark_recalc_months),
+              };
+              const bench = evaluateSectorBenchmark(obs, sectorBenchmarks, wageConfig);
+              if (bench) pushFlag(buildWageFlag(bench, rule.rule_code, rule.id));
+              const hist = wageHistoryByEmp.get(emp.regno) || [];
+              const variance = evaluateHistoricalWageVariance(hist, obs, wageConfig);
+              if (variance) pushFlag(buildWageFlag(variance, rule.rule_code, rule.id));
+            }
+            shouldFlag = false;
             break;
           }
 
           case "employer_cessation": {
-            const ceasedStatuses: string[] = params.trigger_on_status;
-            const minOutstanding = Number(params.min_outstanding_amount_xcd);
-            const outstanding = Number(arrear?.total_outstanding ?? 0);
-            if (
-              filing?.employer_status &&
-              ceasedStatuses.includes(String(filing.employer_status)) &&
-              outstanding > minOutstanding
-            ) {
+            // DR-011: pure employerStatusRules module. Authoritative status
+            // state is preferred; the legacy view status is only a fallback.
+            const authoritative = statusStateByEmp.get(emp.regno);
+            const status = (authoritative?.status ?? filing?.employer_status) as any;
+            if (!authoritative) {
+              markObligationConfigError(rule.rule_code, `No authoritative ce_employer_status_states row for ${emp.regno}; falling back to the legacy filing-status column.`);
+            }
+            const cessationInput: CeCessationInput = {
+              employerId: emp.regno,
+              employerName: emp.name,
+              status,
+              effectiveDate: authoritative?.effective_date ?? asOfDate,
+              outstandingAmount: Number(arrear?.total_outstanding ?? 0),
+              clearanceCertificateReference: authoritative?.clearance_certificate_reference ?? null,
+              openObligationPeriods: (obligationPeriodsByEmp.get(emp.regno) || []).filter((o: any) => o.is_outstanding).map((o: any) => o.reporting_period),
+              openViolationCount: unresolvedViolations.filter((v: any) => v.employer_id === emp.regno).length,
+            };
+            const finding = evaluateImproperCessation(cessationInput, {
+              triggerOnStatus: params.trigger_on_status,
+              requireClearanceCertificate: params.require_clearance_certificate === true,
+              minOutstandingAmountXcd: Number(params.min_outstanding_amount_xcd),
+            });
+            if (finding) {
               shouldFlag = true;
-              summary = `Cessation without clearance: Employer status '${filing.employer_status}' with outstanding balance $${outstanding.toLocaleString()} (threshold $${minOutstanding.toLocaleString()}).`;
+              summary = finding.summary;
               periodFrom = asOfPeriod;
             }
             break;
           }
 
-
-          case "severance_omission_check": {
+          case "contribution_gap_detected_dr012": {
+            // handled below (aliased trigger name kept distinct from c3_missing_30_days)
             break;
           }
 

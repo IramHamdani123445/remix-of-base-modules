@@ -31,16 +31,24 @@ describe("compliance rule parameter contract", () => {
       repeat_threshold: 3,
       rolling_months: 12,
       same_type_only: true,
+      require_consecutive: false,
+      include_resolved_occurrences: true,
     });
     expect(r.errors).toEqual([]);
     expect(r.values.violation_count_threshold).toBe(3);
     expect(r.sources.violation_count_threshold).toBe("alias:repeat_threshold");
   });
 
+  it("retires the DR-007 generic-arrears threshold in favour of fund scoping", () => {
+    const keys = DETECTION_PARAM_SPEC.levy_omission_check.map((f) => f.key);
+    expect(keys).not.toContain("min_outstanding_amount_xcd");
+    expect(keys).toContain("check_funds");
+  });
+
   it("reports a configuration error instead of substituting a business default", () => {
     const r = resolveRuleParameters(DETECTION_PARAM_SPEC.levy_omission_check, {}, null);
-    expect(r.values.min_outstanding_amount_xcd).toBeUndefined();
-    expect(r.errors.join(" ")).toContain("min_outstanding_amount_xcd");
+    expect(r.values.check_funds).toBeUndefined();
+    expect(r.errors.join(" ")).toContain("check_funds");
   });
 
   it("rejects out-of-range and non-integer values", () => {
@@ -53,8 +61,9 @@ describe("compliance rule parameter contract", () => {
 
   it("flags required fields in the admin draft validator", () => {
     const errs = validateRuleParameterDraft(DETECTION_PARAM_SPEC.levy_omission_check, {}, null);
-    expect(errs.min_outstanding_amount_xcd).toBeTruthy();
+    expect(errs.check_funds).toBeTruthy();
   });
+
 
   it("DR-004 no longer exposes any shortfall threshold to configure", () => {
     const keys = DETECTION_PARAM_SPEC.payment_partial.map((f) => f.key);
@@ -84,5 +93,6 @@ describe("compliance rule parameter contract", () => {
     expect(src).not.toMatch(/total_outstanding > 500/);
     expect(src).not.toMatch(/avg \* 1\.5/);
     expect(src).not.toMatch(/\.slice\(0, 3\)/);
+    expect(src).not.toMatch(/total_outstanding > minOutstanding/);
   });
 });

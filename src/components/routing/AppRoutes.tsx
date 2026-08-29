@@ -161,6 +161,13 @@ const ComplianceJobConfiguration = lazy(() => import('@/pages/compliance/automat
 const ComplianceJobHistory = lazy(() => import('@/pages/compliance/automation/JobHistory'));
 const ComplianceRuleEngine = lazy(() => import('@/pages/compliance/settings/RuleEngine'));
 const ComplianceViolationTypes = lazy(() => import('@/pages/compliance/settings/ViolationTypes'));
+const EmployerStatusRegister = lazy(() => import('@/pages/compliance/settings/EmployerStatusRegister'));
+const ReviewFlagQueue = lazy(() => import('@/pages/compliance/settings/ReviewFlagQueue'));
+const SelfEmployedCompliance = lazy(() => import('@/pages/compliance/settings/SelfEmployedCompliance'));
+const ComplianceHeadcountTiers = lazy(() => import('@/pages/compliance/settings/HeadcountTiers'));
+const ComplianceWageBenchmarks = lazy(() => import('@/pages/compliance/settings/WageBenchmarks'));
+const ComplianceContributionExemptions = lazy(() => import('@/pages/compliance/settings/ContributionExemptions'));
+const ComplianceUnregisteredLeads = lazy(() => import('@/pages/compliance/settings/UnregisteredEmployerLeads'));
 const ComplianceNumberTemplates = lazy(() => import('@/pages/compliance/settings/NumberTemplates'));
 const ComplianceRiskScoringConfig = lazy(() => import('@/pages/compliance/settings/RiskScoringConfig'));
 const ComplianceCommTriggerRulesPage = lazy(() => import('@/pages/compliance/admin/CommTriggerRulesPage'));
@@ -1595,6 +1602,13 @@ export const AppRoutes = () => {
       {/* ── Admin — settings, geography, staff, automation, tools ── */}
       <Route path="/compliance/admin/settings/rule-engine" element={<ComplianceRuleEngine />} />
       <Route path="/compliance/admin/settings/violation-types" element={<ComplianceViolationTypes />} />
+      <Route path="/compliance/admin/settings/employer-status-register" element={<EmployerStatusRegister />} />
+      <Route path="/compliance/admin/settings/review-flag-queue" element={<ReviewFlagQueue />} />
+      <Route path="/compliance/admin/settings/self-employed-compliance" element={<SelfEmployedCompliance />} />
+      <Route path="/compliance/admin/settings/headcount-tiers" element={<ComplianceHeadcountTiers />} />
+      <Route path="/compliance/admin/settings/wage-benchmarks" element={<ComplianceWageBenchmarks />} />
+      <Route path="/compliance/admin/settings/contribution-exemptions" element={<ComplianceContributionExemptions />} />
+      <Route path="/compliance/admin/settings/unregistered-employer-leads" element={<ComplianceUnregisteredLeads />} />
       <Route path="/compliance/admin/settings/assignment-routing" element={<AssignmentRoutingRules />} />
       <Route path="/compliance/admin/settings/number-templates" element={<ComplianceNumberTemplates />} />
       <Route path="/compliance/admin/settings/risk-policy" element={<RiskRulePolicy />} />
