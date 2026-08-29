@@ -44581,6 +44581,7 @@ export type Database = {
           agreement_signed: boolean | null
           approved_at: string | null
           approved_by: string | null
+          approved_by_user: string | null
           arrangement_number: string
           breach_date: string | null
           breach_detected: boolean | null
@@ -44589,6 +44590,7 @@ export type Database = {
           conditions: Json | null
           created_at: string | null
           created_by: string | null
+          created_by_user: string | null
           down_payment: number | null
           employer_id: string
           employer_name: string | null
@@ -44601,10 +44603,14 @@ export type Database = {
           missed_payments: number | null
           next_due_date: string | null
           number_of_installments: number
+          rejection_reason: string | null
           signature_data: string | null
           signed_at: string | null
           start_date: string
           status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
           terms_text: string | null
           total_debt: number
           total_paid: number | null
@@ -44616,6 +44622,7 @@ export type Database = {
           agreement_signed?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_by_user?: string | null
           arrangement_number: string
           breach_date?: string | null
           breach_detected?: boolean | null
@@ -44624,6 +44631,7 @@ export type Database = {
           conditions?: Json | null
           created_at?: string | null
           created_by?: string | null
+          created_by_user?: string | null
           down_payment?: number | null
           employer_id: string
           employer_name?: string | null
@@ -44636,10 +44644,14 @@ export type Database = {
           missed_payments?: number | null
           next_due_date?: string | null
           number_of_installments: number
+          rejection_reason?: string | null
           signature_data?: string | null
           signed_at?: string | null
           start_date: string
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_user?: string | null
           terms_text?: string | null
           total_debt: number
           total_paid?: number | null
@@ -44651,6 +44663,7 @@ export type Database = {
           agreement_signed?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_by_user?: string | null
           arrangement_number?: string
           breach_date?: string | null
           breach_detected?: boolean | null
@@ -44659,6 +44672,7 @@ export type Database = {
           conditions?: Json | null
           created_at?: string | null
           created_by?: string | null
+          created_by_user?: string | null
           down_payment?: number | null
           employer_id?: string
           employer_name?: string | null
@@ -44671,10 +44685,14 @@ export type Database = {
           missed_payments?: number | null
           next_due_date?: string | null
           number_of_installments?: number
+          rejection_reason?: string | null
           signature_data?: string | null
           signed_at?: string | null
           start_date?: string
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_user?: string | null
           terms_text?: string | null
           total_debt?: number
           total_paid?: number | null
@@ -124029,6 +124047,7 @@ export type Database = {
         Args: { _capability: string; _user_id: string }
         Returns: boolean
       }
+      ce_actor_code: { Args: { _user_id: string }; Returns: string }
       ce_actor_user_code: { Args: { _user_id: string }; Returns: string }
       ce_allocate_employer_payment: {
         Args: {
@@ -124076,6 +124095,56 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_arrangement_approve_v1: {
+        Args: { p_arrangement_id: string; p_comments?: string }
+        Returns: {
+          agreement_document_url: string | null
+          agreement_signed: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_user: string | null
+          arrangement_number: string
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          conditions: Json | null
+          created_at: string | null
+          created_by: string | null
+          created_by_user: string | null
+          down_payment: number | null
+          employer_id: string
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          installment_amount: number
+          installments_paid: number | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          number_of_installments: number
+          rejection_reason: string | null
+          signature_data: string | null
+          signed_at: string | null
+          start_date: string
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
+          terms_text: string | null
+          total_debt: number
+          total_paid: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_payment_arrangements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ce_arrangement_blocking_lookup: {
         Args: { p_employer_id: string }
         Returns: {
@@ -124088,6 +124157,106 @@ export type Database = {
       ce_arrangement_grace_days:
         | { Args: never; Returns: number }
         | { Args: { p_scope_key?: string }; Returns: number }
+      ce_arrangement_reject_v1: {
+        Args: { p_arrangement_id: string; p_reason: string }
+        Returns: {
+          agreement_document_url: string | null
+          agreement_signed: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_user: string | null
+          arrangement_number: string
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          conditions: Json | null
+          created_at: string | null
+          created_by: string | null
+          created_by_user: string | null
+          down_payment: number | null
+          employer_id: string
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          installment_amount: number
+          installments_paid: number | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          number_of_installments: number
+          rejection_reason: string | null
+          signature_data: string | null
+          signed_at: string | null
+          start_date: string
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
+          terms_text: string | null
+          total_debt: number
+          total_paid: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_payment_arrangements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ce_arrangement_submit_v1: {
+        Args: { p_arrangement_id: string; p_note?: string }
+        Returns: {
+          agreement_document_url: string | null
+          agreement_signed: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_user: string | null
+          arrangement_number: string
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          conditions: Json | null
+          created_at: string | null
+          created_by: string | null
+          created_by_user: string | null
+          down_payment: number | null
+          employer_id: string
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          installment_amount: number
+          installments_paid: number | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          number_of_installments: number
+          rejection_reason: string | null
+          signature_data: string | null
+          signed_at: string | null
+          start_date: string
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
+          terms_text: string | null
+          total_debt: number
+          total_paid: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_payment_arrangements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
       ce_assignment_command_active: { Args: never; Returns: boolean }
       ce_assignment_require_authz: {
