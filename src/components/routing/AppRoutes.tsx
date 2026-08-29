@@ -155,6 +155,7 @@ const ComplianceBreachMonitoring = lazy(() => import('@/pages/compliance/arrange
 const ComplianceLegalQueue = lazy(() => import('@/pages/compliance/legal/LegalQueue'));
 const ComplianceLegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedingsPage'));
 const ComplianceWaivers = lazy(() => import('@/pages/compliance/legal/WaiversOverrides'));
+const CompliancePartialPayments = lazy(() => import('@/pages/compliance/payments/PartialPaymentRequests'));
 const ComplianceJobConfiguration = lazy(() => import('@/pages/compliance/automation/JobConfiguration'));
 const ComplianceJobHistory = lazy(() => import('@/pages/compliance/automation/JobHistory'));
 const ComplianceRuleEngine = lazy(() => import('@/pages/compliance/settings/RuleEngine'));
