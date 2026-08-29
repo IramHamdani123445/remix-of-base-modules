@@ -694,7 +694,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       "ce_violations",
       employerFilter ? "employer_id" : undefined,
       employerFilter || undefined,
-      "employer_id, violation_type_id, period_from, status, is_deleted",
+      "employer_id, violation_type_id, period_from, status, is_deleted, discovered_date, created_at",
     );
     const unresolvedViolations = existingViolations.filter(
       (v: any) =>
