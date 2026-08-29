@@ -37634,6 +37634,51 @@ export type Database = {
           },
         ]
       }
+      ce_cl1_rehearsal_evidence: {
+        Row: {
+          cached_balance: number | null
+          cached_principal_due: number | null
+          credit_available: number | null
+          interest_accrued: number | null
+          interest_outstanding: number | null
+          penalty_outstanding: number | null
+          principal_due: number | null
+          principal_outstanding: number | null
+          principal_paid: number | null
+          step: string | null
+          step_no: number | null
+          total_outstanding: number | null
+        }
+        Insert: {
+          cached_balance?: number | null
+          cached_principal_due?: number | null
+          credit_available?: number | null
+          interest_accrued?: number | null
+          interest_outstanding?: number | null
+          penalty_outstanding?: number | null
+          principal_due?: number | null
+          principal_outstanding?: number | null
+          principal_paid?: number | null
+          step?: string | null
+          step_no?: number | null
+          total_outstanding?: number | null
+        }
+        Update: {
+          cached_balance?: number | null
+          cached_principal_due?: number | null
+          credit_available?: number | null
+          interest_accrued?: number | null
+          interest_outstanding?: number | null
+          penalty_outstanding?: number | null
+          principal_due?: number | null
+          principal_outstanding?: number | null
+          principal_paid?: number | null
+          step?: string | null
+          step_no?: number | null
+          total_outstanding?: number | null
+        }
+        Relationships: []
+      }
       ce_completion_gate_config: {
         Row: {
           created_at: string
@@ -41557,6 +41602,51 @@ export type Database = {
           status?: string
           summary_message?: string | null
           triggered_by?: string
+        }
+        Relationships: []
+      }
+      ce_ledger_balance_reconciliation_log: {
+        Row: {
+          balance_after: number
+          balance_before: number
+          cause: string
+          components_after: Json
+          components_before: Json
+          created_at: string
+          employer_id: string
+          fund_type: Database["public"]["Enums"]["ce_fund_type"]
+          id: string
+          period: string
+          reconciled_by: string
+          run_id: string
+        }
+        Insert: {
+          balance_after: number
+          balance_before: number
+          cause: string
+          components_after: Json
+          components_before: Json
+          created_at?: string
+          employer_id: string
+          fund_type: Database["public"]["Enums"]["ce_fund_type"]
+          id?: string
+          period: string
+          reconciled_by?: string
+          run_id: string
+        }
+        Update: {
+          balance_after?: number
+          balance_before?: number
+          cause?: string
+          components_after?: Json
+          components_before?: Json
+          created_at?: string
+          employer_id?: string
+          fund_type?: Database["public"]["Enums"]["ce_fund_type"]
+          id?: string
+          period?: string
+          reconciled_by?: string
+          run_id?: string
         }
         Relationships: []
       }
@@ -116841,6 +116931,24 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_employer_outstanding: {
+        Row: {
+          credit_available: number | null
+          employer_id: string | null
+          fund_type: Database["public"]["Enums"]["ce_fund_type"] | null
+          interest_accrued: number | null
+          interest_outstanding: number | null
+          oldest_arrears_period: string | null
+          penalty_charged: number | null
+          penalty_outstanding: number | null
+          periods_in_arrears: number | null
+          principal_due: number | null
+          principal_outstanding: number | null
+          principal_paid: number | null
+          total_outstanding: number | null
+        }
+        Relationships: []
+      }
       ce_v_employer_payment_status: {
         Row: {
           employer_name: string | null
@@ -116877,6 +116985,30 @@ export type Database = {
           registered_males: number | null
           registered_total: number | null
           regno: string | null
+        }
+        Relationships: []
+      }
+      ce_v_ledger_period_balances: {
+        Row: {
+          credit_available: number | null
+          employer_id: string | null
+          fund_type: Database["public"]["Enums"]["ce_fund_type"] | null
+          interest_accrued: number | null
+          interest_outstanding: number | null
+          interest_paid: number | null
+          net_balance_signed: number | null
+          payments_received: number | null
+          penalty_charged: number | null
+          penalty_outstanding: number | null
+          penalty_paid: number | null
+          period: string | null
+          posted_entry_count: number | null
+          principal_due: number | null
+          principal_outstanding: number | null
+          principal_paid: number | null
+          total_outstanding: number | null
+          waivers_applied: number | null
+          write_offs: number | null
         }
         Relationships: []
       }
@@ -123894,6 +124026,7 @@ export type Database = {
         }[]
       }
       ce_is_trusted_session: { Args: never; Returns: boolean }
+      ce_ledger_settlement_order: { Args: never; Returns: string[] }
       ce_list_case_documents: {
         Args: { p_case_id: string }
         Returns: {
@@ -124101,6 +124234,15 @@ export type Database = {
       }
       ce_recalculate_breach_state: {
         Args: { p_actor?: string; p_arrangement_id: string }
+        Returns: Json
+      }
+      ce_recalculate_ledger_period_balances: {
+        Args: {
+          p_actor?: string
+          p_cause?: string
+          p_dry_run?: boolean
+          p_employer_id?: string
+        }
         Returns: Json
       }
       ce_recalculate_period_summary: {

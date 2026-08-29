@@ -113,12 +113,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get employers with outstanding balances
+    // Employers with outstanding contribution PRINCIPAL.
+    // Checkpoint C-L1: penalties are charged on unpaid principal, never on the
+    // generic cached balance (which also contains penalties and interest).
     const { data: employers, error: empError } = await supabase
-      .from("ce_ledger_periods")
-      .select("employer_id, balance, principal_due")
+      .from("ce_v_ledger_period_balances")
+      .select("employer_id, principal_due, principal_outstanding, total_outstanding")
       .eq("fund_type", fundType)
-      .gt("balance", 0);
+      .gt("principal_outstanding", 0);
+
 
     if (empError) throw empError;
 
@@ -143,7 +146,8 @@ Deno.serve(async (req) => {
           }
 
           const minAmount = Number(params.min_amount ?? 0);
-          const penaltyAmount = Math.max(Number(emp.principal_due) * configuredRate, minAmount);
+          const penaltyBase = Number(emp.principal_outstanding);
+          const penaltyAmount = Math.max(penaltyBase * configuredRate, minAmount);
 
           if (penaltyAmount > 0) {
             const idemKey = `penalty-${emp.employer_id}-${period}-${fundType}-${rule.rule_code}`;
@@ -154,7 +158,7 @@ Deno.serve(async (req) => {
               p_fund_type: fundType,
               p_period: period,
               p_amount: penaltyAmount,
-              p_description: `${rule.fund_type} ${rule.applies_to}: ${rule.name} (${(configuredRate * 100).toFixed(1)}% of ${emp.principal_due})`,
+              p_description: `${rule.fund_type} ${rule.applies_to}: ${rule.name} (${(configuredRate * 100).toFixed(1)}% of outstanding principal ${penaltyBase})`,
               p_reference_type: "calculation_rule",
               p_idempotency_key: idemKey,
               p_posted_by: triggeredBy,

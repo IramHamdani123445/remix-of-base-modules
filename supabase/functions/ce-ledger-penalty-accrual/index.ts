@@ -132,11 +132,19 @@ Deno.serve(async (req) => {
       grace_days: compliancePolicy.payment_grace_period_days ?? 0,
     });
 
-    /* ── outstanding contribution balances ── */
+    /* ── outstanding contribution balances ──
+     * AUTHORITATIVE SOURCE (Checkpoint C-L1): ce_v_ledger_period_balances is
+     * derived from the immutable ce_employer_financial_ledger transactions.
+     * We must NEVER infer principal from ce_ledger_periods.balance — that is a
+     * mutable cached TOTAL that interest postings themselves increase, which
+     * would compound interest into the principal base.
+     */
     const { data: periods } = await supabase
-      .from("ce_ledger_periods")
-      .select("employer_id, period, fund_type, principal_due, penalties, interest, payments, balance")
-      .gt("balance", 0);
+      .from("ce_v_ledger_period_balances")
+      .select(
+        "employer_id, period, fund_type, principal_due, principal_outstanding, penalty_outstanding, interest_accrued, interest_outstanding, total_outstanding",
+      )
+      .gt("principal_outstanding", 0);
 
     let read = 0, posted = 0, skipped = 0, failed = 0, review = 0, simulated = 0;
 
@@ -145,12 +153,10 @@ Deno.serve(async (req) => {
       const wagePeriod = normalisePeriod(row.period);
       if (!wagePeriod) { skipped++; continue; }
 
-      // Interest is charged on the contribution principal outstanding — never
-      // on accumulated interest posted as a separate component.
-      const principal = Math.max(
-        Number(row.balance || 0) - Number(row.interest || 0),
-        0,
-      );
+      // Interest is charged on the outstanding contribution principal only —
+      // never on accrued interest, penalties or fines.
+      const principal = Math.max(Number(row.principal_outstanding || 0), 0);
+
 
       let timeline;
       try {
