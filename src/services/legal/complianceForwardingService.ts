@@ -61,8 +61,15 @@ export interface ForwardComplianceCaseInput {
 
 
 export interface CreateComplianceReferralResult {
-  referral_id: string;
-  referral_no: string;
+  /**
+   * PENDING_APPROVAL — a recommendation was submitted and is waiting for
+   * management; no referral exists yet. PREPARED — the approved referral
+   * packet was populated and is now in Legal Pack Preparation.
+   */
+  stage: "PENDING_APPROVAL" | "PREPARED";
+  recommendation_id?: string;
+  referral_id: string | null;
+  referral_no: string | null;
   items_count: number;
   documents_count: number;
   total_referred_amount: number;
@@ -77,8 +84,12 @@ export interface SubmitReferralResult {
 }
 
 /**
- * PHASE 1 — prepare a referral. Creates the DRAFT referral packet only; it does
- * not touch Legal and does not escalate the compliance case.
+ * PHASE 1 — prepare a referral through the governed lifecycle.
+ *
+ * "Refer to Legal" can no longer create a referral: when the case has no
+ * management-approved recommendation this submits one (ce_recommend_legal_v1)
+ * and stops. Only once management approves does a referral exist, and this
+ * function then fills its pack (items + documents).
  */
 export async function createComplianceLegalReferral(
   input: ForwardComplianceCaseInput,
@@ -102,60 +113,56 @@ export async function createComplianceLegalReferral(
     .eq("source_case_id", input.ce_case_id)
     .in("status", ACTIVE_REFERRAL_STATUSES as unknown as string[])
     .maybeSingle();
-  if (existingActive) {
-    throw new Error(
-      `An active Legal Referral (${existingActive.referral_number}, status ${existingActive.status}) already exists for this compliance case. Reject or close it before creating a new one.`,
-    );
-  }
 
   const outstanding =
-    Number(ceCase.total_amount ?? 0) -
-    Number(ceCase.amount_collected ?? 0) -
+    Number((ceCase as any).total_amount ?? 0) -
+    Number((ceCase as any).amount_collected ?? 0) -
     Number((ceCase as any).amount_waived ?? 0);
 
-  // 1. Compliance Legal Referral number (CMP-LR-SKN-{YYYY}-{SEQ})
-  const refNo = await generateNumber({
-    moduleCode: "COMPLIANCE",
-    entityType: "LEGAL_REFERRAL",
-    countryCode: "SKN",
-    userCode: input.user_code ?? null,
-  });
-
-  // 2. Source referral record — created as DRAFT, never pre-approved.
-  const { data: ref, error: refErr } = await sb
-    .from("ce_legal_referrals")
-    .insert({
-      referral_number: refNo.generatedNumber,
-      source_case_id: input.ce_case_id,
-      source_module: "COMPLIANCE",
-      source_record_id: input.ce_case_id,
-      source_reference_no: ceCase.case_number ?? null,
-      referred_by: input.user_code ?? null,
-      referred_at: new Date().toISOString(),
-      referral_reason_code: input.referral_reason_code ?? null,
-      referral_reason_text: input.referral_reason,
-      employer_id: ceCase.employer_id ?? "UNKNOWN",
-      employer_name: ceCase.employer_name ?? "Unknown",
-      employer_zone: ceCase.territory ?? null,
-      total_principal: ceCase.total_principal ?? 0,
-      total_penalties: ceCase.total_penalties ?? 0,
-      total_interest: ceCase.total_interest ?? 0,
-      grand_total: ceCase.total_amount ?? 0,
-      status: REFERRAL_STATUS.DRAFT,
-      created_via: input.created_via ?? "REFERRAL_WIZARD",
-      created_by: input.user_code ?? "SYSTEM",
-      updated_by: input.user_code ?? null,
-    })
-    .select("id")
-    .single();
-  if (refErr) {
-    if ((refErr as any)?.code === "23505") {
-      throw new Error(
-        "An active Legal Referral already exists for this compliance case. Reject or close the existing referral before creating a new one.",
-      );
-    }
-    throw refErr;
+  // 1. Governance gate — a referral must originate from an approved
+  //    recommendation. Without one we submit the recommendation and stop.
+  const approved = await findApprovedRecommendation(input.ce_case_id);
+  if (!approved) {
+    const rec = await recommendLegal({
+      employerId: ceCase.employer_id ?? "UNKNOWN",
+      caseId: input.ce_case_id,
+      reason: input.referral_reason,
+      entryPath: (input.created_via as any) === "QUICK_FORWARD" ? "QUICK_FORWARD" : "REFER_TO_LEGAL",
+    });
+    return {
+      stage: "PENDING_APPROVAL",
+      recommendation_id: rec.recommendation_id,
+      referral_id: null,
+      referral_no: null,
+      items_count: 0,
+      documents_count: 0,
+      total_referred_amount: outstanding,
+      status: "PENDING_APPROVAL",
+    };
   }
+
+  // 2. The approved recommendation already carries its referral shell, created
+  //    by ce_approve_legal_referral_v1 in DRAFT (Legal Pack Preparation).
+  const ref = existingActive?.id
+    ? { id: existingActive.id, referral_number: existingActive.referral_number }
+    : approved.legal_referral_id
+      ? await (async () => {
+          const { data, error } = await sb
+            .from("ce_legal_referrals")
+            .select("id, referral_number")
+            .eq("id", approved.legal_referral_id)
+            .single();
+          if (error) throw error;
+          return data;
+        })()
+      : null;
+  if (!ref) {
+    throw new Error(
+      "The approved recommendation has no referral packet. Re-approve it from the Legal Recommendation Queue.",
+    );
+  }
+  const refNo = { generatedNumber: ref.referral_number as string };
+
 
   // 3. Referral items. Header totals are auto-synced by core_lri_sync_header_totals.
   const insertedItems = await insertReferralItems(
