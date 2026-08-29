@@ -42940,6 +42940,335 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_partial_payment_allocations: {
+        Row: {
+          allocation_sequence: number
+          approved_amount: number | null
+          bucket_label: string | null
+          created_at: string
+          fund_code: string | null
+          id: string
+          outstanding_amount: number
+          payment_code: string
+          request_id: string
+          requested_amount: number
+          updated_at: string
+        }
+        Insert: {
+          allocation_sequence?: number
+          approved_amount?: number | null
+          bucket_label?: string | null
+          created_at?: string
+          fund_code?: string | null
+          id?: string
+          outstanding_amount?: number
+          payment_code: string
+          request_id: string
+          requested_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          allocation_sequence?: number
+          approved_amount?: number | null
+          bucket_label?: string | null
+          created_at?: string
+          fund_code?: string | null
+          id?: string
+          outstanding_amount?: number
+          payment_code?: string
+          request_id?: string
+          requested_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_partial_payment_allocations_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ce_partial_payment_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_partial_payment_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          acted_by_user_id: string | null
+          action: string
+          allocation_snapshot: Json | null
+          amount: number | null
+          comments: string | null
+          from_status: string | null
+          id: string
+          reason: string | null
+          request_id: string
+          to_status: string | null
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          acted_by_user_id?: string | null
+          action: string
+          allocation_snapshot?: Json | null
+          amount?: number | null
+          comments?: string | null
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          request_id: string
+          to_status?: string | null
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          acted_by_user_id?: string | null
+          action?: string
+          allocation_snapshot?: Json | null
+          amount?: number | null
+          comments?: string | null
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          request_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_partial_payment_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ce_partial_payment_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_partial_payment_policies: {
+        Row: {
+          allocation_order: string[]
+          allow_allocation_override: boolean
+          authority_validity_days: number
+          block_when_arrangement_active: boolean
+          created_at: string
+          created_by: string | null
+          escalated_approval_role: string
+          escalation_threshold_amount: number | null
+          extends_payment_grace: boolean
+          id: string
+          is_active: boolean
+          max_grace_extension_days: number
+          minimum_acceptable_amount: number
+          minimum_acceptable_percent: number
+          notes: string | null
+          policy_code: string
+          policy_name: string
+          require_separate_approver: boolean
+          required_approval_role: string
+          scope_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allocation_order?: string[]
+          allow_allocation_override?: boolean
+          authority_validity_days?: number
+          block_when_arrangement_active?: boolean
+          created_at?: string
+          created_by?: string | null
+          escalated_approval_role?: string
+          escalation_threshold_amount?: number | null
+          extends_payment_grace?: boolean
+          id?: string
+          is_active?: boolean
+          max_grace_extension_days?: number
+          minimum_acceptable_amount?: number
+          minimum_acceptable_percent?: number
+          notes?: string | null
+          policy_code: string
+          policy_name: string
+          require_separate_approver?: boolean
+          required_approval_role?: string
+          scope_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allocation_order?: string[]
+          allow_allocation_override?: boolean
+          authority_validity_days?: number
+          block_when_arrangement_active?: boolean
+          created_at?: string
+          created_by?: string | null
+          escalated_approval_role?: string
+          escalation_threshold_amount?: number | null
+          extends_payment_grace?: boolean
+          id?: string
+          is_active?: boolean
+          max_grace_extension_days?: number
+          minimum_acceptable_amount?: number
+          minimum_acceptable_percent?: number
+          notes?: string | null
+          policy_code?: string
+          policy_name?: string
+          require_separate_approver?: boolean
+          required_approval_role?: string
+          scope_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_partial_payment_requests: {
+        Row: {
+          approved_amount: number | null
+          arrangement_id: string | null
+          authority_expires_on: string | null
+          authority_invoice_id: number | null
+          authority_issued_at: string | null
+          authority_number: string | null
+          case_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_user_id: string | null
+          decision_comments: string | null
+          decision_context: Json | null
+          employer_id: string
+          employer_name: string | null
+          grace_extended_to: string | null
+          grace_extension_days: number
+          id: string
+          justification: string
+          obligation_period_id: string | null
+          obligation_type: string
+          payment_reference: string | null
+          policy_id: string | null
+          policy_snapshot: Json | null
+          reason_code: string | null
+          request_number: string
+          requested_amount: number
+          requested_at: string
+          requested_by: string | null
+          requested_by_user_id: string | null
+          row_version: number
+          settled_amount: number
+          settled_at: string | null
+          source: string
+          status: string
+          supporting_documents: Json
+          total_liability: number
+          updated_at: string
+          violation_id: string | null
+          wage_period: string
+        }
+        Insert: {
+          approved_amount?: number | null
+          arrangement_id?: string | null
+          authority_expires_on?: string | null
+          authority_invoice_id?: number | null
+          authority_issued_at?: string | null
+          authority_number?: string | null
+          case_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_user_id?: string | null
+          decision_comments?: string | null
+          decision_context?: Json | null
+          employer_id: string
+          employer_name?: string | null
+          grace_extended_to?: string | null
+          grace_extension_days?: number
+          id?: string
+          justification: string
+          obligation_period_id?: string | null
+          obligation_type?: string
+          payment_reference?: string | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          reason_code?: string | null
+          request_number: string
+          requested_amount: number
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_user_id?: string | null
+          row_version?: number
+          settled_amount?: number
+          settled_at?: string | null
+          source?: string
+          status?: string
+          supporting_documents?: Json
+          total_liability?: number
+          updated_at?: string
+          violation_id?: string | null
+          wage_period: string
+        }
+        Update: {
+          approved_amount?: number | null
+          arrangement_id?: string | null
+          authority_expires_on?: string | null
+          authority_invoice_id?: number | null
+          authority_issued_at?: string | null
+          authority_number?: string | null
+          case_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_user_id?: string | null
+          decision_comments?: string | null
+          decision_context?: Json | null
+          employer_id?: string
+          employer_name?: string | null
+          grace_extended_to?: string | null
+          grace_extension_days?: number
+          id?: string
+          justification?: string
+          obligation_period_id?: string | null
+          obligation_type?: string
+          payment_reference?: string | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          reason_code?: string | null
+          request_number?: string
+          requested_amount?: number
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_user_id?: string | null
+          row_version?: number
+          settled_amount?: number
+          settled_at?: string | null
+          source?: string
+          status?: string
+          supporting_documents?: Json
+          total_liability?: number
+          updated_at?: string
+          violation_id?: string | null
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_partial_payment_requests_authority_invoice_id_fkey"
+            columns: ["authority_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "cn_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_partial_payment_requests_obligation_period_id_fkey"
+            columns: ["obligation_period_id"]
+            isOneToOne: false
+            referencedRelation: "ce_obligation_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_partial_payment_requests_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "ce_partial_payment_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_payment_allocations: {
         Row: {
           allocated_amount: number
