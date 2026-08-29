@@ -2,19 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import ViolationReportShell from './ViolationReportShell';
-import { ViolationReportRow } from '@/services/violationReportsService';
-
-function aggregate(rows: ViolationReportRow[]) {
-  const map = new Map<string, { type: string; count: number; total_amount: number }>();
-  rows.forEach(r => {
-    const key = r.violation_type_name || r.violation_type_code || 'Unspecified';
-    const e = map.get(key) || { type: key, count: 0, total_amount: 0 };
-    e.count += 1;
-    e.total_amount += r.total_amount || 0;
-    map.set(key, e);
-  });
-  return Array.from(map.values()).sort((a, b) => b.count - a.count);
-}
 
 export default function ViolationsByTypeReport() {
   return (
@@ -22,6 +9,7 @@ export default function ViolationsByTypeReport() {
       title="Violations by Type"
       subtitle="Distribution of violations by violation type"
       breadcrumbLabel="Violations by Type"
+      dimension="type"
       filters={['dateRange', 'status', 'fund', 'zone', 'severity']}
       exportFilename="violations_by_type"
       exportColumns={[
@@ -29,8 +17,9 @@ export default function ViolationsByTypeReport() {
         { header: 'Count', key: 'count', width: 12 },
         { header: 'Total Amount', key: 'total_amount', width: 18 },
       ]}
+      mapExportRow={(r) => ({ type: r.bucket, count: r.violation_count, total_amount: r.total_amount.toFixed(2) })}
       renderBody={(rows) => {
-        const agg = aggregate(rows);
+        const agg = rows.map(r => ({ type: r.bucket, count: r.violation_count, total_amount: r.total_amount }));
         return (
           <>
             <Card>
@@ -63,7 +52,7 @@ export default function ViolationsByTypeReport() {
                     {agg.map(r => (
                       <TableRow key={r.type}>
                         <TableCell className="font-medium">{r.type}</TableCell>
-                        <TableCell className="text-right">{r.count}</TableCell>
+                        <TableCell className="text-right">{r.count.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{r.total_amount.toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
