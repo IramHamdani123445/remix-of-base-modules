@@ -196,13 +196,9 @@ export function evaluatePartialPaymentObligation(input: {
     ? authority.grace_extended_to
     : input.graceEndDate;
 
-  if (input.asOf <= deadline) {
-    return authority && authority.status === "PENDING_APPROVAL"
-      ? "PENDING_DECISION"
-      : "WITHIN_DEADLINE";
-  }
   if (authority && authority.status === "PENDING_APPROVAL") return "PENDING_DECISION";
   if (authorityIsLive(authority, input.asOf)) return "AUTHORISED_PARTIAL";
+  if (input.asOf <= deadline) return "WITHIN_DEADLINE";
   if (authority && (authority.status === "APPROVED" || authority.status === "EXPIRED")) {
     return "AUTHORITY_EXPIRED";
   }
