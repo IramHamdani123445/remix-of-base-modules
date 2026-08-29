@@ -37415,6 +37415,8 @@ export type Database = {
           created_by: string | null
           deactivated_at: string | null
           deactivated_by: string | null
+          deadline_basis: string
+          deadline_fixed_day: number | null
           effective_from: string
           effective_to: string | null
           id: string
@@ -37423,10 +37425,12 @@ export type Database = {
           min_audit_frequency_months: number
           notes: string | null
           payment_due_date_day: number
+          payment_grace_period_days: number
           penalty_calc_frequency: string
           penalty_rate_percent: number
           policy_code: string
           policy_version: string
+          reporting_offset_months: number
           updated_at: string
           updated_by: string | null
           violation_prefix_config: Json
@@ -37442,6 +37446,8 @@ export type Database = {
           created_by?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
+          deadline_basis?: string
+          deadline_fixed_day?: number | null
           effective_from: string
           effective_to?: string | null
           id?: string
@@ -37450,10 +37456,12 @@ export type Database = {
           min_audit_frequency_months?: number
           notes?: string | null
           payment_due_date_day?: number
+          payment_grace_period_days?: number
           penalty_calc_frequency?: string
           penalty_rate_percent?: number
           policy_code: string
           policy_version: string
+          reporting_offset_months?: number
           updated_at?: string
           updated_by?: string | null
           violation_prefix_config?: Json
@@ -37469,6 +37477,8 @@ export type Database = {
           created_by?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
+          deadline_basis?: string
+          deadline_fixed_day?: number | null
           effective_from?: string
           effective_to?: string | null
           id?: string
@@ -37477,10 +37487,12 @@ export type Database = {
           min_audit_frequency_months?: number
           notes?: string | null
           payment_due_date_day?: number
+          payment_grace_period_days?: number
           penalty_calc_frequency?: string
           penalty_rate_percent?: number
           policy_code?: string
           policy_version?: string
+          reporting_offset_months?: number
           updated_at?: string
           updated_by?: string | null
           violation_prefix_config?: Json
@@ -42400,6 +42412,270 @@ export type Database = {
           reset_frequency?: string | null
           template_pattern?: string
           updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_obligation_notice_periods: {
+        Row: {
+          created_at: string
+          id: string
+          notice_id: string
+          obligation_period_id: string
+          obligation_type: string
+          outstanding_state: string | null
+          wage_period: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notice_id: string
+          obligation_period_id: string
+          obligation_type: string
+          outstanding_state?: string | null
+          wage_period: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notice_id?: string
+          obligation_period_id?: string
+          obligation_type?: string
+          outstanding_state?: string | null
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_obligation_notice_periods_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_obligation_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_obligation_notice_periods_obligation_period_id_fkey"
+            columns: ["obligation_period_id"]
+            isOneToOne: false
+            referencedRelation: "ce_obligation_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_obligation_notices: {
+        Row: {
+          audience: string
+          business_event_id: string | null
+          channels: string[]
+          communication_request_id: string | null
+          created_at: string
+          cycle_key: string
+          delivery_detail: Json
+          delivery_status: string
+          document_reference: string | null
+          employer_id: string
+          employer_name: string | null
+          generated_at: string
+          id: string
+          notice_number: string
+          notice_stage: string
+          obligation_type: string
+          period_count: number
+          reminder_rule_code: string
+          template_code: string
+          template_version: string | null
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          business_event_id?: string | null
+          channels?: string[]
+          communication_request_id?: string | null
+          created_at?: string
+          cycle_key: string
+          delivery_detail?: Json
+          delivery_status?: string
+          document_reference?: string | null
+          employer_id: string
+          employer_name?: string | null
+          generated_at?: string
+          id?: string
+          notice_number: string
+          notice_stage: string
+          obligation_type: string
+          period_count?: number
+          reminder_rule_code: string
+          template_code: string
+          template_version?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          business_event_id?: string | null
+          channels?: string[]
+          communication_request_id?: string | null
+          created_at?: string
+          cycle_key?: string
+          delivery_detail?: Json
+          delivery_status?: string
+          document_reference?: string | null
+          employer_id?: string
+          employer_name?: string | null
+          generated_at?: string
+          id?: string
+          notice_number?: string
+          notice_stage?: string
+          obligation_type?: string
+          period_count?: number
+          reminder_rule_code?: string
+          template_code?: string
+          template_version?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_obligation_periods: {
+        Row: {
+          created_at: string
+          deadline_basis: string
+          declared_amount: number
+          due_date: string
+          employer_id: string
+          employer_name: string | null
+          filing_is_nil: boolean
+          filing_received_date: string | null
+          filing_status: string
+          grace_days: number
+          grace_end_date: string
+          id: string
+          is_outstanding: boolean
+          last_evaluated_at: string
+          last_payment_date: string | null
+          obligation_type: string
+          paid_amount: number
+          payment_status: string
+          reminder_schedule: Json
+          reporting_period: string
+          resolution_reason: string | null
+          resolved_at: string | null
+          updated_at: string
+          violation_effective_date: string
+          violation_id: string | null
+          wage_period: string
+        }
+        Insert: {
+          created_at?: string
+          deadline_basis: string
+          declared_amount?: number
+          due_date: string
+          employer_id: string
+          employer_name?: string | null
+          filing_is_nil?: boolean
+          filing_received_date?: string | null
+          filing_status?: string
+          grace_days?: number
+          grace_end_date: string
+          id?: string
+          is_outstanding?: boolean
+          last_evaluated_at?: string
+          last_payment_date?: string | null
+          obligation_type: string
+          paid_amount?: number
+          payment_status?: string
+          reminder_schedule?: Json
+          reporting_period: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          updated_at?: string
+          violation_effective_date: string
+          violation_id?: string | null
+          wage_period: string
+        }
+        Update: {
+          created_at?: string
+          deadline_basis?: string
+          declared_amount?: number
+          due_date?: string
+          employer_id?: string
+          employer_name?: string | null
+          filing_is_nil?: boolean
+          filing_received_date?: string | null
+          filing_status?: string
+          grace_days?: number
+          grace_end_date?: string
+          id?: string
+          is_outstanding?: boolean
+          last_evaluated_at?: string
+          last_payment_date?: string | null
+          obligation_type?: string
+          paid_amount?: number
+          payment_status?: string
+          reminder_schedule?: Json
+          reporting_period?: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          updated_at?: string
+          violation_effective_date?: string
+          violation_id?: string | null
+          wage_period?: string
+        }
+        Relationships: []
+      }
+      ce_obligation_reminder_rules: {
+        Row: {
+          audience: string
+          channels: string[]
+          consolidate_periods: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          is_enabled: boolean
+          label: string
+          notes: string | null
+          obligation_type: string
+          offset_type: string
+          offset_value: number
+          rule_code: string
+          sequence: number
+          template_code: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          audience?: string
+          channels?: string[]
+          consolidate_periods?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          label: string
+          notes?: string | null
+          obligation_type?: string
+          offset_type?: string
+          offset_value: number
+          rule_code: string
+          sequence?: number
+          template_code: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          audience?: string
+          channels?: string[]
+          consolidate_periods?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          notes?: string | null
+          obligation_type?: string
+          offset_type?: string
+          offset_value?: number
+          rule_code?: string
+          sequence?: number
+          template_code?: string
+          updated_at?: string
           updated_by?: string | null
         }
         Relationships: []
