@@ -61,7 +61,31 @@ function severityVariant(sev: string): 'default' | 'secondary' | 'destructive' |
   }
 }
 
-type Disposition = 'confirm' | 'dismiss' | 'annotate';
+/**
+ * Canonical dispositions accepted by `ce_review_flag_disposition_v1`.
+ * The UI previously sent lowercase verbs ('confirm' / 'dismiss' / 'annotate')
+ * which the governed command rejected with CE-FLAG-422, leaving every flag
+ * stranded. The vocabulary below is the database vocabulary.
+ */
+type Disposition = 'CONFIRMED' | 'DISMISSED' | 'RESOLVED' | 'UNDER_REVIEW' | 'ANNOTATE';
+
+const CLOSED_STATUSES = new Set(['CONFIRMED', 'DISMISSED', 'RESOLVED']);
+
+const DISPOSITION_LABEL: Record<Disposition, string> = {
+  CONFIRMED: 'Confirm Flag',
+  DISMISSED: 'Dismiss as False Positive',
+  RESOLVED: 'Resolve Flag',
+  UNDER_REVIEW: 'Start Investigation',
+  ANNOTATE: 'Add Note / Evidence',
+};
+
+const DISPOSITION_SUCCESS: Record<Disposition, string> = {
+  CONFIRMED: 'Flag confirmed. It can now be converted to a violation.',
+  DISMISSED: 'Flag dismissed and excluded from risk scoring.',
+  RESOLVED: 'Flag resolved.',
+  UNDER_REVIEW: 'Flag moved to investigation.',
+  ANNOTATE: 'Note recorded on the flag history.',
+};
 
 export default function ReviewFlagQueue() {
   const canReview = useHasCapability(COMPLIANCE_CAPABILITIES.REVIEW_FLAG_REVIEW);
