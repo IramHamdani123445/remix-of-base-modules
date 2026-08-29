@@ -217,6 +217,8 @@ export async function createComplianceLegalReferral(
     .then(() => undefined, () => undefined);
 
   return {
+    stage: "PREPARED",
+    recommendation_id: approved.id,
     referral_id: ref.id,
     referral_no: refNo.generatedNumber,
     items_count: insertedItems.length,
@@ -224,6 +226,7 @@ export async function createComplianceLegalReferral(
     total_referred_amount: referredSnapshot,
     status: REFERRAL_STATUS.DRAFT,
   };
+
 }
 
 /**
