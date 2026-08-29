@@ -361,6 +361,7 @@ const CaseMergeReviewPage = lazy(() => import('@/pages/compliance/cases/CaseMerg
 const ReopenRequestsPage = lazy(() => import('@/pages/compliance/cases/ReopenRequestsPage'));
 const CaseClosurePage = lazy(() => import('@/pages/compliance/cases/CaseClosurePage'));
 const LegalPackPreparationPage = lazy(() => import('@/pages/compliance/legal/LegalPackPreparationPage'));
+const EscalationStageConfiguration = lazy(() => import('@/pages/compliance/settings/EscalationStageConfiguration'));
 const ApprovedEscalationsPage = lazy(() => import('@/pages/compliance/legal/ApprovedEscalationsPage'));
 const ReturnedFromLegalPage = lazy(() => import('@/pages/compliance/legal/ReturnedFromLegalPage'));
 const RiskScoreDetailsPage = lazy(() => import('@/pages/compliance/risk/RiskScoreDetailsPage'));
@@ -1540,6 +1541,8 @@ export const AppRoutes = () => {
       <Route path="/compliance/field/sampling/candidates" element={<MonthlyAuditCandidates />} />
 
       {/* ── Enforcement — legal, notices, arrangements, waivers ── */}
+      <Route path="/compliance/settings/escalation-stages" element={<EscalationStageConfiguration />} />
+      <Route path="/compliance/admin/settings/escalation-stages" element={<EscalationStageConfiguration />} />
       <Route path="/compliance/enforcement/recommendation-queue" element={<ComplianceFeatureGate flagKey="compliance.legal.handoff" title="Legal Recommendation Queue"><LegalRecommendationQueue /></ComplianceFeatureGate>} />
       <Route path="/compliance/enforcement/legal-referral" element={<ComplianceFeatureGate flagKey="compliance.legal.handoff" title="Legal Referral"><LegalReferralWizard /></ComplianceFeatureGate>} />
       <Route path="/compliance/enforcement/legal-queue" element={<ComplianceLegalQueue />} />
