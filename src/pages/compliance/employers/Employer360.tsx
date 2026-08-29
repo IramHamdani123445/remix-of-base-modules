@@ -34,6 +34,7 @@ import {
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
+import RiskExplainabilityPanel from '@/components/compliance/risk/RiskExplainabilityPanel';
 
 
 const RISK_BAND_COLORS: Record<string, string> = {
@@ -331,7 +332,9 @@ export default function Employer360() {
               </CardContent>
             </Card>
           </div>
+          {employerId && <RiskExplainabilityPanel employerId={employerId} />}
         </TabsContent>
+
 
         {/* ═══ FINANCIAL TAB ═══ */}
         <TabsContent value="financial" className="space-y-4">
