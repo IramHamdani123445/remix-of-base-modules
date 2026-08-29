@@ -125149,6 +125149,28 @@ export type Database = {
         }
         Returns: string
       }
+      ce_violation_report_filter_options_v1: { Args: never; Returns: Json }
+      ce_violation_report_group_v1: {
+        Args: {
+          p_dimension: string
+          p_from?: string
+          p_fund?: string
+          p_severity?: string
+          p_status?: string
+          p_to?: string
+          p_type?: string
+          p_zone?: string
+        }
+        Returns: {
+          avg_resolution_days: number
+          bucket: string
+          employer_count: number
+          resolved_count: number
+          total_amount: number
+          unresolved_count: number
+          violation_count: number
+        }[]
+      }
       ce_violation_return_to_queue_v1: {
         Args: {
           p_notes?: string
