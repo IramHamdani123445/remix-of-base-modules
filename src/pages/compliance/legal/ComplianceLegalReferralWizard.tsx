@@ -221,10 +221,44 @@ export default function ComplianceLegalReferralWizard() {
     }
   }
 
+  // --- legal handoff rule evaluation (configuration-driven gate) ----------
+  async function loadEligibility() {
+    setEligibilityLoading(true);
+    try {
+      const ctx = history ?? (await loadComplianceHistory({ employerId, ceCaseId }));
+      if (!history) setHistory(ctx);
+      const referredTotal = candidates
+        .filter((c) => selectedItems[c.key])
+        .reduce((s, c) => s + (c.outstanding || 0), 0);
+      const result = await evaluateEligibility({
+        fund: candidates.find((c) => selectedItems[c.key])?.fund_code ?? null,
+        severity: ceCase?.severity ?? ceCase?.priority ?? null,
+        outstandingAmount: referredTotal,
+        noticesSent: ctx.notices_count,
+        daysSinceFinalNotice: ceCase?.last_notice_date
+          ? Math.floor(
+              (Date.now() - new Date(ceCase.last_notice_date).getTime()) / 86_400_000,
+            )
+          : 0,
+        repeatDefault: (ctx.breaches_count ?? 0) > 0 || (ctx.notices_count ?? 0) >= 3,
+        arrangementBreach: (ctx.breaches_count ?? 0) > 0,
+        evidenceTypes: documents.length ? ["CASE_SUMMARY"] : [],
+        daysSinceEmployerResponse: null,
+      });
+      setEligibility(result);
+    } catch (e: any) {
+      toast.error("Failed to evaluate legal handoff rules", { description: e?.message });
+      setEligibility(null);
+    } finally {
+      setEligibilityLoading(false);
+    }
+  }
+
   // Auto-load when entering steps
   useEffect(() => {
     if (step === 2 && employerId && candidates.length === 0) loadCandidateItems();
     if (step === 3 && history === null) loadHistory();
+    if (step === 5) loadEligibility();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
