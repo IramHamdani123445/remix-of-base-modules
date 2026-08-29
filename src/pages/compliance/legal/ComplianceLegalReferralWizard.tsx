@@ -418,10 +418,19 @@ export default function ComplianceLegalReferralWizard() {
         items,
         documents,
       });
-      toast.success(`Referral ${r.referral_no} created as DRAFT`, {
-        description: `${r.items_count} item(s), ${documents.length} document(s). Next: complete the legal pack and send for approval — the case is not escalated yet.`,
+      if (r.stage === "PENDING_APPROVAL") {
+        toast.success("Legal recommendation submitted for management approval", {
+          description:
+            "Referral to Legal requires management approval. The case will move to Legal Pack Preparation once approved.",
+        });
+        navigate(`/compliance/enforcement/recommendation-queue`);
+        return;
+      }
+      toast.success(`Referral ${r.referral_no} packet prepared`, {
+        description: `${r.items_count} item(s), ${documents.length} document(s). Next: complete the legal pack and handoff checklist — the case is not escalated yet.`,
       });
-      navigate(`/compliance/legal/pack-preparation?referral=${encodeURIComponent(r.referral_id)}`);
+      navigate(`/compliance/legal/pack-preparation?referral=${encodeURIComponent(r.referral_id!)}`);
+
 
     } catch (e: any) {
       toast.error("Referral failed", { description: e?.message });

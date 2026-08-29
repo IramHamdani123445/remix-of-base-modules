@@ -6,61 +6,36 @@ const corsHeaders = {
 };
 
 /**
- * Notice-stage timing is CONFIGURATION, not code. The stages (1st notice, 2nd
- * notice, final warning) are owned by the JOB-NOTICE-GENERATION job parameters
- * and administered from Compliance → Automation → Notice Generation. No default
- * schedule is embedded here: an unconfigured job fails visibly so a notice can
- * never be issued on a timing nobody approved.
+ * Checkpoint D — escalation notice generation.
+ *
+ * There is exactly ONE escalation-stage configuration: the table
+ * `ce_escalation_stage_config` (Administration → Escalation Stage
+ * Configuration). This worker no longer reads notice timings from
+ * `ce_automation_jobs.parameters.notice_rules`, and it contains no day
+ * literals of its own. Eligibility, the financial snapshot and the duplicate
+ * guard are all evaluated inside the database
+ * (`ce_generate_stage_notice_system_v1`), so scheduled runs and screen actions
+ * behave identically.
+ *
+ * A stage with no configured waiting period fails visibly instead of issuing a
+ * notice on a timing nobody approved.
  */
-interface NoticeStageRule {
-  days_open: number;
-  template_code: string;
-  label: string;
-}
-
-function validateStageRules(raw: unknown): { rules: NoticeStageRule[]; errors: string[] } {
-  const errors: string[] = [];
-  if (!Array.isArray(raw) || raw.length === 0) {
-    return {
-      rules: [],
-      errors: [
-        'No notice stage rules configured on JOB-NOTICE-GENERATION (parameters.notice_rules). Configure the notice stages and their day thresholds before running notice generation.',
-      ],
-    };
-  }
-  const rules: NoticeStageRule[] = [];
-  raw.forEach((r: any, i: number) => {
-    const days = Number(r?.days_open);
-    if (!Number.isInteger(days) || days < 0 || days > 3650) {
-      errors.push(`notice_rules[${i}].days_open must be a whole number of days (0-3650).`);
-    }
-    if (!r?.template_code) errors.push(`notice_rules[${i}].template_code is required.`);
-    if (!r?.label) errors.push(`notice_rules[${i}].label is required.`);
-    if (errors.length === 0) {
-      rules.push({ days_open: days, template_code: String(r.template_code), label: String(r.label) });
-    }
-  });
-  return { rules: rules.sort((a, b) => a.days_open - b.days_open), errors };
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { dry_run = false, force = false, triggered_by = 'system', employer_ids = null } = await req.json();
+    const { dry_run = false, force = false, triggered_by = 'system', employer_ids = null } =
+      await req.json().catch(() => ({}));
     const today = new Date().toISOString().slice(0, 10);
-    const idempotencyKey = dry_run
-      ? `NOTICE-GEN-DRY-${Date.now()}`
-      : `NOTICE-GEN-${today}`;
+    const idempotencyKey = dry_run ? `NOTICE-GEN-DRY-${Date.now()}` : `NOTICE-GEN-${today}`;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // ── Auto-heal: clear stale runs with same idempotency key ──
     if (!dry_run) {
       await supabase
         .from('ce_automation_job_runs')
@@ -69,7 +44,6 @@ Deno.serve(async (req) => {
         .in('run_status', ['RUNNING', 'FAILED']);
     }
 
-    // ── Idempotency check ──
     if (!dry_run && !force) {
       const { data: existing } = await supabase
         .from('ce_automation_job_runs')
@@ -77,7 +51,6 @@ Deno.serve(async (req) => {
         .eq('idempotency_key', idempotencyKey)
         .eq('run_status', 'COMPLETED')
         .maybeSingle();
-
       if (existing) {
         return new Response(JSON.stringify({
           already_completed: true,
@@ -87,28 +60,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Get job record for rules ──
-    const { data: jobRecord } = await supabase
-      .from('ce_automation_jobs')
-      .select('id, parameters')
-      .eq('job_code', 'JOB-NOTICE-GENERATION')
-      .single();
+    // ── Authoritative stage configuration ──────────────────────────────────
+    const { data: stages, error: stageErr } = await supabase
+      .from('ce_escalation_stage_config')
+      .select('*')
+      .eq('is_enabled', true)
+      .not('notice_template_code', 'is', null)
+      .order('stage_order', { ascending: true });
 
-    const jobId = jobRecord?.id;
-    const { rules, errors: ruleErrors } = validateStageRules(jobRecord?.parameters?.notice_rules);
-    if (ruleErrors.length > 0) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          status: 'configuration_error',
-          errors: ruleErrors,
-          notice_rule_source: 'ce_automation_jobs.parameters.notice_rules',
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+    if (stageErr) {
+      return new Response(JSON.stringify({
+        success: false, status: 'configuration_error', errors: [stageErr.message],
+        stage_source: 'ce_escalation_stage_config',
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // ── Create run record ──
+    const activeStages = stages || [];
+    if (activeStages.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        status: 'configuration_error',
+        errors: ['No enabled escalation stages with a notice template are configured.'],
+        stage_source: 'ce_escalation_stage_config',
+      }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const unconfigured = activeStages.filter((s: any) => s.delay_days === null);
+
+    const { data: jobRecord } = await supabase
+      .from('ce_automation_jobs')
+      .select('id')
+      .eq('job_code', 'JOB-NOTICE-GENERATION')
+      .maybeSingle();
+    const jobId = jobRecord?.id;
+
     const { data: runRecord } = await supabase
       .from('ce_automation_job_runs')
       .insert({
@@ -119,29 +104,17 @@ Deno.serve(async (req) => {
         triggered_by,
         started_at: new Date().toISOString(),
       } as any)
-      .select('id')
+      .select('id, started_at')
       .single();
-
     const runId = runRecord?.id;
 
-    // ── Load templates ──
-    const { data: templates } = await supabase
-      .from('ce_notice_templates')
-      .select('id, template_code, template_name, category, subject, body, variables')
-      .eq('is_active', true);
-
-    const templateMap = new Map(
-      (templates || []).map((t: any) => [t.template_code, t])
-    );
-
-    // ── Fetch open violations with aging (paginated to bypass 1000-row cap,
-    //    ordered by created_at DESC so newest UAT rows are always considered) ──
+    // ── Candidate violations ───────────────────────────────────────────────
     const violations: any[] = [];
     const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
       let q = supabase
         .from('ce_violations')
-        .select('id, violation_number, employer_id, employer_name, status, created_at, ce_violation_types(code, name, category)')
+        .select('id, violation_number, employer_id, employer_name, status, created_at')
         .in('status', ['OPEN', 'UNDER_REVIEW', 'ESCALATED'])
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -156,97 +129,69 @@ Deno.serve(async (req) => {
       if (page.length < pageSize) break;
     }
 
-    const now = Date.now();
     const results = {
-      violations_scanned: violations?.length || 0,
+      stage_source: 'ce_escalation_stage_config',
+      active_stages: activeStages.map((s: any) => ({
+        stage_code: s.stage_code,
+        stage_order: s.stage_order,
+        prerequisite: s.prerequisite_stage_code,
+        delay_days: s.delay_days,
+        delay_basis: s.delay_basis,
+      })),
+      unconfigured_stages: unconfigured.map((s: any) => ({
+        stage_code: s.stage_code, open_decision: s.open_decision_code,
+      })),
+      violations_scanned: violations.length,
       notices_generated: 0,
       notices_skipped_dedupe: 0,
+      notices_skipped_waiting: 0,
+      notices_skipped_prerequisite: 0,
       notices_skipped_no_template: 0,
-      by_rule: {} as Record<string, { generated: number; skipped: number }>,
+      notices_skipped_unconfigured: 0,
+      by_stage: {} as Record<string, { generated: number; skipped: number }>,
       sample_notices: [] as any[],
       dry_run,
     };
+    for (const s of activeStages) results.by_stage[s.stage_code] = { generated: 0, skipped: 0 };
 
-    for (const rule of rules) {
-      results.by_rule[rule.label] = { generated: 0, skipped: 0 };
-    }
-
-    // ── Process each violation against rules ──
-    for (const v of (violations || [])) {
-      const ageMs = now - new Date(v.created_at).getTime();
-      const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
-
-      for (const rule of rules) {
-        if (ageDays < rule.days_open) continue;
-
-        const template = templateMap.get(rule.template_code);
-        if (!template) {
-          results.notices_skipped_no_template++;
+    for (const v of violations) {
+      for (const stage of activeStages) {
+        const rpc = dry_run ? 'ce_evaluate_stage_eligibility_v1' : 'ce_generate_stage_notice_system_v1';
+        const args = dry_run
+          ? { p_violation_id: v.id, p_stage_code: stage.stage_code }
+          : { p_violation_id: v.id, p_stage_code: stage.stage_code, p_delivery_method: 'EMAIL' };
+        const { data, error } = await supabase.rpc(rpc, args as any);
+        if (error) {
+          console.error('[stage-notice-failed]', stage.stage_code, v.violation_number, error.message);
+          results.by_stage[stage.stage_code].skipped++;
           continue;
         }
+        const status = (data as any)?.status;
+        const generated = dry_run ? (data as any)?.eligible === true : (data as any)?.generated === true;
 
-        // ── Dedupe check: skip if active notice with same template exists ──
-        const { data: existingNotice } = await supabase
-          .from('ce_notices')
-          .select('id')
-          .eq('violation_id', v.id)
-          .eq('template_id', template.id)
-          .not('status', 'eq', 'CANCELLED')
-          .maybeSingle();
-
-        if (existingNotice) {
-          results.notices_skipped_dedupe++;
-          results.by_rule[rule.label].skipped++;
-          continue;
-        }
-
-        // ── Generate notice ──
-        if (!dry_run) {
-          const year = new Date().getFullYear();
-          const suffix = crypto.randomUUID().slice(0, 8).toUpperCase();
-          const noticeNumber = `CN-${year}-AUTO-${suffix}`;
-
-          const body = (template.body || '')
-            .replace(/\{\{employer_name\}\}/g, v.employer_name || '')
-            .replace(/\{\{violation_number\}\}/g, v.violation_number || '')
-            .replace(/\{\{current_date\}\}/g, new Date().toLocaleDateString('en-GB'));
-
-          const { error: insErr } = await supabase.from('ce_notices').insert({
-            notice_number: noticeNumber,
-            employer_id: v.employer_id,
-            employer_name: v.employer_name,
-            violation_id: v.id,
-            notice_type: template.category || 'C3_NOT_SUBMITTED',
-            status: 'DRAFT',
-            subject: template.subject || `Compliance Notice — ${rule.label}`,
-            body,
-            template_id: template.id,
-            delivery_method: 'EMAIL',
-            due_response_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-            created_by: `AUTO:${triggered_by}`,
-          } as any);
-          if (insErr) {
-            console.error('[notice-insert-failed]', { violation: v.violation_number, employer: v.employer_id, error: insErr.message });
-            continue; // do NOT increment generated counter on failed insert
+        if (generated) {
+          results.notices_generated++;
+          results.by_stage[stage.stage_code].generated++;
+          if (results.sample_notices.length < 10) {
+            results.sample_notices.push({
+              violation: v.violation_number,
+              employer: v.employer_name,
+              stage: stage.stage_code,
+              notice_number: (data as any)?.notice_number ?? null,
+            });
           }
+          continue;
         }
 
-        results.notices_generated++;
-        results.by_rule[rule.label].generated++;
-
-        if (results.sample_notices.length < 10) {
-          results.sample_notices.push({
-            violation: v.violation_number,
-            employer: v.employer_name,
-            rule: rule.label,
-            template: rule.template_code,
-            age_days: ageDays,
-          });
-        }
+        results.by_stage[stage.stage_code].skipped++;
+        if (status === 'already_generated') results.notices_skipped_dedupe++;
+        else if (status === 'waiting') results.notices_skipped_waiting++;
+        else if (status === 'prerequisite_missing') results.notices_skipped_prerequisite++;
+        else if (status === 'template_missing') results.notices_skipped_no_template++;
+        else if (status === 'configuration_error') results.notices_skipped_unconfigured++;
       }
     }
 
-    // ── Finalize run ──
     const completedAt = new Date().toISOString();
     if (runId) {
       await supabase
@@ -261,26 +206,18 @@ Deno.serve(async (req) => {
         } as any)
         .eq('id', runId);
     }
-
-    // ── Update job last_run ──
     if (jobId) {
       await supabase
         .from('ce_automation_jobs')
-        .update({
-          last_run_at: completedAt,
-          last_run_status: 'COMPLETED',
-        } as any)
+        .update({ last_run_at: completedAt, last_run_status: 'COMPLETED' } as any)
         .eq('id', jobId);
     }
 
-    return new Response(JSON.stringify({
-      run_id: runId,
-      ...results,
-    }), {
+    return new Response(JSON.stringify({ run_id: runId, ...results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ ok: false, error: err.message }), {
+    return new Response(JSON.stringify({ ok: false, error: (err as Error).message }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -33472,6 +33472,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_arrears_threshold_evaluations: {
+        Row: {
+          average_monthly_liability: number
+          created_at: string
+          employer_id: string
+          evaluated_by: string | null
+          evaluation_notes: string | null
+          id: string
+          monthly_liabilities: Json
+          multiplier: number
+          policy_code: string
+          policy_snapshot: Json
+          qualifying_arrears: number
+          source_periods: Json
+          threshold_amount: number
+          threshold_breached: boolean
+        }
+        Insert: {
+          average_monthly_liability: number
+          created_at?: string
+          employer_id: string
+          evaluated_by?: string | null
+          evaluation_notes?: string | null
+          id?: string
+          monthly_liabilities: Json
+          multiplier: number
+          policy_code: string
+          policy_snapshot: Json
+          qualifying_arrears: number
+          source_periods: Json
+          threshold_amount: number
+          threshold_breached: boolean
+        }
+        Update: {
+          average_monthly_liability?: number
+          created_at?: string
+          employer_id?: string
+          evaluated_by?: string | null
+          evaluation_notes?: string | null
+          id?: string
+          monthly_liabilities?: Json
+          multiplier?: number
+          policy_code?: string
+          policy_snapshot?: Json
+          qualifying_arrears?: number
+          source_periods?: Json
+          threshold_amount?: number
+          threshold_breached?: boolean
+        }
+        Relationships: []
+      }
       ce_assignment_queues: {
         Row: {
           created_at: string | null
@@ -37634,51 +37685,6 @@ export type Database = {
           },
         ]
       }
-      ce_cl1_rehearsal_evidence: {
-        Row: {
-          cached_balance: number | null
-          cached_principal_due: number | null
-          credit_available: number | null
-          interest_accrued: number | null
-          interest_outstanding: number | null
-          penalty_outstanding: number | null
-          principal_due: number | null
-          principal_outstanding: number | null
-          principal_paid: number | null
-          step: string | null
-          step_no: number | null
-          total_outstanding: number | null
-        }
-        Insert: {
-          cached_balance?: number | null
-          cached_principal_due?: number | null
-          credit_available?: number | null
-          interest_accrued?: number | null
-          interest_outstanding?: number | null
-          penalty_outstanding?: number | null
-          principal_due?: number | null
-          principal_outstanding?: number | null
-          principal_paid?: number | null
-          step?: string | null
-          step_no?: number | null
-          total_outstanding?: number | null
-        }
-        Update: {
-          cached_balance?: number | null
-          cached_principal_due?: number | null
-          credit_available?: number | null
-          interest_accrued?: number | null
-          interest_outstanding?: number | null
-          penalty_outstanding?: number | null
-          principal_due?: number | null
-          principal_outstanding?: number | null
-          principal_paid?: number | null
-          step?: string | null
-          step_no?: number | null
-          total_outstanding?: number | null
-        }
-        Relationships: []
-      }
       ce_completion_gate_config: {
         Row: {
           created_at: string
@@ -40022,6 +40028,81 @@ export type Database = {
           },
         ]
       }
+      ce_escalation_stage_config: {
+        Row: {
+          applicable_funds: string[]
+          applicable_violation_type_ids: string[]
+          created_at: string
+          created_by: string | null
+          delay_basis: string
+          delay_days: number | null
+          id: string
+          is_enabled: boolean
+          min_outstanding_amount: number
+          notes: string | null
+          notice_template_code: string | null
+          open_decision_code: string | null
+          prerequisite_stage_code: string | null
+          requires_approval: boolean
+          retired_at: string | null
+          retired_reason: string | null
+          stage_code: string
+          stage_name: string
+          stage_order: number
+          target_state: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          applicable_funds?: string[]
+          applicable_violation_type_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          delay_basis?: string
+          delay_days?: number | null
+          id?: string
+          is_enabled?: boolean
+          min_outstanding_amount?: number
+          notes?: string | null
+          notice_template_code?: string | null
+          open_decision_code?: string | null
+          prerequisite_stage_code?: string | null
+          requires_approval?: boolean
+          retired_at?: string | null
+          retired_reason?: string | null
+          stage_code: string
+          stage_name: string
+          stage_order: number
+          target_state?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          applicable_funds?: string[]
+          applicable_violation_type_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          delay_basis?: string
+          delay_days?: number | null
+          id?: string
+          is_enabled?: boolean
+          min_outstanding_amount?: number
+          notes?: string | null
+          notice_template_code?: string | null
+          open_decision_code?: string | null
+          prerequisite_stage_code?: string | null
+          requires_approval?: boolean
+          retired_at?: string | null
+          retired_reason?: string | null
+          stage_code?: string
+          stage_name?: string
+          stage_order?: number
+          target_state?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ce_estimated_assessment_lines: {
         Row: {
           allocated_amount: number
@@ -42240,21 +42321,32 @@ export type Database = {
       }
       ce_legal_recommendations: {
         Row: {
+          approval_capability: string | null
           created_at: string
           created_by: string | null
+          early_rule_code: string | null
+          eligibility_snapshot: Json | null
           employer_id: string
           employer_name: string
           employer_zone: string | null
+          entry_path: string | null
+          financial_snapshot: Json | null
           grand_total: number | null
           id: string
           legal_referral_id: string | null
+          policy_snapshot: Json | null
           qualifying_case_ids: Json | null
+          recommendation_reason: string | null
+          recommendation_type: string
+          recommended_at: string | null
+          recommended_by: string | null
           recommended_date: string
           review_notes: string | null
           reviewed_by: string | null
           reviewed_date: string | null
           risk_band: string | null
           risk_score: number | null
+          source_case_id: string | null
           status: string
           subcase_summary: Json | null
           total_interest: number | null
@@ -42265,21 +42357,32 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          approval_capability?: string | null
           created_at?: string
           created_by?: string | null
+          early_rule_code?: string | null
+          eligibility_snapshot?: Json | null
           employer_id: string
           employer_name: string
           employer_zone?: string | null
+          entry_path?: string | null
+          financial_snapshot?: Json | null
           grand_total?: number | null
           id?: string
           legal_referral_id?: string | null
+          policy_snapshot?: Json | null
           qualifying_case_ids?: Json | null
+          recommendation_reason?: string | null
+          recommendation_type?: string
+          recommended_at?: string | null
+          recommended_by?: string | null
           recommended_date?: string
           review_notes?: string | null
           reviewed_by?: string | null
           reviewed_date?: string | null
           risk_band?: string | null
           risk_score?: number | null
+          source_case_id?: string | null
           status?: string
           subcase_summary?: Json | null
           total_interest?: number | null
@@ -42290,21 +42393,32 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          approval_capability?: string | null
           created_at?: string
           created_by?: string | null
+          early_rule_code?: string | null
+          eligibility_snapshot?: Json | null
           employer_id?: string
           employer_name?: string
           employer_zone?: string | null
+          entry_path?: string | null
+          financial_snapshot?: Json | null
           grand_total?: number | null
           id?: string
           legal_referral_id?: string | null
+          policy_snapshot?: Json | null
           qualifying_case_ids?: Json | null
+          recommendation_reason?: string | null
+          recommendation_type?: string
+          recommended_at?: string | null
+          recommended_by?: string | null
           recommended_date?: string
           review_notes?: string | null
           reviewed_by?: string | null
           reviewed_date?: string | null
           risk_band?: string | null
           risk_score?: number | null
+          source_case_id?: string | null
           status?: string
           subcase_summary?: Json | null
           total_interest?: number | null
@@ -42618,6 +42732,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ce_management_escalation_policy: {
+        Row: {
+          action_on_breach: string
+          created_at: string
+          created_by: string | null
+          history_period_count: number
+          id: string
+          include_interest_in_arrears: boolean
+          include_penalties_in_arrears: boolean
+          is_active: boolean
+          liability_basis: string
+          min_valid_periods: number
+          multiplier: number
+          notes: string | null
+          policy_code: string
+          policy_name: string
+          retired_at: string | null
+          retired_reason: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_on_breach?: string
+          created_at?: string
+          created_by?: string | null
+          history_period_count?: number
+          id?: string
+          include_interest_in_arrears?: boolean
+          include_penalties_in_arrears?: boolean
+          is_active?: boolean
+          liability_basis?: string
+          min_valid_periods?: number
+          multiplier?: number
+          notes?: string | null
+          policy_code: string
+          policy_name: string
+          retired_at?: string | null
+          retired_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_on_breach?: string
+          created_at?: string
+          created_by?: string | null
+          history_period_count?: number
+          id?: string
+          include_interest_in_arrears?: boolean
+          include_penalties_in_arrears?: boolean
+          is_active?: boolean
+          liability_basis?: string
+          min_valid_periods?: number
+          multiplier?: number
+          notes?: string | null
+          policy_code?: string
+          policy_name?: string
+          retired_at?: string | null
+          retired_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       ce_manual_rebuild_request: {
         Row: {
@@ -43096,13 +43273,18 @@ export type Database = {
           acknowledged_at: string | null
           body: string | null
           case_id: string | null
+          covered_periods: Json | null
           created_at: string | null
           created_by: string | null
           delivered_at: string | null
           delivery_method: string | null
+          dms_document_ref: string | null
           due_response_date: string | null
+          effective_date: string | null
           employer_id: string
           employer_name: string | null
+          financial_snapshot: Json | null
+          generation_idempotency_key: string | null
           id: string
           notice_number: string
           notice_type: string
@@ -43110,6 +43292,8 @@ export type Database = {
           response_notes: string | null
           response_received: boolean | null
           sent_at: string | null
+          stage_code: string | null
+          stage_config_snapshot: Json | null
           status: string | null
           subject: string | null
           template_id: string | null
@@ -43121,13 +43305,18 @@ export type Database = {
           acknowledged_at?: string | null
           body?: string | null
           case_id?: string | null
+          covered_periods?: Json | null
           created_at?: string | null
           created_by?: string | null
           delivered_at?: string | null
           delivery_method?: string | null
+          dms_document_ref?: string | null
           due_response_date?: string | null
+          effective_date?: string | null
           employer_id: string
           employer_name?: string | null
+          financial_snapshot?: Json | null
+          generation_idempotency_key?: string | null
           id?: string
           notice_number: string
           notice_type: string
@@ -43135,6 +43324,8 @@ export type Database = {
           response_notes?: string | null
           response_received?: boolean | null
           sent_at?: string | null
+          stage_code?: string | null
+          stage_config_snapshot?: Json | null
           status?: string | null
           subject?: string | null
           template_id?: string | null
@@ -43146,13 +43337,18 @@ export type Database = {
           acknowledged_at?: string | null
           body?: string | null
           case_id?: string | null
+          covered_periods?: Json | null
           created_at?: string | null
           created_by?: string | null
           delivered_at?: string | null
           delivery_method?: string | null
+          dms_document_ref?: string | null
           due_response_date?: string | null
+          effective_date?: string | null
           employer_id?: string
           employer_name?: string | null
+          financial_snapshot?: Json | null
+          generation_idempotency_key?: string | null
           id?: string
           notice_number?: string
           notice_type?: string
@@ -43160,6 +43356,8 @@ export type Database = {
           response_notes?: string | null
           response_received?: boolean | null
           sent_at?: string | null
+          stage_code?: string | null
+          stage_config_snapshot?: Json | null
           status?: string | null
           subject?: string | null
           template_id?: string | null
@@ -123732,6 +123930,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_approve_legal_referral_v1: {
+        Args: { p_comments?: string; p_recommendation_id: string }
+        Returns: Json
+      }
       ce_approve_partial_payment_v1: {
         Args: {
           p_allocations?: Json
@@ -123812,6 +124014,10 @@ export type Database = {
       }
       ce_cancel_waiver_v1: {
         Args: { p_reason?: string; p_waiver_id: string }
+        Returns: Json
+      }
+      ce_canonical_financial_snapshot: {
+        Args: { p_employer_id: string }
         Returns: Json
       }
       ce_case_command_audit: {
@@ -123939,6 +124145,14 @@ export type Database = {
         Args: { p_actor?: string; p_as_of_date?: string; p_grace_days?: number }
         Returns: Json
       }
+      ce_evaluate_arrears_threshold_v1: {
+        Args: { p_employer_id: string; p_persist?: boolean }
+        Returns: Json
+      }
+      ce_evaluate_stage_eligibility_v1: {
+        Args: { p_stage_code: string; p_violation_id: string }
+        Returns: Json
+      }
       ce_execute_automation_job: {
         Args: {
           p_dry_run?: boolean
@@ -123992,6 +124206,31 @@ export type Database = {
           running_balance: number
           status: Database["public"]["Enums"]["ce_ledger_status"]
         }[]
+      }
+      ce_generate_stage_notice_core: {
+        Args: {
+          p_actor: string
+          p_delivery_method: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
+      }
+      ce_generate_stage_notice_system_v1: {
+        Args: {
+          p_delivery_method?: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
+      }
+      ce_generate_stage_notice_v1: {
+        Args: {
+          p_delivery_method?: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
       }
       ce_get_employer_balance: {
         Args: {
@@ -124253,6 +124492,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      ce_recommend_legal_v1: {
+        Args: {
+          p_case_id?: string
+          p_early_rule_code?: string
+          p_employer_id: string
+          p_entry_path?: string
+          p_reason: string
+          p_violation_id?: string
+        }
+        Returns: Json
+      }
       ce_recompute_employer_compliance: {
         Args: { p_employer_id: string; p_triggered_by?: string }
         Returns: Json
@@ -124280,6 +124530,10 @@ export type Database = {
           p_referral_id?: string
         }
         Returns: string
+      }
+      ce_reject_legal_referral_v1: {
+        Args: { p_reason: string; p_recommendation_id: string }
+        Returns: Json
       }
       ce_reject_partial_payment_v1: {
         Args: {
