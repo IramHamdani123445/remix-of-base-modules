@@ -84,7 +84,7 @@ export default function RiskExplainabilityPanel({ employerId, compact }: Props) 
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle className="text-xs">Provisional weights</AlertTitle>
             <AlertDescription className="text-xs">
-              Factor weights are recorded as {data.weights_confirmation.replaceAll('_', ' ').toLowerCase()} pending
+              Factor weights are recorded as {data.weights_confirmation.replace(/_/g, ' ').toLowerCase()} pending
               client sign-off (open decision E-RISK-FACTOR-WEIGHTS).
             </AlertDescription>
           </Alert>
@@ -106,7 +106,7 @@ export default function RiskExplainabilityPanel({ employerId, compact }: Props) 
                   <div className="font-medium text-sm">{f.factor_name}</div>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge className={STATUS_STYLE[f.status] || ''} variant="outline">
-                      {f.status.replaceAll('_', ' ')}
+                      {f.status.replace(/_/g, ' ')}
                     </Badge>
                     {!compact && <span className="text-[11px] text-muted-foreground">{f.explanation}</span>}
                   </div>

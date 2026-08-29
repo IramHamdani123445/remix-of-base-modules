@@ -238,7 +238,7 @@ export default function RiskModelTab() {
                     <TableCell className="text-xs font-mono">{f.measurement_code ?? '—'}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={STATUS_STYLE[status]}>
-                        {status.replaceAll('_', ' ')}
+                        {status.replace(/_/g, ' ')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
