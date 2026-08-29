@@ -29,6 +29,10 @@ import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
 const PERMISSION = 'manage_compliance';
 const WAIVER_TYPES: WaiverType[] = ['PENALTY', 'INTEREST', 'PRINCIPAL', 'FULL', 'PARTIAL'];
 const FUND_CODES = ['SS', 'ST', 'HC', 'EC'];
+const APPROVAL_ROLES = [
+  { value: 'senior', label: 'Senior Inspector' },
+  { value: 'head', label: 'Compliance Head' },
+] as const;
 
 function emptyRule(): Partial<WaiverRule> {
   return {
@@ -45,10 +49,13 @@ function emptyRule(): Partial<WaiverRule> {
     required_documents: [],
     approval_workflow_required: true,
     audit_required: true,
+    required_approval_role: 'senior',
+    escalated_approval_role: 'head',
     notes: '',
     sort_order: 0,
   };
 }
+
 
 export default function WaiverRulesPage() {
   if (!isComplianceFeatureEnabled('admin.waiverRules')) {
