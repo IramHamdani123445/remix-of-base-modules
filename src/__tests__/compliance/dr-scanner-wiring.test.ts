@@ -31,7 +31,7 @@ const MODULES = [
 /** trigger_event → a call that only the corresponding pure module provides. */
 const BRANCH_CONTRACT: Array<{ rule: string; triggerEvent: string; call: string }> = [
   { rule: "DR-005", triggerEvent: "repeat_violation_check", call: "evaluateRepeatOffender" },
-  { rule: "DR-006", triggerEvent: "installment_overdue", call: "evaluateArrangementBreach" },
+  { rule: "DR-006", triggerEvent: "installment_overdue", call: "evaluateArrangementInstallments" },
   { rule: "DR-007", triggerEvent: "levy_omission_check", call: "evaluateFundOmissions" },
   { rule: "DR-007", triggerEvent: "severance_omission_check", call: "evaluateFundOmissions" },
   { rule: "DR-008", triggerEvent: "registration_not_found", call: "evaluateLead" },
