@@ -128,7 +128,12 @@ Deno.serve(async (req) => {
         triggered_by: actor,
         idempotency_key: runKey,
         is_dry_run: isDryRun,
-        parameters: { as_of_date: asOfDate, grace_days: graceDays },
+        parameters: {
+          as_of_date: asOfDate,
+          grace_days: graceDays,
+          grace_days_source: graceSource,
+          grace_policy_code: gracePolicyCode,
+        },
       })
       .select("id")
       .single();
