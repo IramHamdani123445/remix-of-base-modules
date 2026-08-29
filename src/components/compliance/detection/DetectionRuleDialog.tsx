@@ -416,13 +416,17 @@ const DynamicParametersForm = ({
   value,
   onChange,
   conditionVars,
+  policy,
+  errors,
 }: {
   triggerEvent: string;
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
   conditionVars: ConditionVar[];
+  policy: Record<string, any> | null;
+  errors: Record<string, string>;
 }) => {
-  const paramDefs = TRIGGER_PARAM_DEFS[triggerEvent] || DEFAULT_PARAM_DEFS;
+  const paramDefs: ParamFieldDef[] = DETECTION_PARAM_SPEC[triggerEvent] ?? [];
 
   // Find C3-linked variables relevant to this trigger
   const c3Vars = conditionVars.filter(v => v.c3ConfigKey);
@@ -450,33 +454,89 @@ const DynamicParametersForm = ({
     );
   }
 
+  if (paramDefs.length === 0) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+        <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+          No detection engine implementation
+        </p>
+        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+          The violation scanner does not evaluate this trigger, so no thresholds are offered here — any values
+          stored would be ignored at runtime. Rules on this trigger are reported as “not implemented” on every scan.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {paramDefs.map(def => (
-        <div key={def.key} className="space-y-1">
-          {def.type === 'boolean' ? (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={value[def.key] ?? def.defaultValue ?? false}
-                onCheckedChange={c => updateParam(def.key, !!c)}
-              />
-              <Label className="font-normal text-sm">{def.label}</Label>
-            </div>
-          ) : (
-            <>
-              <Label className="text-sm">{def.label}</Label>
-              <Input
-                type={def.type}
-                value={value[def.key] ?? def.defaultValue ?? ''}
-                onChange={e => updateParam(def.key, def.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
-                placeholder={def.placeholder}
-                className="h-9"
-              />
-            </>
-          )}
-          {def.helpText && <p className="text-[10px] text-muted-foreground">{def.helpText}</p>}
-        </div>
-      ))}
+      <p className="text-[11px] text-muted-foreground">
+        These are the exact parameters the violation scanner reads. Required values have no code default — if one is
+        missing the rule is skipped and reported as a configuration error on the scan run.
+      </p>
+      {paramDefs.map(def => {
+        const inherited = def.policyFallback ? policy?.[def.policyFallback] : undefined;
+        const error = errors[def.key];
+        return (
+          <div key={def.key} className="space-y-1">
+            {def.type === 'boolean' ? (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={value[def.key] === true}
+                  onCheckedChange={c => updateParam(def.key, !!c)}
+                />
+                <Label className="font-normal text-sm">
+                  {def.label}
+                  {def.required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+              </div>
+            ) : (
+              <>
+                <Label className="text-sm">
+                  {def.label}
+                  {def.required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+                {def.type === 'string_array' ? (
+                  <Input
+                    value={Array.isArray(value[def.key]) ? value[def.key].join(', ') : (value[def.key] ?? '')}
+                    onChange={e => {
+                      const parts = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                      updateParam(def.key, parts.length > 0 ? parts : '');
+                    }}
+                    placeholder="Comma-separated codes"
+                    className="h-9"
+                  />
+                ) : (
+                  <Input
+                    type="number"
+                    value={value[def.key] ?? ''}
+                    onChange={e => updateParam(def.key, e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder={
+                      inherited !== undefined && inherited !== null
+                        ? `Inherited from policy: ${inherited}`
+                        : def.suggested !== undefined
+                          ? String(def.suggested)
+                          : ''
+                    }
+                    min={def.min}
+                    max={def.max}
+                    className="h-9"
+                  />
+                )}
+              </>
+            )}
+            <p className="text-[10px] text-muted-foreground">{def.help}</p>
+            {inherited !== undefined && inherited !== null && (
+              <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                Owned by the active Compliance Policy ({def.policyFallback} = {String(inherited)}). Leave blank to inherit.
+              </p>
+            )}
+            {error && <p className="text-[10px] text-destructive">{error}</p>}
+          </div>
+        );
+      })}
+
+
 
       {/* C3 Config Awareness Section */}
       {c3Vars.length > 0 && (
