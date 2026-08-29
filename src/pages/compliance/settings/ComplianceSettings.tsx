@@ -210,6 +210,11 @@ export default function ComplianceSettings() {
       {/* Obligation Reminder Notices */}
       <ObligationReminderRulesCard />
 
+      {/* Partial Payment Policy (DR-004) */}
+      <PartialPaymentPolicyCard />
+
+
+
 
       {/* Payment & Penalty Settings */}
       <Card>
