@@ -48,8 +48,6 @@ export interface PartialPaymentPolicy {
   allow_allocation_override: boolean;
   minimum_acceptable_percent: number;
   minimum_acceptable_amount: number;
-  extends_payment_grace: boolean;
-  max_grace_extension_days: number;
   authority_validity_days: number;
   required_approval_role: 'inspector' | 'senior' | 'head';
   escalated_approval_role: 'inspector' | 'senior' | 'head';
@@ -86,8 +84,6 @@ export interface PartialPaymentRequest {
   settled_amount: number;
   reason_code: string | null;
   justification: string;
-  grace_extension_days: number;
-  grace_extended_to: string | null;
   authority_number: string | null;
   authority_invoice_id: number | null;
   authority_expires_on: string | null;
@@ -250,14 +246,14 @@ export interface ApprovalResult {
   authority_number: string;
   authority_invoice_id: number;
   authority_expires_on: string;
-  grace_extension_days: number;
+  /** Always false — approval never moves the statutory payment deadline. */
+  extends_statutory_deadline: false;
 }
 
 export async function approvePartialPayment(input: {
   requestId: string;
   approvedAmount: number;
   allocations?: CePartialPaymentAllocationLine[] | null;
-  graceExtensionDays?: number;
   comments?: string;
   expectedVersion?: number;
 }): Promise<ApprovalResult> {
@@ -265,7 +261,6 @@ export async function approvePartialPayment(input: {
     p_request_id: input.requestId,
     p_approved_amount: input.approvedAmount,
     p_allocations: input.allocations ?? null,
-    p_grace_extension_days: input.graceExtensionDays ?? 0,
     p_comments: input.comments ?? null,
     p_expected_version: input.expectedVersion ?? null,
   });

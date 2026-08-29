@@ -34,7 +34,6 @@ interface Props {
 export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Props) {
   const qc = useQueryClient();
   const [approvedAmount, setApprovedAmount] = useState('');
-  const [graceDays, setGraceDays] = useState('0');
   const [comments, setComments] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [lines, setLines] = useState<CePartialPaymentAllocationLine[]>([]);
@@ -49,7 +48,6 @@ export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Pr
   useEffect(() => {
     if (!request) return;
     setApprovedAmount(String(request.requested_amount));
-    setGraceDays('0');
     setComments('');
     setRejectReason('');
     setLines(
@@ -87,7 +85,6 @@ export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Pr
   const policy = policyQ.data;
   const escalated =
     !!policy?.escalation_threshold_amount && numericApproved >= Number(policy.escalation_threshold_amount);
-  const maxGrace = policy?.extends_payment_grace ? policy.max_grace_extension_days : 0;
 
   const approve = useMutation({
     mutationFn: () =>
@@ -95,7 +92,6 @@ export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Pr
         requestId: request!.id,
         approvedAmount: numericApproved,
         allocations: lines,
-        graceExtensionDays: Number(graceDays) || 0,
         comments,
         expectedVersion: request!.row_version,
       }),
@@ -203,19 +199,16 @@ export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Pr
         </div>
 
         {decidable && (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
               <Label>Approved amount (XCD)</Label>
               <Input type="number" min="0" step="0.01" value={approvedAmount} onChange={(e) => setApprovedAmount(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Grace extension (days, max {maxGrace})</Label>
-              <Input type="number" min="0" max={maxGrace} value={graceDays} onChange={(e) => setGraceDays(e.target.value)} disabled={maxGrace === 0} />
-            </div>
-            <div className="space-y-1">
               <Label>Authority validity</Label>
               <p className="text-sm text-muted-foreground pt-2">
-                {policy?.authority_validity_days ?? 14} days from approval
+                {policy?.authority_validity_days ?? 14} days from approval. The statutory payment
+                deadline and any penalties are unaffected by this approval.
               </p>
             </div>
           </div>
