@@ -38,6 +38,7 @@ import {
 import { buildRuleExport, downloadRuleExport } from '@/lib/compliance/ruleExport';
 import RuleHistoryDialog, { RuleHistoryTable } from '@/components/compliance/detection/RuleHistoryDialog';
 import RuleActivationImpactDialog, { RuleImpactInfo } from '@/components/compliance/detection/RuleActivationImpactDialog';
+import RuleRuntimeHealthPanel from '@/components/compliance/detection/RuleRuntimeHealthPanel';
 import { History, Download, ShieldCheck } from 'lucide-react';
 
 // ── Types ──
