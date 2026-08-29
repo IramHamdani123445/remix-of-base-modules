@@ -357,6 +357,26 @@ export default function ComplianceLegalReferralWizard() {
     }
     setSubmitting(true);
     try {
+      // Governed override: the database re-checks authority before any
+      // ineligible case can be forwarded to Legal (Step 5 governance).
+      if (eligibility && !eligibility.eligible && handoffOverride.trim()) {
+        const { error: ovrErr } = await (supabase.rpc as any)(
+          'ce_record_legal_handoff_override_v1',
+          {
+            p_reason: handoffOverride.trim(),
+            p_evaluation: eligibility as unknown as Record<string, unknown>,
+            p_referral_id: null,
+            p_case_id: ceCaseId,
+            p_employer_id: employerId,
+          },
+        );
+        if (ovrErr) {
+          toast.error('Legal handoff override refused', { description: ovrErr.message });
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const items = candidates
         .filter((c) => selectedItems[c.key])
         .map((c) => ({
