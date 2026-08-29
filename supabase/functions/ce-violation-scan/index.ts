@@ -1115,35 +1115,59 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
 
           case "repeat_violation_check": {
-            const threshold = rule.parameters?.repeat_threshold ?? 3;
-            const empViolations = unresolvedViolations.filter(
-              (v: any) => v.employer_id === emp.regno
-            );
-            if (empViolations.length >= threshold) {
+            const threshold = Number(params.violation_count_threshold);
+            const rollingMonths = Number(params.rolling_months);
+            const sameTypeOnly = params.same_type_only === true;
+            const windowStart = new Date(asOfDate);
+            windowStart.setMonth(windowStart.getMonth() - rollingMonths);
+
+            const empViolations = unresolvedViolations.filter((v: any) => {
+              if (v.employer_id !== emp.regno) return false;
+              const seen = v.discovered_date ?? v.created_at;
+              return seen ? new Date(seen) >= windowStart : false;
+            });
+
+            let qualifying = empViolations.length;
+            let typeNote = "";
+            if (sameTypeOnly) {
+              const byType = new Map<string, number>();
+              for (const v of empViolations) {
+                byType.set(v.violation_type_id, (byType.get(v.violation_type_id) || 0) + 1);
+              }
+              qualifying = byType.size > 0 ? Math.max(...byType.values()) : 0;
+              typeNote = " of the same violation type";
+            }
+
+            if (qualifying >= threshold) {
               shouldFlag = true;
-              summary = `Repeat offender: ${empViolations.length} unresolved violations detected (threshold: ${threshold}).`;
+              summary = `Repeat offender: ${qualifying} unresolved violations${typeNote} in the last ${rollingMonths} months (threshold: ${threshold}).`;
               periodFrom = asOfPeriod;
             }
             break;
           }
 
           case "installment_overdue": {
-            const empArrangements = (arrangementMap.get(emp.regno) || []).filter(
-              (a: any) => a.health_status !== "HEALTHY" && a.health_status !== "INACTIVE"
-            );
+            const graceDays = Number(params.grace_days_after_installment);
+            const empArrangements = (arrangementMap.get(emp.regno) || []).filter((a: any) => {
+              if (a.health_status === "HEALTHY" || a.health_status === "INACTIVE") return false;
+              const overdue = Number(a.days_overdue ?? a.days_since_last_payment ?? NaN);
+              return Number.isFinite(overdue) ? overdue >= graceDays : true;
+            });
             if (empArrangements.length > 0) {
               const worst = empArrangements[0];
               shouldFlag = true;
-              summary = `Arrangement breach: ${worst.health_status} status. Missed ${worst.missed_payments || 0} payments.`;
+              summary = `Arrangement breach: ${worst.health_status} status. Missed ${worst.missed_payments || 0} payments (grace ${graceDays}d).`;
               periodFrom = asOfPeriod;
             }
             break;
           }
 
           case "levy_omission_check": {
-            if (arrear?.has_arrears && arrear.total_outstanding > 500) {
+            const minOutstanding = Number(params.min_outstanding_amount_xcd);
+            const outstanding = Number(arrear?.total_outstanding ?? 0);
+            if (arrear?.has_arrears && outstanding > minOutstanding) {
               shouldFlag = true;
-              summary = `Levy/severance contribution omission suspected. Outstanding: $${Number(arrear.total_outstanding).toLocaleString()}.`;
+              summary = `Levy/severance contribution omission suspected. Outstanding: $${outstanding.toLocaleString()} (threshold $${minOutstanding.toLocaleString()}).`;
               periodFrom = asOfPeriod;
             }
             break;
@@ -1154,14 +1178,20 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "employee_underreporting": {
-            const minDelta = rule.parameters?.min_employee_delta ?? 3;
+            const minDelta = Number(params.min_employee_delta);
+            const minPct = params.min_discrepancy_percent;
             if (wf && wf.employee_delta < -minDelta) {
-              shouldFlag = true;
-              summary = `Employee discrepancy: Registered ${wf.registered_total} but last reported ${wf.last_reported_employees} (delta: ${wf.employee_delta}).`;
-              periodFrom = wf.last_reported_period || asOfPeriod;
+              const registered = Number(wf.registered_total ?? 0);
+              const pct = registered > 0 ? (Math.abs(Number(wf.employee_delta)) / registered) * 100 : 0;
+              if (minPct === undefined || pct >= Number(minPct)) {
+                shouldFlag = true;
+                summary = `Employee discrepancy: Registered ${wf.registered_total} but last reported ${wf.last_reported_employees} (delta: ${wf.employee_delta}${minPct === undefined ? "" : `, ${pct.toFixed(1)}%`}).`;
+                periodFrom = wf.last_reported_period || asOfPeriod;
+              }
             }
             break;
           }
+
 
           case "wage_underreporting": {
             const minWage = rule.parameters?.min_wage_weekly_xcd;
