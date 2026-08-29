@@ -122329,6 +122329,17 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_approve_partial_payment_v1: {
+        Args: {
+          p_allocations?: Json
+          p_approved_amount: number
+          p_comments?: string
+          p_expected_version?: number
+          p_grace_extension_days?: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
       ce_approve_waiver_v1: {
         Args: {
           p_approved_amount: number
@@ -122383,6 +122394,10 @@ export type Database = {
           waivers: number
           write_offs: number
         }[]
+      }
+      ce_cancel_partial_payment_v1: {
+        Args: { p_reason?: string; p_request_id: string }
+        Returns: Json
       }
       ce_cancel_waiver_v1: {
         Args: { p_reason?: string; p_waiver_id: string }
@@ -122521,6 +122536,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_expire_partial_payment_authorities_v1: { Args: never; Returns: number }
       ce_feature_flag_enabled: { Args: { _flag_key: string }; Returns: boolean }
       ce_fetch_unobserved_payments: {
         Args: { p_employer_id?: string; p_limit?: number }
@@ -122641,6 +122657,57 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      ce_partial_payment_authority_for: {
+        Args: { p_employer_id: string; p_wage_period: string }
+        Returns: {
+          approved_amount: number | null
+          arrangement_id: string | null
+          authority_expires_on: string | null
+          authority_invoice_id: number | null
+          authority_issued_at: string | null
+          authority_number: string | null
+          case_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_user_id: string | null
+          decision_comments: string | null
+          decision_context: Json | null
+          employer_id: string
+          employer_name: string | null
+          grace_extended_to: string | null
+          grace_extension_days: number
+          id: string
+          justification: string
+          obligation_period_id: string | null
+          obligation_type: string
+          payment_reference: string | null
+          policy_id: string | null
+          policy_snapshot: Json | null
+          reason_code: string | null
+          request_number: string
+          requested_amount: number
+          requested_at: string
+          requested_by: string | null
+          requested_by_user_id: string | null
+          row_version: number
+          settled_amount: number
+          settled_at: string | null
+          source: string
+          status: string
+          supporting_documents: Json
+          total_liability: number
+          updated_at: string
+          violation_id: string | null
+          wage_period: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_partial_payment_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ce_post_financial_event: {
         Args: {
           p_credit_amount?: number
@@ -122676,6 +122743,65 @@ export type Database = {
         }
         Returns: string
       }
+      ce_pp_active_policy: {
+        Args: { p_scope?: string }
+        Returns: {
+          allocation_order: string[]
+          allow_allocation_override: boolean
+          authority_validity_days: number
+          block_when_arrangement_active: boolean
+          created_at: string
+          created_by: string | null
+          escalated_approval_role: string
+          escalation_threshold_amount: number | null
+          extends_payment_grace: boolean
+          id: string
+          is_active: boolean
+          max_grace_extension_days: number
+          minimum_acceptable_amount: number
+          minimum_acceptable_percent: number
+          notes: string | null
+          policy_code: string
+          policy_name: string
+          require_separate_approver: boolean
+          required_approval_role: string
+          scope_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_partial_payment_policies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ce_pp_can_approve: {
+        Args: { p_required_role: string; p_uid: string }
+        Returns: boolean
+      }
+      ce_pp_default_allocation: {
+        Args: { p_amount: number; p_liability: Json; p_order: string[] }
+        Returns: Json
+      }
+      ce_pp_deny: {
+        Args: {
+          p_code: string
+          p_detail: Json
+          p_request_id: string
+          p_uid: string
+        }
+        Returns: undefined
+      }
+      ce_pp_liability: {
+        Args: {
+          p_employer_id: string
+          p_obligation_type?: string
+          p_wage_period: string
+        }
+        Returns: Json
+      }
+      ce_pp_role_rank: { Args: { p_role: string }; Returns: number }
       ce_recalculate_arrangement_summary: {
         Args: { p_actor?: string; p_arrangement_id: string }
         Returns: undefined
@@ -122720,6 +122846,15 @@ export type Database = {
         }
         Returns: string
       }
+      ce_reject_partial_payment_v1: {
+        Args: {
+          p_comments?: string
+          p_expected_version?: number
+          p_reason: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       ce_reject_waiver_v1: {
         Args: { p_comments?: string; p_reason: string; p_waiver_id: string }
         Returns: Json
@@ -122735,6 +122870,22 @@ export type Database = {
           p_target_case_id?: string
         }
         Returns: Json
+      }
+      ce_request_partial_payment_v1: {
+        Args: {
+          p_allocations?: Json
+          p_case_id?: string
+          p_employer_id: string
+          p_justification: string
+          p_obligation_type?: string
+          p_reason_code?: string
+          p_requested_amount: number
+          p_source?: string
+          p_supporting_documents?: Json
+          p_violation_id?: string
+          p_wage_period: string
+        }
+        Returns: string
       }
       ce_request_waiver_v1: {
         Args: {
@@ -122780,6 +122931,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_review_partial_payment_v1: {
+        Args: { p_allocations: Json; p_comments?: string; p_request_id: string }
+        Returns: Json
+      }
       ce_run_employer_compliance_refresh: {
         Args: { p_batch_size?: number; p_dry_run?: boolean }
         Returns: Json
@@ -122818,6 +122973,14 @@ export type Database = {
         }[]
       }
       ce_set_change_reason: { Args: { p_reason: string }; Returns: undefined }
+      ce_settle_partial_payment_v1: {
+        Args: {
+          p_amount: number
+          p_payment_reference?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       ce_sync_automation_job_schedules: { Args: never; Returns: Json }
       ce_sync_c3_to_ledger: {
         Args: {
