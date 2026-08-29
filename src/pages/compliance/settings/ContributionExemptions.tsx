@@ -32,6 +32,16 @@ interface Exemption {
   recorded_by: string | null;
 }
 
+interface AuditEntry {
+  id: string;
+  action: string;
+  entity_id: string;
+  user_name: string | null;
+  timestamp: string;
+  payload_json: Record<string, unknown> | null;
+}
+
+
 const FUNDS = [
   { code: 'LV', label: 'Levy' },
   { code: 'SV', label: 'Severance' },
