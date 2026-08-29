@@ -86,7 +86,13 @@ describe("Checkpoint B2 scanner wiring", () => {
     const src = resolve(SRC_DIR, file);
     const edge = resolve(EDGE_DIR, file);
     expect(existsSync(edge), `${file} is not mirrored into the edge runtime`).toBe(true);
-    const normalise = (v: string) => v.replace(/from "@\/[^"]+"/g, 'from "<alias>"').replace(/from "\.\/[^"]+"/g, 'from "<alias>"');
+    // Deno requires explicit .ts extensions on relative imports; the app build
+    // forbids them. Both shapes normalise to the same alias for comparison.
+    const normalise = (v: string) =>
+      v
+        .replace(/from "@\/[^"]+"/g, 'from "<alias>"')
+        .replace(/from "\.\.?\/[^"]+"/g, 'from "<alias>"');
+
     expect(normalise(readFileSync(edge, "utf8"))).toBe(normalise(readFileSync(src, "utf8")));
   });
 });
