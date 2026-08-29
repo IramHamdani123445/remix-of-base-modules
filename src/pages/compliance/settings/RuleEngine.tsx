@@ -1160,6 +1160,7 @@ const RuleEngine = () => {
 
           <TabsContent value="detection">
             <div className="space-y-3">
+              <RuleRuntimeHealthPanel codePrefix="DR-" />
               <p className="text-sm text-muted-foreground mb-4">Detection rules automatically create violations when compliance conditions are met.</p>
               {detectionRules.length === 0 && <p className="text-center text-muted-foreground py-8">No detection rules configured. Click "Add Rule" to create one.</p>}
               {detectionRules.map(rule => (
