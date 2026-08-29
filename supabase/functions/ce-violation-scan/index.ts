@@ -191,7 +191,9 @@ async function fetchAllRows(
   table: string,
   filterCol?: string,
   filterVal?: string,
-  columns = "*"
+  columns = "*",
+  gteCol?: string,
+  gteVal?: string,
 ): Promise<any[]> {
   const PAGE_SIZE = 1000;
   let allRows: any[] = [];
@@ -201,6 +203,9 @@ async function fetchAllRows(
     let query = supabase.from(table).select(columns).range(from, from + PAGE_SIZE - 1);
     if (filterCol && filterVal) {
       query = query.eq(filterCol, filterVal);
+    }
+    if (gteCol && gteVal) {
+      query = query.gte(gteCol, gteVal);
     }
 
     const { data, error } = await query;
@@ -846,19 +851,22 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     // ── Checkpoint B2 bulk loaders (DR-005..DR-013) ──
     const stripEmpPrefix = (v: any) => String(v ?? "").replace(/^EMP-/, "");
 
+    // Arrangement employer ids are stored both raw ("E2EPAD") and prefixed
+    // ("EMP-30091"), so a server-side equality filter on either shape silently
+    // drops the other. Load all rows and reconcile on the stripped key.
     const installmentRowsAll = await fetchAllRows(
       supabase,
       "ce_v_arrangement_installment_operational",
-      employerFilter ? "employer_id" : undefined,
-      employerFilter ? `EMP-${employerFilter}` : undefined,
     );
     const installmentsByEmp = new Map<string, any[]>();
     for (const r of installmentRowsAll) {
       const key = stripEmpPrefix(r.employer_id);
+      if (employerFilter && key !== stripEmpPrefix(employerFilter)) continue;
       let arr = installmentsByEmp.get(key);
       if (!arr) { arr = []; installmentsByEmp.set(key, arr); }
       arr.push(r);
     }
+
 
     const waivedArrangementIds = new Set<string>();
     {
@@ -917,10 +925,12 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       }
     }
 
-    // Employer register used for DR-008 matching (trade name / legal name / address).
+    // Employer register used for DR-008 matching (trade name / legal name / address)
+    // and DR-010 sector resolution. `er_master` is the live register; `au_er_master`
+    // is its audit shadow and carries no rows.
     const employerRegisterAll = await fetchAllRows(
       supabase,
-      "au_er_master",
+      "er_master",
       employerFilter ? "regno" : undefined,
       employerFilter || undefined,
       "regno, name, trade_name, hq_addr1, hq_addr2, sector_code",
@@ -974,50 +984,69 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       isEnabled: b.is_enabled,
     }));
 
-    // c3_submissions/line_items: used for DR-007 person/fund lines, DR-009 headcount
-    // history and DR-010 wage observations. Employer id here is the internal uuid,
-    // so it is joined back to the regno register via ce_v_employer_workforce-style
-    // matching is not available; c3_submissions.employer_id is assumed to equal the
-    // employer's regno-scoped identifier used elsewhere in ce_ tables.
-    const c3SubmissionRows = await fetchAllRows(
+    // ── Authoritative C3 grain for DR-007 / DR-009 / DR-010 ──
+    // c3_submissions / c3_line_items are keyed by an internal uuid that has no
+    // join back to the regno-keyed employer loop (and carry no rows in this
+    // tenant), so they can never drive detection. The authoritative grain is:
+    //   cn_c3_reported -> employer x period totals (headcount, wages)
+    //   ip_wages       -> person x period x fund contributions (SS, LV)
+    // Both are keyed by payer_id = regno, matching the employer loop exactly.
+    const c3PeriodCutoff = (() => {
+      const d = new Date(`${asOfDate}T00:00:00Z`);
+      d.setUTCFullYear(d.getUTCFullYear() - 5);
+      return `${d.toISOString().slice(0, 8)}01`;
+    })();
+
+    const c3ReportedRows = await fetchAllRows(
       supabase,
-      "c3_submissions",
-      employerFilter ? "employer_id" : undefined,
+      "cn_c3_reported",
+      employerFilter ? "payer_id" : undefined,
       employerFilter || undefined,
-      "id, employer_id, filing_period, total_employees, total_wages, submission_method",
+      "payer_id, period, number_employed, total_wages",
+      "period",
+      c3PeriodCutoff,
     );
-    const submissionById = new Map<string, any>();
-    for (const sub of c3SubmissionRows) submissionById.set(String(sub.id), sub);
 
     const headcountHistoryByEmp = new Map<string, CeHeadcountObservation[]>();
     const wageObservationsByEmp = new Map<string, CeWageObservation>();
     const wageHistoryByEmp = new Map<string, CeWageObservation[]>();
     {
-      const byEmpPeriod = new Map<string, any[]>();
-      for (const sub of c3SubmissionRows) {
-        const key = String(sub.employer_id);
-        const list = byEmpPeriod.get(key) ?? [];
-        list.push(sub);
-        byEmpPeriod.set(key, list);
+      // cn_c3_reported carries one row per submitted sequence, so period totals
+      // are aggregated: wages are summed, headcount takes the largest reported
+      // figure for the period.
+      const agg = new Map<string, { employees: number; wages: number }>();
+      for (const r of c3ReportedRows) {
+        const empId = String(r.payer_id);
+        const period = String(r.period).slice(0, 7);
+        const key = `${empId}|${period}`;
+        const cur = agg.get(key) ?? { employees: 0, wages: 0 };
+        cur.employees = Math.max(cur.employees, Number(r.number_employed ?? 0));
+        cur.wages += Number(r.total_wages ?? 0);
+        agg.set(key, cur);
       }
-      for (const [empId, subs] of byEmpPeriod) {
-        const sorted = [...subs].sort((a, b) => (a.filing_period < b.filing_period ? -1 : 1));
-        const hcObs: CeHeadcountObservation[] = sorted.map((sub) => ({
-          employerId: empId,
-          periodKey: String(sub.filing_period).slice(0, 7),
-          reportedEmployees: Number(sub.total_employees ?? 0),
-        }));
-        headcountHistoryByEmp.set(empId, hcObs);
+      const byEmp = new Map<string, { period: string; employees: number; wages: number }[]>();
+      for (const [key, v] of agg) {
+        const [empId, period] = key.split("|");
+        const list = byEmp.get(empId) ?? [];
+        list.push({ period, employees: v.employees, wages: v.wages });
+        byEmp.set(empId, list);
+      }
+      for (const [empId, rows] of byEmp) {
+        const sorted = [...rows].sort((a, b) => (a.period < b.period ? -1 : 1));
+        headcountHistoryByEmp.set(
+          empId,
+          sorted.map((s) => ({ employerId: empId, periodKey: s.period, reportedEmployees: s.employees })),
+        );
 
         const sectorCode = sectorCodeByEmp.get(empId);
         const wageObs: CeWageObservation[] = sorted
-          .filter((sub) => Number(sub.total_employees) > 0)
-          .map((sub) => ({
+          .filter((s) => s.employees > 0)
+          .map((s) => ({
             employerId: empId,
             sectorCode,
-            periodKey: String(sub.filing_period).slice(0, 7),
-            averageWeeklyWage: Number(sub.total_wages ?? 0) / Number(sub.total_employees || 1),
-            employeeCount: Number(sub.total_employees ?? 0),
+            periodKey: s.period,
+            averageWeeklyWage: s.wages / s.employees,
+            employeeCount: s.employees,
           }));
         wageHistoryByEmp.set(empId, wageObs);
         if (wageObs.length > 0) wageObservationsByEmp.set(empId, wageObs[wageObs.length - 1]);
@@ -1026,60 +1055,39 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
     const fundLinesByEmp = new Map<string, CeC3PersonFundLine[]>();
     {
-      const c3LineRows = await fetchAllRows(
+      const wageLineRows = await fetchAllRows(
         supabase,
-        "c3_line_items",
-        undefined,
-        undefined,
-        "id, c3_id, employee_ssn, employee_name, wages_paid, ss_contribution, levy_contribution, under_age, over_age, invalid_ssn",
+        "ip_wages",
+        employerFilter ? "payer_id" : undefined,
+        employerFilter || undefined,
+        "id, ssn, employee_name, payer_id, period, total_wages, ip_ss_amt, ip_levy_amt",
+        "period",
+        c3PeriodCutoff,
       );
-      for (const line of c3LineRows) {
-        const sub = submissionById.get(String(line.c3_id));
-        if (!sub) continue;
-        const empId = String(sub.employer_id);
-        if (employerFilter && empId !== employerFilter) continue;
-        const periodKey = String(sub.filing_period).slice(0, 7);
-        const applicable =
-          Number(line.wages_paid ?? 0) > 0 && !line.under_age && !line.over_age && !line.invalid_ssn;
-        const ingestionSource =
-          sub.submission_method === "online"
-            ? "ONLINE"
-            : sub.submission_method === "kiosk"
-            ? "KIOSK"
-            : sub.submission_method === "legacy_import"
-            ? "LEGACY_IMPORT"
-            : "PHYSICAL";
+      for (const line of wageLineRows) {
+        const empId = String(line.payer_id);
+        const periodKey = String(line.period).slice(0, 7);
+        const wageAmount = Number(line.total_wages ?? 0);
+        const applicable = wageAmount > 0 && !!line.ssn;
+        const base = {
+          submissionId: String(line.id),
+          employerId: empId,
+          personSsn: String(line.ssn),
+          personName: line.employee_name ?? undefined,
+          periodKey,
+          applicable,
+          wageAmount,
+          ingestionSource: "LEGACY_IMPORT" as const,
+        };
         const list = fundLinesByEmp.get(empId) ?? [];
-        list.push({
-          submissionId: String(sub.id),
-          employerId: empId,
-          personSsn: line.employee_ssn,
-          personName: line.employee_name ?? undefined,
-          periodKey,
-          fundCode: "SS",
-          applicable,
-          contributionAmount: line.ss_contribution,
-          wageAmount: Number(line.wages_paid ?? 0),
-          ingestionSource,
-        });
-        list.push({
-          submissionId: String(sub.id),
-          employerId: empId,
-          personSsn: line.employee_ssn,
-          personName: line.employee_name ?? undefined,
-          periodKey,
-          fundCode: "LV",
-          applicable,
-          contributionAmount: line.levy_contribution,
-          wageAmount: Number(line.wages_paid ?? 0),
-          ingestionSource,
-        });
-        // No per-person severance column exists anywhere in the C3 line data —
-        // the SV portion of DR-007 is reported via ruleDiagnostics and never
-        // fabricated here (see markObligationConfigError below).
+        list.push({ ...base, fundCode: "SS", contributionAmount: line.ip_ss_amt });
+        list.push({ ...base, fundCode: "LV", contributionAmount: line.ip_levy_amt });
+        // Severance (SV) has no per-person column in any authoritative source —
+        // it is reported through ruleDiagnostics, never fabricated here.
         fundLinesByEmp.set(empId, list);
       }
     }
+
 
     const statusStateByEmp = new Map<string, any>();
     {
@@ -1113,6 +1121,19 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       regno: f.regno,
       name: f.employer_name,
     }));
+
+    // DR-006 arrangement breach is not filing-driven: an employer can hold an
+    // instalment arrangement without a filing fact in the scanned window, so
+    // union those employers into the scan list.
+    {
+      const known = new Set(allEmployers.map((e: any) => String(e.regno)));
+      for (const key of installmentsByEmp.keys()) {
+        if (!key || known.has(key)) continue;
+        known.add(key);
+        allEmployers.push({ regno: key, name: key, arrangement_only: true });
+      }
+    }
+
 
     // Apply limit/sample if specified
     if (employerLimit && employerLimit > 0 && allEmployers.length > employerLimit) {
@@ -1362,7 +1383,54 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
       const asOfPeriod = asOfDate.slice(0, 7);
 
+      // ── DR-008 unregistered employer leads ──
+      // Runs ONCE per rule over every open lead. Leads are lead-scoped, not
+      // employer-scoped: an unmatched lead has no regno to attach to, so it
+      // can never be reached from the employer loop.
+      if (rule.trigger_event === "registration_not_found") {
+        const allLeads = [...leadsByEmp.values()].flat();
+        for (const lead of allLeads) {
+          const scoutingLead: CeScoutingLead = {
+            leadId: lead.id,
+            tradeName: lead.trade_name,
+            businessAddress: lead.business_address ?? undefined,
+            discoveredDate: String(lead.discovered_date).slice(0, 10),
+            sourceType: (lead.source_type as any) ?? "INSPECTION",
+            sourceReference: lead.source_reference ?? undefined,
+            status: lead.status,
+            instructedAt: lead.instructed_at ? String(lead.instructed_at).slice(0, 10) : null,
+            registeredEmployerId: lead.registered_employer_id,
+            legalRecommended: lead.legal_recommended,
+            legalApprovedBy: lead.legal_approved_by,
+          };
+          const ev = evaluateLead(
+            scoutingLead,
+            employerRegister,
+            {
+              matchOnTradeName: params.match_on_trade_name === true,
+              matchOnAddress: params.match_on_address === true,
+            },
+            {
+              registrationResponseDays: Number(params.registration_response_days),
+              managementEscalationDays: Number(params.management_escalation_days),
+            },
+            asOfDate,
+          );
+          if (ev.action === "RAISE_REVIEW_FLAG") {
+            pushFlag(buildUnregisteredLeadFlag(ev, scoutingLead, rule.rule_code, rule.id));
+          }
+          if (!dryRun && ev.action === "ESCALATE_TO_MANAGEMENT" && lead.status !== "ESCALATED") {
+            await supabase
+              .from("ce_unregistered_employer_leads")
+              .update({ status: "ESCALATED", escalated_at: asOfDate })
+              .eq("id", lead.id);
+          }
+        }
+        continue;
+      }
+
       // ── DR-013 self-employed / voluntary non-compliance ──
+
       // Runs ONCE per rule over ce_self_employed_obligations, never per
       // employer: self-employed persons are not employer-scoped.
       if (rule.trigger_event === "self_employed_non_compliance") {
@@ -1505,6 +1573,10 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       };
 
       for (const emp of batchEmployers) {
+        // Employers pulled in only because they hold an instalment arrangement
+        // have no filing facts; evaluating filing/payment rules against them
+        // would manufacture false non-filing violations.
+        if ((emp as any).arrangement_only && rule.trigger_event !== "installment_overdue") continue;
         const filing = filingMap.get(emp.regno) as any;
         const payment = paymentMap.get(emp.regno) as any;
         const arrear = arrearMap.get(emp.regno) as any;
@@ -1839,39 +1911,12 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "registration_not_found": {
-            // DR-008: pure unregisteredEmployer module over scouting/inspection leads.
-            const leadRows = leadsByEmp.get(emp.regno) || [];
-            for (const lead of leadRows) {
-              const scoutingLead: CeScoutingLead = {
-                leadId: lead.id,
-                tradeName: lead.trade_name,
-                businessAddress: lead.business_address ?? undefined,
-                discoveredDate: String(lead.discovered_date).slice(0, 10),
-                sourceType: (lead.source_type as any) ?? "INSPECTION",
-                sourceReference: lead.source_reference ?? undefined,
-                status: lead.status,
-                instructedAt: lead.instructed_at,
-                registeredEmployerId: lead.registered_employer_id,
-                legalRecommended: lead.legal_recommended,
-                legalApprovedBy: lead.legal_approved_by,
-              };
-              const ev = evaluateLead(
-                scoutingLead,
-                employerRegister,
-                { matchOnTradeName: params.match_on_trade_name === true, matchOnAddress: params.match_on_address === true },
-                { registrationResponseDays: Number(params.registration_response_days), managementEscalationDays: Number(params.management_escalation_days) },
-                asOfDate,
-              );
-              if (ev.action === "RAISE_REVIEW_FLAG") {
-                pushFlag(buildUnregisteredLeadFlag(ev, scoutingLead, rule.rule_code, rule.id));
-              }
-              if (!dryRun && ev.action === "ESCALATE_TO_MANAGEMENT" && lead.status !== "ESCALATED") {
-                await supabase.from("ce_unregistered_employer_leads").update({ status: "ESCALATED", escalated_at: asOfDate }).eq("id", lead.id);
-              }
-            }
+            // DR-008 is evaluated once per run over every open lead (see the
+            // lead-scoped block above) — leads have no regno to attach to.
             shouldFlag = false;
             break;
           }
+
 
           case "employee_underreporting": {
             // DR-009: pure headcountAnomaly module against configured tiers.

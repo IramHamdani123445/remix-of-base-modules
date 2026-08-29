@@ -22,7 +22,7 @@
  * MIRROR: supabase/functions/_shared/compliance/detection/wageAnomaly.ts
  */
 
-import { buildReviewFlag, type CeReviewFlagRecord } from "./reviewFlag";
+import { buildReviewFlag, type CeReviewFlagRecord } from "./reviewFlag.ts";
 
 export interface CeSectorBenchmark {
   id: string;
