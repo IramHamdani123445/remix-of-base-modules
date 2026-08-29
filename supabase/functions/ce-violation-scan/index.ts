@@ -583,12 +583,35 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     const { data: activePolicyRows } = await supabase
       .from("ce_compliance_policies")
       .select(
-        "policy_code, policy_version, penalty_rate_percent, interest_rate_percent, penalty_calc_frequency, c3_grace_period_days, c3_submission_deadline_day, payment_due_date_day",
+        "policy_code, policy_version, penalty_rate_percent, interest_rate_percent, penalty_calc_frequency, c3_grace_period_days, c3_submission_deadline_day, payment_due_date_day, payment_grace_period_days, deadline_basis, reporting_offset_months, deadline_fixed_day",
       )
       .eq("is_active", true)
       .order("effective_from", { ascending: false })
       .limit(1);
     const activePolicy = activePolicyRows?.[0] ?? null;
+
+    // The obligation CALENDAR has exactly one owner: the active policy. Rules may
+    // override the fixed day / grace days, never the basis. A missing or invalid
+    // basis fails the deadline-driven rules visibly instead of assuming a day.
+    const obligationPolicyError = (() => {
+      try {
+        normalizeObligationPolicy(activePolicy, { grace_days: 0 });
+        return null;
+      } catch (e) {
+        return e instanceof CeObligationPolicyError ? e.message : String(e);
+      }
+    })();
+    /** Build the timeline policy for one rule (rule overrides > policy). */
+    const timelinePolicyFor = (
+      graceDays: number,
+      fixedDay?: number | null,
+    ): CeObligationPolicy =>
+      normalizeObligationPolicy(activePolicy, {
+        grace_days: Number.isFinite(graceDays) ? graceDays : 0,
+        fixed_day: fixedDay == null || !Number.isFinite(Number(fixedDay)) ? null : Number(fixedDay),
+      });
+    const iso = (d: Date | string | null | undefined): string | null =>
+      !d ? null : (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
 
     // Load violation type codes for mapping
     const vtIds = (rules || []).map((r: any) => r.violation_type_id).filter(Boolean);
@@ -976,23 +999,37 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
         switch (rule.trigger_event) {
           case "c3_deadline_passed": {
-            // Per-period: every C3 that WAS filed but arrived after its
-            // statutory deadline (+ grace) raises its own late-filing row.
+            // DR-001 Late Filing. Requires an ACTUAL filing received after the
+            // resolved deadline (+ grace). A missing filing is NEVER late here —
+            // it is DR-002 Unreported. Deadline comes from the shared resolver.
+            if (obligationPolicyError) {
+              diagnostics.push({
+                rule_code: rule.rule_code,
+                status: "configuration_error",
+                message: obligationPolicyError,
+              });
+              shouldFlag = false;
+              break;
+            }
             const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
-            const graceDays = Number(params.grace_period_days);
-            const dueDay = Number(params.submission_due_day);
+            const policy = timelinePolicyFor(Number(params.grace_period_days), params.submission_due_day);
             const c3 = c3ByEmp.get(emp.regno);
             if (c3) {
               const win = windowFor(emp.regno, cap);
               for (const [ym, rec] of c3) {
                 if (!rec.received || ym < win.from || ym > win.to) continue;
-                const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
-                const deadline = new Date(y, m, dueDay + graceDays);
-                if (rec.received > deadline) {
+                const timeline = resolveObligationTimeline(ym, policy, "C3_FILING");
+                const received = iso(rec.received)!;
+                const outcome = evaluateFilingObligation({
+                  timeline,
+                  filingReceivedDate: received,
+                  asOf: asOfDate,
+                });
+                if (outcome === "FILED_LATE") {
                   pushPeriod(
                     emp,
                     ym,
-                    `Late filing: C3 for ${ym} received ${rec.received.toISOString().slice(0, 10)}, after the ${deadline.toISOString().slice(0, 10)} deadline (${graceDays}d grace).`,
+                    `Late filing: C3 for ${ym} received ${received}, after the permitted date ${timeline.grace_end_date} (due ${timeline.due_date}, ${timeline.grace_days}d grace, basis ${timeline.deadline_basis}).`,
                   );
                 }
               }
@@ -1005,14 +1042,28 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
           case "c3_missing_30_days":
           case "contribution_gap_detected": {
-            // Per-period emission: flag every missing month independently so each
-            // gap (e.g. February only) gets its own violation row.
+            // DR-002 Unreported C3. Per-period emission so each missing month
+            // gets its own row. The deadline comes from the shared resolver; the
+            // rule parameter only adds days AFTER the resolved breach date.
+            if (obligationPolicyError) {
+              diagnostics.push({
+                rule_code: rule.rule_code,
+                status: "configuration_error",
+                message: obligationPolicyError,
+              });
+              shouldFlag = false;
+              break;
+            }
             const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
             const minMissed = Number(params.min_missed_months);
-            const graceDays = Number(params.days_past_deadline);
-            const dueDay = Number(params.submission_due_day);
+            const extraDays = Number(params.days_past_deadline) || 0;
+            const policy = timelinePolicyFor(
+              Number(activePolicy?.c3_grace_period_days ?? 0),
+              params.submission_due_day,
+            );
 
-            // Filed periods come from the bulk prefetch above — no per-employer query.
+            // Filed periods come from the bulk prefetch above — a NIL return is a
+            // filed return, so it can never produce an unreported violation.
             const filedSet = filedPeriodsByEmp.get(emp.regno) ?? new Set<string>();
 
             const today = new Date(asOfDate);
@@ -1021,18 +1072,29 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             const startYm = complianceStartByEmp.get(emp.regno);
             const sinceStart = startYm ? monthsBetween(startYm, today) : cap;
             const lookback = Math.max(0, Math.min(cap, sinceStart));
-            const missing: string[] = [];
+            const missing: Array<{ ym: string; breachDate: string }> = [];
             for (let i = 1; i <= lookback; i++) {
               const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
               const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
               if (startYm && ym < startYm) continue;
-              const deadline = new Date(d.getFullYear(), d.getMonth() + 1, dueDay + graceDays);
-              if (today >= deadline && !filedSet.has(ym)) missing.push(ym);
+              if (filedSet.has(ym)) continue;
+              const timeline = resolveObligationTimeline(ym, policy, "C3_FILING");
+              const breachDate = extraDays > 0
+                ? addDays(timeline.violation_effective_date, extraDays)
+                : timeline.violation_effective_date;
+              const outcome = evaluateFilingObligation({
+                timeline,
+                filingReceivedDate: null,
+                asOf: asOfDate,
+              });
+              if (outcome === "UNREPORTED" && asOfDate >= breachDate) {
+                missing.push({ ym, breachDate });
+              }
             }
 
 
             if (missing.length >= minMissed) {
-              for (const ym of missing) {
+              for (const { ym, breachDate } of missing) {
                 const periodFromYm = `${ym}-01`;
                 const dedupeKey = `${emp.regno}|${rule.violation_type_id}|${periodKey(periodFromYm)}`;
                 if (existingSet.has(dedupeKey)) continue;
@@ -1045,7 +1107,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                   violation_type_code: rule.violation_type_code || "UNKNOWN",
                   status: initialStatus,
                   priority: rule.priority,
-                  summary: `Non-filing: C3 not submitted for ${ym} (deadline + ${graceDays}d grace passed).`,
+                  summary: `Unreported C3: no return (including NIL) submitted for ${ym}; obligation in breach from ${breachDate}.`,
                   period_from: periodFromYm,
                   source_type: "AUTOMATED",
                   source_rule_id: rule.id,
@@ -1059,27 +1121,37 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "payment_not_received": {
-            // Per-period: a declared C3 with no money received for that period
-            // once the payment due date (+ grace) has passed.
+            // DR-003 Non-Payment: a declared C3 with no money received once the
+            // resolved payment deadline (+ grace) has passed.
+            if (obligationPolicyError) {
+              diagnostics.push({
+                rule_code: rule.rule_code,
+                status: "configuration_error",
+                message: obligationPolicyError,
+              });
+              shouldFlag = false;
+              break;
+            }
             const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
-            const graceDays = Number(params.grace_period_days);
-            const dueDay = Number(params.payment_due_day);
-            const today = new Date(asOfDate);
+            const policy = timelinePolicyFor(Number(params.grace_period_days), params.payment_due_day);
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
             if (c3) {
               const win = windowFor(emp.regno, cap);
               for (const [ym, rec] of c3) {
                 if (rec.declared <= 0 || ym < win.from || ym > win.to) continue;
-                const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
-                const dueDate = new Date(y, m, dueDay + graceDays);
-                if (today < dueDate) continue;
-                const amountPaid = paid?.get(ym) || 0;
-                if (amountPaid <= 0) {
+                const timeline = resolveObligationTimeline(ym, policy, "CONTRIBUTION_PAYMENT");
+                const outcome = evaluatePaymentObligation({
+                  timeline,
+                  declaredAmount: rec.declared,
+                  paidAmount: paid?.get(ym) || 0,
+                  asOf: asOfDate,
+                });
+                if (outcome === "NOT_PAID") {
                   pushPeriod(
                     emp,
                     ym,
-                    `Non-payment: contributions of $${rec.declared.toLocaleString()} declared for ${ym} but no payment received by ${dueDate.toISOString().slice(0, 10)}.`,
+                    `Non-payment: contributions of $${rec.declared.toLocaleString()} declared for ${ym} but no payment received by ${timeline.grace_end_date} (due ${timeline.due_date}, basis ${timeline.deadline_basis}).`,
                   );
                 }
               }
