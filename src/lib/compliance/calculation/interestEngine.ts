@@ -39,6 +39,30 @@ export const CE_COMPOUNDING_BASES: readonly CeCompoundingBasis[] = [
 /** Which authoritative obligation date interest starts running from. */
 export type CeInterestAccrualStart = "grace_end" | "due_date";
 
+/**
+ * Governed retroactivity mode for liabilities that predate the approved
+ * interest effective date. The client has NOT approved retrospective
+ * application, so `not_approved` is the only safe production behaviour until
+ * open business decision CR-002-RETROACTIVITY is confirmed.
+ */
+export type CeInterestRetroactivityMode =
+  | "not_approved"
+  | "exclude_pre_effective"
+  | "apply_retrospectively";
+
+export const CE_INTEREST_RETROACTIVITY_MODES: readonly CeInterestRetroactivityMode[] = [
+  "not_approved",
+  "exclude_pre_effective",
+  "apply_retrospectively",
+];
+
+/** Outcome classification recorded on every accrual record. */
+export type CeInterestClassification =
+  | "ACCRUED"
+  | "SUPPRESSED"
+  | "INTEREST_POLICY_REVIEW_REQUIRED"
+  | "SIMULATED";
+
 export interface CeInterestPolicy {
   /** Annual nominal rate as a percentage, e.g. 5 for 5% p.a. */
   annual_rate_percent: number;
@@ -47,8 +71,14 @@ export interface CeInterestPolicy {
   minimum_interest_principal: number;
   /** Anchor taken from the obligation timeline. */
   accrual_start: CeInterestAccrualStart;
-  /** Optional safety cap on accrual months. */
+  /** Optional cap on accrual months. Nullable — never defaulted. */
   max_accrual_months?: number | null;
+  /** Optional ceiling on cumulative interest per balance. Nullable — never defaulted. */
+  max_interest_amount?: number | null;
+  /** Date the interest policy is in force from, "YYYY-MM-DD". Nullable. */
+  interest_effective_from?: string | null;
+  /** Governed retroactivity policy. Defaults to `not_approved`. */
+  apply_to_pre_existing_liabilities?: CeInterestRetroactivityMode | null;
   /** Stamp of the configuration set used, recorded on every trace. */
   policy_version: string;
 }
@@ -74,6 +104,16 @@ export interface CeInterestInput {
   policy: CeInterestPolicy;
   /** Interest already posted for this balance — subtracted, never duplicated. */
   already_accrued?: number;
+  /**
+   * Production runs are guarded: an unapproved retroactive accrual is
+   * classified for review instead of being charged.
+   */
+  is_production?: boolean;
+  /**
+   * TEST/impact-analysis runs may compute the unapproved amount, clearly
+   * labelled as a simulation. A simulation never posts money.
+   */
+  simulation?: boolean;
 }
 
 export interface CeInterestResult {
@@ -85,6 +125,11 @@ export interface CeInterestResult {
   accrual_start_date: string;
   elapsed_months: number;
   monthly_rate: number;
+  classification: CeInterestClassification;
+  /** True when the figure is illustrative only and must never be posted. */
+  is_simulation: boolean;
+  /** Set when the amount needs a business decision before it may be charged. */
+  review_reason?: string;
   trace: CeCalculationTrace;
 }
 
