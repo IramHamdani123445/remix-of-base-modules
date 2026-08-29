@@ -298,3 +298,39 @@ export async function settlePartialPayment(input: {
     p_payment_reference: input.paymentReference ?? null,
   });
 }
+
+/* ------------------- approval context: arrangements ------------------- */
+
+export interface EmployerArrangementSummary {
+  id: string;
+  arrangement_number: string;
+  status: string;
+  total_debt: number | null;
+  total_paid: number | null;
+  installment_amount: number | null;
+  installments_paid: number | null;
+  number_of_installments: number | null;
+  next_due_date: string | null;
+  missed_payments: number | null;
+  breach_detected: boolean | null;
+}
+
+/**
+ * Read-only arrangement context shown to the approving officer. A partial
+ * payment decision must be taken with sight of any arrangement the employer
+ * already holds — it does not change how the decision is enforced.
+ */
+export async function listEmployerArrangements(
+  employerId: string,
+): Promise<EmployerArrangementSummary[]> {
+  const { data, error } = await supabase
+    .from('ce_payment_arrangements')
+    .select(
+      'id, arrangement_number, status, total_debt, total_paid, installment_amount, installments_paid, number_of_installments, next_due_date, missed_payments, breach_detected',
+    )
+    .eq('employer_id', employerId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  return (data ?? []) as unknown as EmployerArrangementSummary[];
+}
