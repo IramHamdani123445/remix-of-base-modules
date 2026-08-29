@@ -38,7 +38,12 @@ export interface WaiverRule {
   required_documents: string[];
   approval_workflow_required: boolean;
   audit_required: boolean;
+  /** Approval authority required to approve up to `amount_threshold`. */
+  required_approval_role: 'inspector' | 'senior' | 'head';
+  /** Approval authority required above `amount_threshold`. */
+  escalated_approval_role: 'inspector' | 'senior' | 'head';
   notes: string | null;
+
   sort_order: number;
   created_at: string;
   updated_at: string;
