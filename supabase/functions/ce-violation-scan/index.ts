@@ -2210,6 +2210,27 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       }
     }
 
+    // ── Review-flag persistence ────────────────────────────────────────────
+    // Review flags are review items, NOT confirmed violations. They are
+    // upserted on their deterministic dedupe key, so re-running detection over
+    // unchanged data produces zero additional flags.
+    let flagsCreated = 0;
+    if (!dryRun && flags.length > 0) {
+      for (let i = 0; i < flags.length; i += 200) {
+        const slice = flags.slice(i, i + 200);
+        const { data: upserted, error: flagErr } = await supabase
+          .from("ce_compliance_review_flags")
+          .upsert(slice, { onConflict: "dedupe_key", ignoreDuplicates: true })
+          .select("id");
+        if (flagErr) {
+          console.error("[ce-violation-scan] review flag upsert failed", flagErr.message);
+        } else {
+          flagsCreated += upserted?.length || 0;
+        }
+      }
+    }
+
+
     // Build by-rule breakdown for this slice, merged with earlier slices
     const batchByRule = enrichedRules.map((r) => ({
       rule_code: r.rule_code,
