@@ -227,7 +227,18 @@ export default function ContributionExemptions() {
                   <TableCell><Badge variant={statusVariant(ex.status)}>{STATUS_LABELS[ex.status] || ex.status}</Badge></TableCell>
                   <TableCell className="text-xs">{ex.authority_reference || '—'}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" disabled={!canManage} onClick={() => openEdit(ex)}><Edit className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" aria-label="Edit exemption" disabled={!canManage} onClick={() => openEdit(ex)}><Edit className="h-4 w-4" /></Button>
+                    {ex.status !== 'REVOKED' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        disabled={!canManage}
+                        onClick={() => { setRevoking(ex); setRevokeReason(''); }}
+                      >
+                        Revoke
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -238,6 +249,69 @@ export default function ContributionExemptions() {
           </Table>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Grant / Revoke History</CardTitle>
+          <CardDescription>Audit trail of exemption grants, amendments and revocations — actor, time and reason.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Actor</TableHead>
+                <TableHead>Exemption</TableHead>
+                <TableHead>Reason / Authority</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.map(h => {
+                const p = (h.payload_json ?? {}) as Record<string, any>;
+                return (
+                  <TableRow key={h.id}>
+                    <TableCell className="text-xs whitespace-nowrap">{new Date(h.timestamp).toLocaleString()}</TableCell>
+                    <TableCell className="text-xs">{h.action}</TableCell>
+                    <TableCell className="text-xs">{h.user_name || '—'}</TableCell>
+                    <TableCell className="font-mono text-[11px]">{h.entity_id}</TableCell>
+                    <TableCell className="text-xs">{p.reason || p.granting_authority || p.authority_reference || '—'}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {history.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No exemption history recorded yet.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!revoking} onOpenChange={o => { if (!o) setRevoking(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke Exemption</DialogTitle>
+            <DialogDescription>
+              Revoking stops this exemption from suppressing detection from now on. A reason is mandatory and is recorded in the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label>Revocation Reason</Label>
+            <Textarea value={revokeReason} onChange={e => setRevokeReason(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevoking(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => revokeMutation.mutate()}
+              disabled={revokeMutation.isPending || revokeReason.trim() === ''}
+            >
+              Revoke
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
