@@ -124055,6 +124055,11 @@ export type Database = {
         | { Args: never; Returns: number }
         | { Args: { p_scope_key?: string }; Returns: number }
       ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
+      ce_assignment_command_active: { Args: never; Returns: boolean }
+      ce_assignment_require_authz: {
+        Args: { p_operation: string }
+        Returns: string
+      }
       ce_b2_audit: {
         Args: {
           p_action: string
@@ -124871,6 +124876,62 @@ export type Database = {
       ce_validate_risk_policy_v1: {
         Args: { p_policy_id: string }
         Returns: Json
+      }
+      ce_violation_assign_v1: {
+        Args: {
+          p_notes?: string
+          p_target_inspector_id: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
+      ce_violation_assignment_apply: {
+        Args: {
+          p_actor_uid: string
+          p_assignment_type: string
+          p_notes: string
+          p_reason: string
+          p_source: string
+          p_target_inspector_id: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
+      ce_violation_bulk_assign_unassigned_v1: {
+        Args: {
+          p_limit?: number
+          p_notes: string
+          p_target_inspector_id: string
+        }
+        Returns: number
+      }
+      ce_violation_bulk_reassign_v1: {
+        Args: {
+          p_from_assignment_key: string
+          p_limit?: number
+          p_notes: string
+          p_reason: string
+          p_target_inspector_id: string
+        }
+        Returns: number
+      }
+      ce_violation_reassign_v1: {
+        Args: {
+          p_notes: string
+          p_reason: string
+          p_target_inspector_id: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
+      ce_violation_return_to_queue_v1: {
+        Args: {
+          p_notes?: string
+          p_queue_id?: string
+          p_reason: string
+          p_violation_id: string
+        }
+        Returns: string
       }
       ce_waiver_deny: {
         Args: {

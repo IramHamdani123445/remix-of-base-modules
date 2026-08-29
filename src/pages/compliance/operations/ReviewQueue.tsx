@@ -105,28 +105,37 @@ export default function ReviewQueue() {
   const handleReassign = async () => {
     if (!selectedViolation) return;
     setSaving(true);
-    const update: any = {};
+
+    // Governed server-side commands (Checkpoint F-S1): the database verifies the
+    // caller's compliance capability, supersedes the prior assignment and writes
+    // the violation header, history and audit atomically.
+    let error: any = null;
     if (reassignTarget.type === "queue" && reassignTarget.queue_id) {
-      update.assigned_queue_id = reassignTarget.queue_id;
-      update.assigned_to_user_id = null;
+      ({ error } = await (supabase.rpc as any)("ce_violation_return_to_queue_v1", {
+        p_violation_id: selectedViolation.id,
+        p_reason: "MANUAL",
+        p_notes: "Review queue reassignment",
+        p_queue_id: reassignTarget.queue_id,
+      }));
     } else if (reassignTarget.type === "officer" && reassignTarget.inspector_id) {
-      update.assigned_to_user_id = reassignTarget.inspector_id;
-    } else { toast.error("Select a target"); setSaving(false); return; }
+      ({ error } = await (supabase.rpc as any)("ce_violation_reassign_v1", {
+        p_violation_id: selectedViolation.id,
+        p_target_inspector_id: reassignTarget.inspector_id,
+        p_reason: "MANUAL",
+        p_notes: "Review queue reassignment",
+      }));
+    } else {
+      toast.error("Select a target");
+      setSaving(false);
+      return;
+    }
 
-    const { error } = await supabase.from("ce_violations").update(update).eq("id", selectedViolation.id);
     if (error) { toast.error("Failed: " + error.message); setSaving(false); return; }
-
-    await supabase.from("ce_violation_assignments").insert({
-      violation_id: selectedViolation.id,
-      assigned_queue_id: update.assigned_queue_id || selectedViolation.assigned_queue_id,
-      assigned_to_user_id: update.assigned_to_user_id || null,
-      assignment_type: "REASSIGN",
-      notes: `Review queue reassignment`,
-    });
 
     toast.success("Violation reassigned");
     setSaving(false); setReassignOpen(false); fetchData();
   };
+
 
   return (
     <div className="space-y-6 p-6">
