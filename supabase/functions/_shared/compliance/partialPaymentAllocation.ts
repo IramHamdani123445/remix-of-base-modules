@@ -144,19 +144,18 @@ export interface CePartialPaymentAuthority {
   status: CePartialPaymentAuthorityStatus;
   approved_amount: number | null;
   settled_amount: number | null;
-  /** ISO date the payment authority stops being valid. */
+  /**
+   * ISO date the payment authority stops being valid. This governs how long
+   * the counter may accept the approved money — it NEVER changes the statutory
+   * payment deadline.
+   */
   authority_expires_on: string | null;
-  /** ISO date the payment deadline was extended to, when the policy allows it. */
-  grace_extended_to: string | null;
 }
 
 export type CePartialPaymentOutcome =
   | "NOT_APPLICABLE"
   | "WITHIN_DEADLINE"
-  | "PENDING_DECISION"
-  | "AUTHORISED_PARTIAL"
-  | "AUTHORITY_EXPIRED"
-  | "UNAUTHORISED_PARTIAL";
+  | "PARTIAL_OUTSTANDING";
 
 export function authorityIsLive(
   authority: CePartialPaymentAuthority | null | undefined,
@@ -171,10 +170,12 @@ export function authorityIsLive(
 /**
  * DR-004 — Partial Payment.
  *
- * A partial payment is a *governed event*, not a threshold. It becomes a
- * violation only when money short of the declared liability sits against a
- * period past its resolved deadline WITHOUT a live approved payment
- * authority.
+ * The statutory deadline is immutable: it comes from the obligation deadline
+ * resolver and nothing in the partial-payment workflow can move it. A shortfall
+ * against the declared liability that is still outstanding after the resolved
+ * deadline is a DR-004 violation, whether or not a partial payment request is
+ * pending, approved or settled. A payment authority only permits SSB to accept
+ * money short of the full liability; it is not a licence to pay late.
  */
 export function evaluatePartialPaymentObligation(input: {
   /** Effective enforcement date from the shared deadline resolver. */
@@ -182,6 +183,7 @@ export function evaluatePartialPaymentObligation(input: {
   declaredAmount: number;
   paidAmount: number;
   asOf: string;
+  /** Retained for reporting/context only — it cannot change the outcome. */
   authority?: CePartialPaymentAuthority | null;
 }): CePartialPaymentOutcome {
   const declared = round2(Number(input.declaredAmount) || 0);
@@ -191,34 +193,11 @@ export function evaluatePartialPaymentObligation(input: {
   if (paid <= 0) return "NOT_APPLICABLE";
   if (paid >= declared) return "NOT_APPLICABLE";
 
-  const authority = input.authority ?? null;
-  const deadline = authority?.grace_extended_to && authority.grace_extended_to > input.graceEndDate
-    ? authority.grace_extended_to
-    : input.graceEndDate;
-
-  if (authority && authority.status === "PENDING_APPROVAL") return "PENDING_DECISION";
-  if (authorityIsLive(authority, input.asOf)) return "AUTHORISED_PARTIAL";
-  if (input.asOf <= deadline) return "WITHIN_DEADLINE";
-  if (authority && (authority.status === "APPROVED" || authority.status === "EXPIRED")) {
-    return "AUTHORITY_EXPIRED";
-  }
-  return "UNAUTHORISED_PARTIAL";
-}
-
-/**
- * DR-003 and DR-004 must never contradict each other for the same period:
- * once a live authority exists, non-payment enforcement is suspended for
- * the approved amount and the authorised window.
- */
-export function partialPaymentSuppressesNonPayment(
-  authority: CePartialPaymentAuthority | null | undefined,
-  asOf: string,
-): boolean {
-  if (!authority) return false;
-  if (authority.status === "PENDING_APPROVAL") return true;
-  return authorityIsLive(authority, asOf);
+  if (input.asOf <= input.graceEndDate) return "WITHIN_DEADLINE";
+  return "PARTIAL_OUTSTANDING";
 }
 
 export function isPartialPaymentViolation(outcome: CePartialPaymentOutcome): boolean {
-  return outcome === "UNAUTHORISED_PARTIAL" || outcome === "AUTHORITY_EXPIRED";
+  return outcome === "PARTIAL_OUTSTANDING";
 }
+

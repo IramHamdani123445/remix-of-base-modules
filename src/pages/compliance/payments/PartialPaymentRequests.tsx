@@ -15,6 +15,10 @@ import {
 import { PartialPaymentApprovalDialog } from '@/components/compliance/payments/PartialPaymentApprovalDialog';
 import { PartialPaymentRequestDialog } from '@/components/compliance/payments/PartialPaymentRequestDialog';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
+import { useHasCapability } from '@/hooks/useHasCapability';
+import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
 
 const TABS: Array<{ value: PartialPaymentStatus | 'ALL'; label: string }> = [
   { value: 'PENDING_APPROVAL', label: 'Awaiting approval' },
@@ -39,6 +43,7 @@ export default function PartialPaymentRequests() {
   const [status, setStatus] = useState<PartialPaymentStatus | 'ALL'>('PENDING_APPROVAL');
   const [selected, setSelected] = useState<PartialPaymentRequest | null>(null);
   const [creating, setCreating] = useState(false);
+  const canRequest = useHasCapability(COMPLIANCE_CAPABILITIES.PARTIAL_PAYMENT_REQUEST);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['ce-pp-requests', status],
@@ -59,11 +64,20 @@ export default function PartialPaymentRequests() {
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={() => setCreating(true)} disabled={!canRequest}>
             <Plus className="h-4 w-4 mr-2" /> New request
           </Button>
         </div>
       </div>
+
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Approving a partial payment issues a payment authority only. It does not extend the statutory
+          payment deadline, and neither a pending request nor an approved authority suspends non-payment
+          (DR-003) or partial-payment (DR-004) enforcement.
+        </AlertDescription>
+      </Alert>
 
       <Tabs value={status} onValueChange={(v) => setStatus(v as PartialPaymentStatus | 'ALL')}>
         <TabsList>

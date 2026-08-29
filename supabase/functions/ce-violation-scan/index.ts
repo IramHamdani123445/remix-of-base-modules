@@ -18,7 +18,6 @@ import {
   type CePartialPaymentAuthority,
   evaluatePartialPaymentObligation,
   isPartialPaymentViolation,
-  partialPaymentSuppressesNonPayment,
 } from "../_shared/compliance/partialPaymentAllocation.ts";
 
 
@@ -947,16 +946,16 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     }
 
     /**
-     * DR-004 partial payment authorities. A governed approval suspends both
-     * the partial-payment violation and the non-payment violation for the
-     * period it covers — the two rules must never contradict each other.
+     * DR-004 partial payment authorities are loaded for context and audit
+     * reporting only. Neither a pending request nor an approved authority
+     * suspends DR-003 or DR-004: the statutory deadline is immutable.
      */
     const authorityByEmp = new Map<string, Map<string, CePartialPaymentAuthority>>();
     {
       let q = supabase
         .from("ce_partial_payment_requests")
         .select(
-          "employer_id, wage_period, status, approved_amount, settled_amount, authority_expires_on, grace_extended_to, requested_at",
+          "employer_id, wage_period, status, approved_amount, settled_amount, authority_expires_on, requested_at",
         )
         .in("status", ["PENDING_APPROVAL", "APPROVED", "SETTLED", "EXPIRED"])
         .order("requested_at", { ascending: true });
@@ -977,7 +976,6 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           approved_amount: row.approved_amount == null ? null : Number(row.approved_amount),
           settled_amount: row.settled_amount == null ? null : Number(row.settled_amount),
           authority_expires_on: row.authority_expires_on ?? null,
-          grace_extended_to: row.grace_extended_to ?? null,
         });
       }
     }
@@ -1189,9 +1187,8 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                   asOf: asOfDate,
                 });
                 if (outcome === "NOT_PAID") {
-                  // DR-003 must stand down where a governed partial payment
-                  // authority (or a pending decision) covers the period.
-                  if (partialPaymentSuppressesNonPayment(authorityFor(emp.regno, ym), asOfDate)) continue;
+                  // A pending or approved partial payment request never
+                  // suspends DR-003 — the statutory deadline still applies.
                   pushPeriod(
                     emp,
                     ym,
@@ -1206,10 +1203,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
           case "payment_partial": {
             // DR-004 Partial Payment: a shortfall against the declared
-            // liability that has passed the resolved payment deadline WITHOUT
-            // a live approved payment authority. There is no percentage or
-            // amount threshold — a partial payment is a governed event, and
-            // approval (not size) decides whether it is a violation.
+            // liability still outstanding after the resolved statutory
+            // deadline. There is no percentage or amount threshold, and no
+            // partial payment request or approval can postpone the deadline.
             if (obligationPolicyError) {
               markObligationConfigError(rule.rule_code, obligationPolicyError);
               shouldFlag = false;
@@ -1235,9 +1231,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                 });
                 if (!isPartialPaymentViolation(outcome)) continue;
                 const shortfall = rec.declared - amountPaid;
-                const reason = outcome === "AUTHORITY_EXPIRED"
-                  ? `the approved payment authority expired on ${authority?.authority_expires_on}`
-                  : "no approved partial payment authority exists";
+                const reason = authority
+                  ? `partial payment authority ${authority.status} — the statutory deadline is unchanged`
+                  : "the shortfall remains unsettled";
                 pushPeriod(
                   emp,
                   ym,

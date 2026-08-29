@@ -7,7 +7,6 @@ import {
   CePartialPaymentConfigError,
   evaluatePartialPaymentObligation,
   isPartialPaymentViolation,
-  partialPaymentSuppressesNonPayment,
   validateAllocation,
   type CePartialPaymentAuthority,
   type CePartialPaymentLiability,
@@ -29,7 +28,6 @@ const approved = (over: Partial<CePartialPaymentAuthority> = {}): CePartialPayme
   approved_amount: 4000,
   settled_amount: 0,
   authority_expires_on: '2026-09-30',
-  grace_extended_to: null,
   ...over,
 });
 
@@ -95,7 +93,7 @@ describe('allocation validation', () => {
   });
 });
 
-describe('DR-004 outcome', () => {
+describe('DR-004 outcome — the statutory deadline is immutable', () => {
   const base = { graceEndDate: '2026-09-15', declaredAmount: 1000, paidAmount: 400 };
 
   it('is not applicable when nothing or everything was paid', () => {
@@ -103,83 +101,43 @@ describe('DR-004 outcome', () => {
     expect(evaluatePartialPaymentObligation({ ...base, paidAmount: 1000, asOf: '2026-10-01' })).toBe('NOT_APPLICABLE');
   });
 
-  it('does not fire before the resolved deadline', () => {
+  it('does not fire before the resolved statutory deadline', () => {
     expect(evaluatePartialPaymentObligation({ ...base, asOf: '2026-09-10' })).toBe('WITHIN_DEADLINE');
   });
 
-  it('fires for an unauthorised shortfall after the deadline, regardless of size', () => {
+  it('fires for any shortfall after the deadline, regardless of size', () => {
     const tiny = evaluatePartialPaymentObligation({ ...base, declaredAmount: 1000, paidAmount: 999, asOf: '2026-10-01' });
-    expect(tiny).toBe('UNAUTHORISED_PARTIAL');
+    expect(tiny).toBe('PARTIAL_OUTSTANDING');
     expect(isPartialPaymentViolation(tiny)).toBe(true);
   });
 
-  it('is suppressed by a live approved authority', () => {
-    const outcome = evaluatePartialPaymentObligation({ ...base, asOf: '2026-09-20', authority: approved() });
-    expect(outcome).toBe('AUTHORISED_PARTIAL');
-    expect(isPartialPaymentViolation(outcome)).toBe(false);
-  });
-
-  it('re-fires once the authority expires', () => {
-    const outcome = evaluatePartialPaymentObligation({ ...base, asOf: '2026-10-05', authority: approved() });
-    expect(outcome).toBe('AUTHORITY_EXPIRED');
+  it('B1-C1 — an approved payment authority does NOT postpone the deadline', () => {
+    const outcome = evaluatePartialPaymentObligation({ ...base, asOf: '2026-10-01', authority: approved() });
+    expect(outcome).toBe('PARTIAL_OUTSTANDING');
     expect(isPartialPaymentViolation(outcome)).toBe(true);
   });
 
-  it('honours a grace extension granted at approval', () => {
-    expect(
-      evaluatePartialPaymentObligation({
-        ...base,
-        asOf: '2026-09-25',
-        authority: approved({ grace_extended_to: '2026-09-30' }),
-      }),
-    ).toBe('AUTHORISED_PARTIAL');
-  });
-
-  it('holds enforcement while a decision is pending', () => {
+  it('B1-C2 — a pending request does NOT suspend enforcement', () => {
     const pending = approved({ status: 'PENDING_APPROVAL', approved_amount: null, authority_expires_on: null });
     const outcome = evaluatePartialPaymentObligation({ ...base, asOf: '2026-10-01', authority: pending });
-    expect(outcome).toBe('PENDING_DECISION');
-    expect(isPartialPaymentViolation(outcome)).toBe(false);
+    expect(outcome).toBe('PARTIAL_OUTSTANDING');
+    expect(isPartialPaymentViolation(outcome)).toBe(true);
   });
 
-  it('treats a rejected or cancelled request as no authority at all', () => {
-    for (const status of ['REJECTED', 'CANCELLED'] as const) {
+  it('produces the same outcome with and without an authority of any status', () => {
+    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'CANCELLED', 'SETTLED', 'EXPIRED'] as const;
+    const none = evaluatePartialPaymentObligation({ ...base, asOf: '2026-10-01' });
+    for (const status of statuses) {
       expect(
         evaluatePartialPaymentObligation({ ...base, asOf: '2026-10-01', authority: approved({ status }) }),
-      ).toBe('UNAUTHORISED_PARTIAL');
+      ).toBe(none);
     }
-  });
-});
-
-describe('DR-003 / DR-004 mutual exclusivity', () => {
-  it('suspends non-payment enforcement while an authority is live or pending', () => {
-    expect(partialPaymentSuppressesNonPayment(approved(), '2026-09-20')).toBe(true);
-    expect(partialPaymentSuppressesNonPayment(approved({ status: 'PENDING_APPROVAL' }), '2026-12-01')).toBe(true);
-  });
-
-  it('restores non-payment enforcement when there is no live authority', () => {
-    expect(partialPaymentSuppressesNonPayment(null, '2026-09-20')).toBe(false);
-    expect(partialPaymentSuppressesNonPayment(approved({ status: 'REJECTED' }), '2026-09-20')).toBe(false);
-    expect(partialPaymentSuppressesNonPayment(approved(), '2026-10-05')).toBe(false);
-  });
-
-  it('never lets DR-003 and DR-004 both stand for the same period', () => {
-    const asOf = '2026-09-20';
-    const authority = approved();
-    const dr004 = evaluatePartialPaymentObligation({
-      graceEndDate: '2026-09-15',
-      declaredAmount: 1000,
-      paidAmount: 400,
-      asOf,
-      authority,
-    });
-    const dr003Suppressed = partialPaymentSuppressesNonPayment(authority, asOf);
-    expect(isPartialPaymentViolation(dr004) && !dr003Suppressed).toBe(false);
   });
 
   it('marks an authority live only while approved or settled and unexpired', () => {
     expect(authorityIsLive(approved({ status: 'SETTLED' }), '2026-09-20')).toBe(true);
     expect(authorityIsLive(approved({ status: 'EXPIRED' }), '2026-09-20')).toBe(false);
+    expect(authorityIsLive(approved(), '2026-10-05')).toBe(false);
   });
 });
 
@@ -206,12 +164,23 @@ describe('retired legacy semantics', () => {
     expect(block).toContain('evaluatePartialPaymentObligation');
   });
 
-  it('suppresses DR-003 where a partial payment authority applies', () => {
+  it('B1-C2 — DR-003 is never suppressed by a partial payment request', () => {
     const scanner = readFileSync(resolve('supabase/functions/ce-violation-scan/index.ts'), 'utf8');
-    const block = scanner.slice(
-      scanner.indexOf('case "payment_not_received"'),
-      scanner.indexOf('case "payment_partial"'),
-    );
-    expect(block).toContain('partialPaymentSuppressesNonPayment');
+    expect(scanner).not.toContain('partialPaymentSuppressesNonPayment');
+  });
+
+  it('B1-C1 — no grace-extension vocabulary survives anywhere in the slice', () => {
+    for (const f of [
+      'src/lib/compliance/partialPaymentAllocation.ts',
+      'src/services/partialPaymentService.ts',
+      'src/components/compliance/payments/PartialPaymentApprovalDialog.tsx',
+      'src/components/compliance/settings/PartialPaymentPolicyCard.tsx',
+    ]) {
+      const src = readFileSync(resolve(f), 'utf8');
+      expect(src).not.toContain('grace_extended_to');
+      expect(src).not.toContain('grace_extension_days');
+      expect(src).not.toContain('extends_payment_grace');
+      expect(src).not.toContain('max_grace_extension_days');
+    }
   });
 });

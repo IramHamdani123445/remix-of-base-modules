@@ -43053,10 +43053,8 @@ export type Database = {
           created_by: string | null
           escalated_approval_role: string
           escalation_threshold_amount: number | null
-          extends_payment_grace: boolean
           id: string
           is_active: boolean
-          max_grace_extension_days: number
           minimum_acceptable_amount: number
           minimum_acceptable_percent: number
           notes: string | null
@@ -43077,10 +43075,8 @@ export type Database = {
           created_by?: string | null
           escalated_approval_role?: string
           escalation_threshold_amount?: number | null
-          extends_payment_grace?: boolean
           id?: string
           is_active?: boolean
-          max_grace_extension_days?: number
           minimum_acceptable_amount?: number
           minimum_acceptable_percent?: number
           notes?: string | null
@@ -43101,10 +43097,8 @@ export type Database = {
           created_by?: string | null
           escalated_approval_role?: string
           escalation_threshold_amount?: number | null
-          extends_payment_grace?: boolean
           id?: string
           is_active?: boolean
-          max_grace_extension_days?: number
           minimum_acceptable_amount?: number
           minimum_acceptable_percent?: number
           notes?: string | null
@@ -43135,8 +43129,6 @@ export type Database = {
           decision_context: Json | null
           employer_id: string
           employer_name: string | null
-          grace_extended_to: string | null
-          grace_extension_days: number
           id: string
           justification: string
           obligation_period_id: string | null
@@ -43177,8 +43169,6 @@ export type Database = {
           decision_context?: Json | null
           employer_id: string
           employer_name?: string | null
-          grace_extended_to?: string | null
-          grace_extension_days?: number
           id?: string
           justification: string
           obligation_period_id?: string | null
@@ -43219,8 +43209,6 @@ export type Database = {
           decision_context?: Json | null
           employer_id?: string
           employer_name?: string | null
-          grace_extended_to?: string | null
-          grace_extension_days?: number
           id?: string
           justification?: string
           obligation_period_id?: string | null
@@ -122335,7 +122323,6 @@ export type Database = {
           p_approved_amount: number
           p_comments?: string
           p_expected_version?: number
-          p_grace_extension_days?: number
           p_request_id: string
         }
         Returns: Json
@@ -122675,8 +122662,6 @@ export type Database = {
           decision_context: Json | null
           employer_id: string
           employer_name: string | null
-          grace_extended_to: string | null
-          grace_extension_days: number
           id: string
           justification: string
           obligation_period_id: string | null
@@ -122754,10 +122739,8 @@ export type Database = {
           created_by: string | null
           escalated_approval_role: string
           escalation_threshold_amount: number | null
-          extends_payment_grace: boolean
           id: string
           is_active: boolean
-          max_grace_extension_days: number
           minimum_acceptable_amount: number
           minimum_acceptable_percent: number
           notes: string | null

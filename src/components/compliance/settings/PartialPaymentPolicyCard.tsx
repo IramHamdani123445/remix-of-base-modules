@@ -33,8 +33,6 @@ export function PartialPaymentPolicyCard() {
       allow_allocation_override: draft!.allow_allocation_override,
       minimum_acceptable_percent: Number(draft!.minimum_acceptable_percent),
       minimum_acceptable_amount: Number(draft!.minimum_acceptable_amount),
-      extends_payment_grace: draft!.extends_payment_grace,
-      max_grace_extension_days: Number(draft!.max_grace_extension_days),
       authority_validity_days: Number(draft!.authority_validity_days),
       required_approval_role: draft!.required_approval_role,
       escalated_approval_role: draft!.escalated_approval_role,
@@ -173,18 +171,9 @@ export function PartialPaymentPolicyCard() {
             <Input type="number" min="0" step="0.01" value={draft.escalation_threshold_amount ?? ''}
               onChange={(e) => setDraft({ ...draft, escalation_threshold_amount: e.target.value === '' ? null : Number(e.target.value) })} />
           </Field>
-          <Field label="Maximum grace extension (days)" hint="Only used when grace extension is enabled.">
-            <Input type="number" min="0" value={draft.max_grace_extension_days}
-              disabled={!draft.extends_payment_grace}
-              onChange={(e) => setDraft({ ...draft, max_grace_extension_days: Number(e.target.value) })} />
-          </Field>
         </div>
 
         <div className="space-y-3">
-          <Toggle label="Approval may extend the payment grace period"
-            description="When off, an approved partial payment never moves the payment deadline."
-            checked={draft.extends_payment_grace}
-            onChange={(v) => setDraft({ ...draft, extends_payment_grace: v })} />
           <Toggle label="Compliance may change the requested allocation"
             description="Allows the approver to redistribute the offered amount across categories."
             checked={draft.allow_allocation_override}
