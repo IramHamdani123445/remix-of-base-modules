@@ -2013,14 +2013,41 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             // driven by the real obligation history (ce_obligation_periods),
             // never the "two missed months" heuristic. This is a VIOLATION,
             // not a review flag.
-            const history: CeObligationHistoryEntry[] = (obligationPeriodsByEmp.get(emp.regno) || []).map(
-              (o: any) => ({
-                periodKey: String(o.wage_period).slice(0, 7),
-                expected: true,
-                filingReceived: o.filing_status === "FILED_ON_TIME" || o.filing_status === "FILED_LATE",
-                contributionPaid: o.payment_status === "PAID_IN_FULL",
-              }),
-            );
+            //
+            // ce_obligation_periods stores TWO rows per wage period (C3_FILING
+            // and CONTRIBUTION_PAYMENT), each carrying NOT_APPLICABLE in the
+            // column it does not own. Reading the rows independently made a
+            // filing row look like a missed payment and a payment row look
+            // like a missed filing, so a fully compliant employer reported a
+            // gap for every period. Merge both rows into one entry per wage
+            // period and treat NOT_APPLICABLE as "not owed on this row".
+            // `expected` is limited to periods whose deadline has elapsed, so
+            // a period that is merely not yet due is never a gap.
+            const asOfRefDate = new Date(`${asOfDate}T00:00:00Z`);
+            const mergedHistory = new Map<string, CeObligationHistoryEntry>();
+            for (const o of obligationPeriodsByEmp.get(emp.regno) || []) {
+              const periodKeyYm = String((o as any).wage_period).slice(0, 7);
+              const entry = mergedHistory.get(periodKeyYm) ?? {
+                periodKey: periodKeyYm,
+                expected: false,
+                filingReceived: true,
+                contributionPaid: true,
+              };
+              const dueDate = (o as any).due_date ? new Date((o as any).due_date) : null;
+              const elapsed = !dueDate || dueDate <= asOfRefDate;
+              if (elapsed) entry.expected = true;
+              const filing = String((o as any).filing_status ?? "");
+              const payment = String((o as any).payment_status ?? "");
+              if (elapsed && filing !== "NOT_APPLICABLE" && filing !== "FILED_ON_TIME" && filing !== "FILED_LATE") {
+                entry.filingReceived = false;
+              }
+              if (elapsed && payment !== "NOT_APPLICABLE" && payment !== "PAID_IN_FULL") {
+                entry.contributionPaid = false;
+              }
+              mergedHistory.set(periodKeyYm, entry);
+            }
+            const history: CeObligationHistoryEntry[] = [...mergedHistory.values()];
+
             const gapFinding = evaluateContributionGap(emp.regno, history, {
               minMissedMonths: Number(params.min_missed_months),
               daysPastDeadline: Number(params.days_past_deadline) || 0,
