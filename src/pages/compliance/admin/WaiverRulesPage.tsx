@@ -289,10 +289,35 @@ function Editor({
                   onChange={(e) => update('amount_threshold', Number(e.target.value) as any)} />
               </Field>
             </div>
-            <Field label="Sort Order">
-              <Input type="number" value={local.sort_order ?? 0}
-                onChange={(e) => update('sort_order', Number(e.target.value) as any)} />
-            </Field>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Required Approval Role">
+                <Select value={(local as any).required_approval_role ?? 'senior'}
+                  onValueChange={(v) => update('required_approval_role' as any, v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {APPROVAL_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Escalated Approval Role (above threshold)">
+                <Select value={(local as any).escalated_approval_role ?? 'head'}
+                  onValueChange={(v) => update('escalated_approval_role' as any, v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {APPROVAL_ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Sort Order">
+                <Input type="number" value={local.sort_order ?? 0}
+                  onChange={(e) => update('sort_order', Number(e.target.value) as any)} />
+              </Field>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Approval authority is enforced in the database: amounts above the threshold require the
+              escalated role, and no rule means the highest authority is required.
+            </p>
+
           </TabsContent>
 
           <TabsContent value="scope" className="space-y-3">
