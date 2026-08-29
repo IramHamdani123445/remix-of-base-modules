@@ -39,7 +39,7 @@ const BRANCH_CONTRACT: Array<{ rule: string; triggerEvent: string; call: string 
   { rule: "DR-010", triggerEvent: "wage_underreporting", call: "evaluateSectorBenchmark" },
   { rule: "DR-011", triggerEvent: "employer_cessation", call: "evaluateImproperCessation" },
   { rule: "DR-012", triggerEvent: "contribution_gap_detected", call: "evaluateContributionGap" },
-  { rule: "DR-013", triggerEvent: "self_employed_non_compliance", call: "evaluateSelfEmployedPortfolio" },
+  { rule: "DR-013", triggerEvent: "self_employed_non_compliance", call: "evaluateSelfEmployedObligation" },
 ];
 
 const scanner = readFileSync(SCANNER, "utf8");
