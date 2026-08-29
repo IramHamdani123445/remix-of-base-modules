@@ -40,6 +40,11 @@ import {
   REFERRAL_STATUS,
   ACTIVE_REFERRAL_STATUSES,
 } from "@/services/compliance/legalEscalationFlow";
+import {
+  findApprovedRecommendation,
+  recommendLegal,
+} from "@/services/compliance/legalReferralGovernance";
+
 
 const sb = supabase as any;
 
