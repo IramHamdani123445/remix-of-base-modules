@@ -107,6 +107,25 @@ export default function ContributionExemptions() {
     onError: (e: any) => toast.error('Failed to save exemption', { description: e.message }),
   });
 
+  const revokeMutation = useMutation({
+    mutationFn: async () => {
+      if (!revoking) return;
+      const { error } = await supabase.rpc('ce_revoke_contribution_exemption_v1' as never, {
+        p_id: revoking.id,
+        p_reason: revokeReason,
+      } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ce_contribution_exemptions'] });
+      qc.invalidateQueries({ queryKey: ['ce_contribution_exemption_history'] });
+      toast.success('Exemption revoked');
+      setRevoking(null);
+      setRevokeReason('');
+    },
+    onError: (e: any) => toast.error('Failed to revoke exemption', { description: e.message }),
+  });
+
   const openAdd = () => { setEditing(null); setForm(emptyForm); setDialogOpen(true); };
   const openEdit = (e: Exemption) => {
     setEditing(e);
@@ -118,6 +137,7 @@ export default function ContributionExemptions() {
     });
     setDialogOpen(true);
   };
+
 
   if (isLoading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
