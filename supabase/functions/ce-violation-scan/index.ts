@@ -561,11 +561,24 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     // Load enabled detection rules with violation type codes
     const { data: rules, error: rulesError } = await supabase
       .from("ce_detection_rules")
-      .select("id, rule_code, name, violation_type_id, auto_create_violation, trigger_event, parameters, priority")
+      .select("id, rule_code, name, violation_type_id, auto_create_violation, trigger_event, parameters, priority, updated_at")
       .eq("is_enabled", true)
       .order("rule_code");
 
     if (rulesError) throw rulesError;
+
+    // ── Active compliance policy (cross-rule statutory owner) ──
+    // Loaded up front: statutory due days and rates are owned here, and rule
+    // parameter resolution falls back to this row before declaring an error.
+    const { data: activePolicyRows } = await supabase
+      .from("ce_compliance_policies")
+      .select(
+        "policy_code, policy_version, penalty_rate_percent, interest_rate_percent, penalty_calc_frequency, c3_grace_period_days, c3_submission_deadline_day, payment_due_date_day",
+      )
+      .eq("is_active", true)
+      .order("effective_from", { ascending: false })
+      .limit(1);
+    const activePolicy = activePolicyRows?.[0] ?? null;
 
     // Load violation type codes for mapping
     const vtIds = (rules || []).map((r: any) => r.violation_type_id).filter(Boolean);
@@ -583,6 +596,60 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       ...r,
       violation_type_code: vtMap[r.violation_type_id] || "UNKNOWN",
     }));
+
+    // ── Runtime parameter resolution against the canonical contract ──
+    // No business-policy default is ever substituted in code. A rule with an
+    // unresolved required parameter is skipped and reported as a configuration
+    // error on the run, so a violation can always be explained later.
+    const ruleDiagnostics: Array<{
+      rule_code: string;
+      rule_id: string;
+      trigger_event: string;
+      config_updated_at: string | null;
+      effective_parameters: Record<string, any>;
+      parameter_sources: Record<string, string>;
+      status: "ok" | "configuration_error" | "not_implemented";
+      errors?: string[];
+    }> = [];
+    const paramsByRuleId = new Map<string, Record<string, any>>();
+    const configErrorRuleIds = new Set<string>();
+
+    for (const rule of enrichedRules) {
+      const specs = DETECTION_PARAM_SPEC[rule.trigger_event];
+      if (!specs) {
+        ruleDiagnostics.push({
+          rule_code: rule.rule_code,
+          rule_id: rule.id,
+          trigger_event: rule.trigger_event,
+          config_updated_at: (rule as any).updated_at ?? null,
+          effective_parameters: {},
+          parameter_sources: {},
+          status: "not_implemented",
+          errors: [`Trigger "${rule.trigger_event}" has no runtime implementation in the scanner.`],
+        });
+        configErrorRuleIds.add(rule.id);
+        continue;
+      }
+      const resolved = resolveRuleParameters(specs, rule.parameters, activePolicy);
+      if (resolved.errors.length > 0) {
+        configErrorRuleIds.add(rule.id);
+        console.error(
+          `[ce-violation-scan] CONFIGURATION ERROR ${rule.rule_code}: ${resolved.errors.join(" | ")}`,
+        );
+      }
+      paramsByRuleId.set(rule.id, resolved.values);
+      ruleDiagnostics.push({
+        rule_code: rule.rule_code,
+        rule_id: rule.id,
+        trigger_event: rule.trigger_event,
+        config_updated_at: (rule as any).updated_at ?? null,
+        effective_parameters: resolved.values,
+        parameter_sources: resolved.sources,
+        status: resolved.errors.length > 0 ? "configuration_error" : "ok",
+        ...(resolved.errors.length > 0 ? { errors: resolved.errors } : {}),
+      });
+    }
+
 
     // Load fact views with FULL pagination
     const filterCol = employerFilter ? "regno" : undefined;
