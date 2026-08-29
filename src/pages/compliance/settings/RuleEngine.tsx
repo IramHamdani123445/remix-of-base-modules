@@ -825,9 +825,24 @@ const EscalationRuleDialog = ({
 
 // ── Main Component ──
 
+const VALID_RULE_ENGINE_TABS = ['detection', 'calculation', 'escalation'] as const;
+
 const RuleEngine = () => {
-  const [activeTab, setActiveTab] = useState('detection');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = (VALID_RULE_ENGINE_TABS as readonly string[]).includes(tabParam ?? '')
+    ? (tabParam as string)
+    : 'detection';
+  const setActiveTab = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams);
+      params.set('tab', next);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
   const queryClient = useQueryClient();
+
   const { userCode } = useUserCode();
   const canManage =
     useHasPermission('ce_admin_settings', 'edit') ||
