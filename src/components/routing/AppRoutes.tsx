@@ -1539,6 +1539,9 @@ export const AppRoutes = () => {
       <Route path="/compliance/enforcement/arrangements" element={<PaymentArrangements />} />
       <Route path="/compliance/enforcement/breaches" element={<ComplianceBreachMonitoring />} />
       <Route path="/compliance/enforcement/waivers" element={<ComplianceFeatureGate flagKey="compliance.payment.waiver_requests" title="Waiver Requests"><ComplianceWaivers /></ComplianceFeatureGate>} />
+      <Route path="/compliance/enforcement/partial-payments" element={<ComplianceFeatureGate flagKey="compliance.payment.partial_payment" title="Partial Payment Requests"><CompliancePartialPayments /></ComplianceFeatureGate>} />
+
+
 
 
       {/* ── Reports (unchanged paths) ── */}
