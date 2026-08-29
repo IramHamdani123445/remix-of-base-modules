@@ -72,9 +72,11 @@ describe("CR-001 generic late-payment penalty is retired", () => {
     }
   });
 
-  it("keeps CR-004 configurable but not activated", () => {
+  it("keeps CR-004 configurable but blocked from executing", () => {
     expect(CALCULATION_PARAM_SPEC["CR-004"]).toBeDefined();
-    expect(isRetiredCalculationRule("CR-004")).toBe(false);
+    // The contract survives so the capability stays configurable, but no
+    // runtime consumer may execute it.
+    expect(isRetiredCalculationRule("CR-004")).toBe(true);
   });
 });
 
@@ -164,15 +166,15 @@ describe("CR-002 interest engine", () => {
   });
 
   it("uses the authoritative obligation timeline as its anchor", () => {
-    const timeline = resolveObligationTimeline({
-      obligation_type: "CONTRIBUTION_PAYMENT",
-      wage_period: "2026-07",
-      policy: normalizeObligationPolicy({
+    const timeline = resolveObligationTimeline(
+      "2026-07",
+      normalizeObligationPolicy({
         deadline_basis: "calendar_month_end",
         reporting_offset_months: 1,
         grace_days: 0,
       }),
-    });
+      "CONTRIBUTION_PAYMENT",
+    );
     expect(timeline.due_date).toBe("2026-08-31");
     const result = computeInterest({
       principal: 1000,
@@ -416,7 +418,9 @@ describe("payment allocation order and credits", () => {
     expect(result.credit?.amount).toBe(500);
     expect(result.credit?.disposition).toBe("offset_future_liability");
     expect(result.credit?.source_reference).toBe("RCT-5");
-    expect(JSON.stringify(result)).not.toMatch(/refund/i);
+    // the credit is an offset only — no refund disposition exists
+    expect(JSON.stringify(result.credit)).not.toMatch(/refund/i);
+    expect(result.trace.steps.join(" ")).toMatch(/no cash refund/i);
   });
 
   it("is idempotent and fully traced", () => {
@@ -469,7 +473,9 @@ describe("Checkpoint C parameter contracts", () => {
     expect(estimateKeys).toContain("history_period_count");
     expect(estimateKeys).toContain("estimate_multiplier");
     const allocKeys = CALCULATION_PARAM_SPEC["CR-008"].map((p) => p.key);
-    expect(allocKeys).toContain("class_order");
+    expect(allocKeys).toContain("allocation_class_order");
+    expect(allocKeys).toContain("within_class_order");
     expect(allocKeys).toContain("interest_settlement");
+    expect(allocKeys).toContain("over_payment_creates_credit");
   });
 });

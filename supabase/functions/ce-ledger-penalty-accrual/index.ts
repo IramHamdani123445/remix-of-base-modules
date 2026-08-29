@@ -114,10 +114,7 @@ Deno.serve(async (req) => {
       await finish("FAILED", {}, "No active compliance policy — the obligation timeline is unresolvable");
       return json({ run_id: runId, configuration_error: ["no active ce_compliance_policies row"] }, 200);
     }
-    const obligationPolicy = normalizeObligationPolicy({
-      deadline_basis: compliancePolicy.deadline_basis,
-      reporting_offset_months: compliancePolicy.reporting_offset_months,
-      deadline_fixed_day: compliancePolicy.deadline_fixed_day,
+    const obligationPolicy = normalizeObligationPolicy(compliancePolicy, {
       grace_days: compliancePolicy.payment_grace_period_days ?? 0,
     });
 
@@ -143,11 +140,7 @@ Deno.serve(async (req) => {
 
       let timeline;
       try {
-        timeline = resolveObligationTimeline({
-          obligation_type: "CONTRIBUTION_PAYMENT",
-          wage_period: wagePeriod,
-          policy: obligationPolicy,
-        });
+        timeline = resolveObligationTimeline(wagePeriod, obligationPolicy, "CONTRIBUTION_PAYMENT");
       } catch { skipped++; continue; }
 
       const { data: prior } = await supabase
