@@ -41435,6 +41435,7 @@ export type Database = {
           annual_rate_percent: number
           as_of_date: string
           calculation_audit_id: string | null
+          classification: string
           compounding_basis: string
           created_at: string
           cumulative_interest: number
@@ -41443,6 +41444,7 @@ export type Database = {
           fund_code: string | null
           id: string
           idempotency_key: string
+          is_simulation: boolean
           ledger_entry_id: string | null
           policy_version: string
           posted_interest: number
@@ -41455,6 +41457,7 @@ export type Database = {
           annual_rate_percent: number
           as_of_date: string
           calculation_audit_id?: string | null
+          classification?: string
           compounding_basis: string
           created_at?: string
           cumulative_interest?: number
@@ -41463,6 +41466,7 @@ export type Database = {
           fund_code?: string | null
           id?: string
           idempotency_key: string
+          is_simulation?: boolean
           ledger_entry_id?: string | null
           policy_version: string
           posted_interest?: number
@@ -41475,6 +41479,7 @@ export type Database = {
           annual_rate_percent?: number
           as_of_date?: string
           calculation_audit_id?: string | null
+          classification?: string
           compounding_basis?: string
           created_at?: string
           cumulative_interest?: number
@@ -41483,6 +41488,7 @@ export type Database = {
           fund_code?: string | null
           id?: string
           idempotency_key?: string
+          is_simulation?: boolean
           ledger_entry_id?: string | null
           policy_version?: string
           posted_interest?: number
@@ -43723,6 +43729,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ce_open_business_decision: {
+        Row: {
+          confirmed_basis: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_code: string
+          decision_notes: string | null
+          id: string
+          raised_by: string
+          rule_code: string | null
+          runtime_guard: string | null
+          status: string
+          title: string
+          unconfirmed_items: Json
+          updated_at: string
+        }
+        Insert: {
+          confirmed_basis?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_code: string
+          decision_notes?: string | null
+          id?: string
+          raised_by?: string
+          rule_code?: string | null
+          runtime_guard?: string | null
+          status?: string
+          title: string
+          unconfirmed_items?: Json
+          updated_at?: string
+        }
+        Update: {
+          confirmed_basis?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_code?: string
+          decision_notes?: string | null
+          id?: string
+          raised_by?: string
+          rule_code?: string | null
+          runtime_guard?: string | null
+          status?: string
+          title?: string
+          unconfirmed_items?: Json
+          updated_at?: string
+        }
+        Relationships: []
       }
       ce_org_document_foundation: {
         Row: {
