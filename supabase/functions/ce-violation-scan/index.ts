@@ -2246,6 +2246,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       violations_created: carry.violations_created + (dryRun ? 0 : insertedCount),
       violations_routed: carry.violations_routed + (dryRun ? 0 : routedCount),
       violations_skipped_dedupe: carry.violations_skipped_dedupe + skippedCount,
+      violations_would_create: carry.violations_would_create + newViolations.length,
       review_flags_created: carry.review_flags_created + flagsCreated,
       review_flags_would_create: (carry.review_flags_would_create ?? 0) + flags.length,
       by_rule: mergeByRule(carry.by_rule, batchByRule),
