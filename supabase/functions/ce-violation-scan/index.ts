@@ -1051,12 +1051,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "payment_not_received": {
             // Per-period: a declared C3 with no money received for that period
             // once the payment due date (+ grace) has passed.
-            const cap = Math.min(
-              ABSOLUTE_CAP_MONTHS,
-              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
-            );
-            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
-            const dueDay = Number(rule.parameters?.payment_due_day ?? 28);
+            const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
+            const graceDays = Number(params.grace_period_days);
+            const dueDay = Number(params.payment_due_day);
             const today = new Date(asOfDate);
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
