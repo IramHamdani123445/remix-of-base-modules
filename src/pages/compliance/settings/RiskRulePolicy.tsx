@@ -11,12 +11,12 @@ import RiskPoliciesTab from './risk-policy/RiskPoliciesTab';
 import RiskBandsTab from './risk-policy/RiskBandsTab';
 import LegalEscalationTab from './risk-policy/LegalEscalationTab';
 
-const VALID_TABS = ['factors', 'policies', 'bands', 'escalation'];
+const VALID_TABS = ['model', 'factors', 'policies', 'bands', 'escalation'];
 
 export default function RiskRulePolicy() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const activeTab = VALID_TABS.includes(tabParam ?? '') ? (tabParam as string) : 'factors';
+  const activeTab = VALID_TABS.includes(tabParam ?? '') ? (tabParam as string) : 'model';
   const setActiveTab = useCallback(
     (next: string) => {
       const params = new URLSearchParams(searchParams);

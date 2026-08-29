@@ -46047,20 +46047,6 @@ export type Database = {
             referencedRelation: "ce_risk_policies"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_ce_risk_policy_factors_factor"
-            columns: ["factor_id"]
-            isOneToOne: false
-            referencedRelation: "ce_risk_config"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ce_risk_policy_factors_policy"
-            columns: ["policy_id"]
-            isOneToOne: false
-            referencedRelation: "ce_risk_policies"
-            referencedColumns: ["id"]
-          },
         ]
       }
       ce_risk_profiles: {

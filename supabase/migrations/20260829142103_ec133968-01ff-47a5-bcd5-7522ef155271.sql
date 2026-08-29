@@ -1,0 +1,2 @@
+ALTER TABLE public.ce_risk_policy_factors DROP CONSTRAINT IF EXISTS fk_ce_risk_policy_factors_factor;
+ALTER TABLE public.ce_risk_policy_factors DROP CONSTRAINT IF EXISTS fk_ce_risk_policy_factors_policy;
