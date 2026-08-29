@@ -835,6 +835,13 @@ function coerce(spec: CeParamSpec, raw: any): { ok: boolean; value?: any; messag
     }
     return { ok: false, message: `${spec.key} must be a non-empty list of codes` };
   }
+  if (spec.type === "date") {
+    const s = String(raw).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(new Date(`${s}T00:00:00Z`).getTime())) {
+      return { ok: false, message: `${spec.key} must be a calendar date (YYYY-MM-DD)` };
+    }
+    return { ok: true, value: s };
+  }
   const n = Number(raw);
   if (!Number.isFinite(n)) return { ok: false, message: `${spec.key} must be a number` };
   if (spec.integer && !Number.isInteger(n)) return { ok: false, message: `${spec.key} must be a whole number` };
