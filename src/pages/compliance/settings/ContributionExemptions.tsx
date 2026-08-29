@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useHasCapability } from '@/hooks/useHasCapability';
-import { useUserCode } from '@/hooks/useUserCode';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
 
 interface Exemption {
@@ -61,7 +60,6 @@ function statusVariant(s: string): any {
 
 export default function ContributionExemptions() {
   const canManage = useHasCapability(COMPLIANCE_CAPABILITIES.EXEMPTION_MANAGE);
-  const { userCode } = useUserCode();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Exemption | null>(null);
