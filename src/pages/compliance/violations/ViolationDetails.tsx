@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   FileText, Bell, History, AlertCircle, MessageSquare, Mail, ListChecks,
   Loader2, Eye, MapPin, UserCheck, ClipboardCheck,
-  Play, Search, ArrowUpCircle, CheckCircle, XCircle, RotateCcw, Lock, Building2, Briefcase
+  Play, Search, ArrowUpCircle, CheckCircle, XCircle, RotateCcw, Lock, Building2, Briefcase, Gavel
 } from 'lucide-react';
 import { ViolationNotesTab } from '@/components/compliance/ViolationNotesTab';
 import { ViolationSLAMetrics } from '@/components/compliance/ViolationSLAMetrics';
@@ -20,6 +20,7 @@ import { ViolationCorrespondenceTab } from '@/components/compliance/ViolationCor
 import { ViolationActionPlanTab } from '@/components/compliance/ViolationActionPlanTab';
 import { ViolationFollowUpsTab } from '@/components/compliance/ViolationFollowUpsTab';
 import { ViolationNoticesTab } from '@/components/compliance/ViolationNoticesTab';
+import { ViolationEnforcementPanel } from '@/components/compliance/ViolationEnforcementPanel';
 import { ViolationResolutionDialog } from '@/components/compliance/ViolationResolutionDialog';
 import { ViolationActionConfirmDialog, ConfirmActionType } from '@/components/compliance/ViolationActionConfirmDialog';
 import { violationLifecycleService, ViolationStatus } from '@/services/violationLifecycleService';
@@ -706,9 +707,10 @@ export default function ViolationDetails() {
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9">
+        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10">
           <TabsTrigger value="overview"><FileText className="h-4 w-4 mr-2" />Overview</TabsTrigger>
           <TabsTrigger value="timeline"><History className="h-4 w-4 mr-2" />Timeline</TabsTrigger>
+          <TabsTrigger value="enforcement"><Gavel className="h-4 w-4 mr-2" />Enforcement</TabsTrigger>
           <TabsTrigger value="follow-ups"><ClipboardCheck className="h-4 w-4 mr-2" />Follow-Ups</TabsTrigger>
           <TabsTrigger value="notes"><MessageSquare className="h-4 w-4 mr-2" />Notes</TabsTrigger>
           <TabsTrigger value="correspondence"><Mail className="h-4 w-4 mr-2" />Correspondence</TabsTrigger>
@@ -716,6 +718,7 @@ export default function ViolationDetails() {
           <TabsTrigger value="history"><History className="h-4 w-4 mr-2" />History ({violationHistory.length})</TabsTrigger>
           <TabsTrigger value="notices"><Bell className="h-4 w-4 mr-2" />Notices ({violationNoticesCount})</TabsTrigger>
           <TabsTrigger value="other-violations"><AlertCircle className="h-4 w-4 mr-2" />Other ({otherViolations.length})</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="timeline" className="space-y-4">
@@ -909,6 +912,11 @@ export default function ViolationDetails() {
         <TabsContent value="notices" className="space-y-4">
           <ViolationNoticesTab violationId={v.id} employerId={v.employer_id} employerName={v.employer_name} />
         </TabsContent>
+
+        <TabsContent value="enforcement" className="space-y-4">
+          <ViolationEnforcementPanel violationId={v.id} employerId={v.employer_id} caseId={(v as any).case_id ?? null} />
+        </TabsContent>
+
 
         <TabsContent value="other-violations" className="space-y-4">
           <Card>
