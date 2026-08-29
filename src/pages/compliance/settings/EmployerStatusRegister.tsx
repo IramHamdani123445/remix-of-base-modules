@@ -247,6 +247,11 @@ export default function EmployerStatusRegister() {
                 {currentState?.effective_date && (
                   <span className="text-xs text-muted-foreground">effective {currentState.effective_date}</span>
                 )}
+                {currentState?.evidence_type && (
+                  <span className="text-xs text-muted-foreground">
+                    evidence: {evidenceLabel(currentState.evidence_type)} {currentState.evidence_reference || ''}
+                  </span>
+                )}
               </div>
             ))}
 
