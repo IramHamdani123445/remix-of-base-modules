@@ -331,7 +331,9 @@ export default function Employer360() {
               </CardContent>
             </Card>
           </div>
+          {employerId && <RiskExplainabilityPanel employerId={employerId} />}
         </TabsContent>
+
 
         {/* ═══ FINANCIAL TAB ═══ */}
         <TabsContent value="financial" className="space-y-4">
