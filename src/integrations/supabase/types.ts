@@ -62724,6 +62724,13 @@ export type Database = {
             foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_employer_arrears_summary"
             referencedColumns: ["regno"]
           },
@@ -62823,6 +62830,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_compliance_monitoring"
             referencedColumns: ["employer_regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
@@ -63001,6 +63015,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_compliance_monitoring"
             referencedColumns: ["employer_regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
@@ -63529,6 +63550,13 @@ export type Database = {
             foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_employer_arrears_summary"
             referencedColumns: ["regno"]
           },
@@ -63647,6 +63675,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_compliance_monitoring"
             referencedColumns: ["employer_regno"]
+          },
+          {
+            foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
@@ -117177,6 +117212,19 @@ export type Database = {
           review_due_date: string | null
           risk_band: string | null
           risk_score: number | null
+        }
+        Relationships: []
+      }
+      ce_v_employer_arrears_report: {
+        Row: {
+          current_arrears: number | null
+          current_penalty: number | null
+          employer_name: string | null
+          has_arrears: boolean | null
+          last_payment_date: string | null
+          regno: string | null
+          total_outstanding: number | null
+          zone: string | null
         }
         Relationships: []
       }

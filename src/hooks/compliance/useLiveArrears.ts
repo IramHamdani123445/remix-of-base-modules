@@ -1,11 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Live arrears loader — replaces the seed snapshot table
- * `ce_arrears_report_entries` with real data from
- * `ce_v_employer_arrears_summary`, joined with zone resolution
- * via `ce_violations.zone_id` → `ce_zones.zone_name` and
- * last-payment dates from `cn_payment` / `cn_payment_header`.
+ * Live arrears loader — reads the governed reporting view
+ * `ce_v_employer_arrears_report`, which is derived from the canonical
+ * `ce_v_employer_arrears_summary` (C-L1 ledger truth) and resolves zone
+ * (`ce_violations.zone_id` → `ce_zones.zone_name`) and last-payment date
+ * (`cn_payment` / `cn_payment_header`) server-side.
+ *
+ * Financial values are NOT recomputed here — they are passed through
+ * unchanged from the canonical view.
  */
 export interface LiveArrearsRow {
   id: string;
@@ -49,55 +52,20 @@ function bucketAging(lastPayment: string | null): string {
 }
 
 export async function loadLiveArrears(): Promise<LiveArrearsRow[]> {
-  // 1. Pull all employers with arrears from the live view
-  const arrearsRows = await loadAllPaged<any>(
-    'ce_v_employer_arrears_summary',
-    'regno,employer_name,current_arrears,current_penalty,total_outstanding,has_arrears',
-    (q) => q.eq('has_arrears', true),
+  const rows = await loadAllPaged<any>(
+    'ce_v_employer_arrears_report',
+    'regno,employer_name,current_arrears,current_penalty,total_outstanding,has_arrears,zone,last_payment_date',
+    (q) => q.eq('has_arrears', true).order('total_outstanding', { ascending: false }),
   );
 
-  // 2. Resolve zone per regno via ce_violations + ce_zones
-  const zones = await loadAllPaged<any>('ce_zones', 'id,zone_name');
-  const zoneById = new Map<string, string>(zones.map((z: any) => [z.id, z.zone_name]));
-
-  const violations = await loadAllPaged<any>(
-    'ce_violations',
-    'employer_id,zone_id,updated_at',
-    (q) => q.not('zone_id', 'is', null),
-  );
-  // Most recent zone assignment per employer wins
-  violations.sort((a: any, b: any) => String(b.updated_at).localeCompare(String(a.updated_at)));
-  const zoneByRegno = new Map<string, string>();
-  for (const v of violations) {
-    if (!zoneByRegno.has(v.employer_id) && v.zone_id) {
-      const zn = zoneById.get(v.zone_id);
-      if (zn) zoneByRegno.set(v.employer_id, zn);
-    }
-  }
-
-  // 3. Resolve last-payment date per regno
-  const headers = await loadAllPaged<any>('cn_payment_header', 'payment_id,payer_id,date_received');
-  const headerById = new Map<string, any>(headers.map((h: any) => [h.payment_id, h]));
-  const payments = await loadAllPaged<any>('cn_payment', 'payment_id,payment_date');
-  const lastPaymentByRegno = new Map<string, string>();
-  for (const p of payments) {
-    const h = headerById.get(p.payment_id);
-    if (!h?.payer_id) continue;
-    const d = p.payment_date || h.date_received;
-    if (!d) continue;
-    const prev = lastPaymentByRegno.get(h.payer_id);
-    if (!prev || d > prev) lastPaymentByRegno.set(h.payer_id, d);
-  }
-
-  // 4. Shape the rows
-  return arrearsRows.map((r: any) => {
-    const last = lastPaymentByRegno.get(r.regno) || null;
+  return rows.map((r: any) => {
+    const last = r.last_payment_date || null;
     return {
-      id: r.regno,
-      employer_id: r.regno,
-      regno: r.regno,
-      employer_name: r.employer_name || r.regno,
-      zone: zoneByRegno.get(r.regno) || 'Unassigned',
+      id: String(r.regno),
+      employer_id: String(r.regno),
+      regno: String(r.regno),
+      employer_name: r.employer_name || String(r.regno),
+      zone: r.zone || 'Unassigned',
       total_arrears: Number(r.current_arrears || 0),
       current_penalty: Number(r.current_penalty || 0),
       total_outstanding: Number(r.total_outstanding || 0),
