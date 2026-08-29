@@ -789,6 +789,47 @@ export default function ComplianceLegalReferralWizard() {
             <CardTitle className="text-base">Step 6 — Review Referral Packet</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
+            {/* Configuration-driven legal handoff gate (ce_legal_handoff_rules) */}
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Legal handoff rule check</Label>
+                {eligibilityLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : eligibility ? (
+                  <Badge variant={eligibility.eligible ? "default" : "destructive"}>
+                    {eligibility.eligible ? "Criteria met" : "Criteria not met"}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Not evaluated</Badge>
+                )}
+              </div>
+              {eligibility?.matchedRule && (
+                <p className="text-xs text-muted-foreground">
+                  Matched rule: <span className="font-medium">{eligibility.matchedRule.code}</span> —{" "}
+                  {eligibility.matchedRule.name} (mode {eligibility.integrationMode})
+                </p>
+              )}
+              {eligibility && !eligibility.eligible && (
+                <>
+                  <ul className="list-disc pl-5 text-xs text-destructive space-y-0.5">
+                    {eligibility.missing.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                  <div>
+                    <Label className="text-xs">Documented override reason (required to proceed)</Label>
+                    <Textarea
+                      className="mt-1"
+                      rows={2}
+                      value={handoffOverride}
+                      onChange={(e) => setHandoffOverride(e.target.value)}
+                      placeholder="Explain why this referral proceeds despite unmet handoff criteria"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <Separator />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Field label="Employer" value={`${employerName ?? "?"} (${employerId})`} />
               <Field label="Compliance Case" value={ceCase?.case_number ?? ceCaseId ?? "—"} />
