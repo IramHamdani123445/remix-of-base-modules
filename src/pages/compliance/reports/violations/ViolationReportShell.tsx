@@ -7,107 +7,89 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Loader2, Download } from 'lucide-react';
 import { FilterBar, FilterField } from '@/components/common/FilterBar';
 import { exportReportToExcel, ReportColumn } from '@/utils/reportExcelExport';
-import { fetchViolationReportRows, ViolationReportRow } from '@/services/violationReportsService';
+import {
+  fetchViolationReportFilterOptions,
+  fetchViolationReportGroups,
+  ViolationReportDimension,
+  ViolationReportGroupRow,
+} from '@/services/violationReportsService';
 
 interface Props {
   title: string;
   subtitle: string;
   breadcrumbLabel: string;
+  /** Grouping dimension resolved server-side. */
+  dimension: ViolationReportDimension;
   filters: Array<'dateRange' | 'status' | 'type' | 'fund' | 'zone' | 'severity'>;
-  /** Render the report body once filtered rows are known. */
-  renderBody: (rows: ViolationReportRow[]) => React.ReactNode;
-  /** Optional export filename (without extension) */
+  /** Render the report body once aggregated rows are known. */
+  renderBody: (rows: ViolationReportGroupRow[]) => React.ReactNode;
   exportFilename?: string;
-  /** Columns for the export. If omitted, no export button is rendered. */
   exportColumns?: ReportColumn[];
-  /** Map row → export shape. Defaults to identity. */
-  mapExportRow?: (r: ViolationReportRow) => Record<string, any>;
+  mapExportRow?: (r: ViolationReportGroupRow) => Record<string, any>;
 }
 
 export default function ViolationReportShell({
   title,
   subtitle,
   breadcrumbLabel,
+  dimension,
   filters,
   renderBody,
   exportFilename,
   exportColumns,
   mapExportRow,
 }: Props) {
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  const { data: options } = useQuery({
+    queryKey: ['violation_report_filter_options'],
+    queryFn: fetchViolationReportFilterOptions,
+    staleTime: 5 * 60_000,
+  });
+
   const { data: rows = [], isLoading, isError } = useQuery({
-    queryKey: ['violation_reports', 'all'],
-    queryFn: fetchViolationReportRows,
+    queryKey: ['violation_report_groups', dimension, values],
+    queryFn: () =>
+      fetchViolationReportGroups(dimension, {
+        from: values.from,
+        to: values.to,
+        status: values.status,
+        type: values.type,
+        fund: values.fund,
+        zone: values.zone,
+        severity: values.severity,
+      }),
     staleTime: 60_000,
   });
 
-  const [values, setValues] = useState<Record<string, string>>({});
+  const toOptions = (list: string[] | undefined, label?: (v: string) => string) => [
+    { value: 'all', label: 'All' },
+    ...(list || []).map(v => ({ value: v, label: label ? label(v) : v })),
+  ];
 
-  const typeOptions = useMemo(() => {
-    const set = new Map<string, string>();
-    rows.forEach(r => {
-      if (r.violation_type_name) set.set(r.violation_type_name, r.violation_type_name);
-    });
-    return Array.from(set.keys()).sort().map(v => ({ value: v, label: v }));
-  }, [rows]);
-
-  const zoneOptions = useMemo(() => {
-    const set = new Set<string>();
-    rows.forEach(r => set.add(r.zone_name || 'Unassigned'));
-    return Array.from(set).sort().map(v => ({ value: v, label: v }));
-  }, [rows]);
-
-  const statusOptions = useMemo(() => {
-    const set = new Set<string>();
-    rows.forEach(r => r.status && set.add(r.status));
-    return Array.from(set).sort().map(v => ({ value: v, label: v.replace(/_/g, ' ') }));
-  }, [rows]);
-
-  const fundOptions = useMemo(() => {
-    const set = new Set<string>();
-    rows.forEach(r => r.fund_type && set.add(r.fund_type));
-    return Array.from(set).sort().map(v => ({ value: v, label: v }));
-  }, [rows]);
-
-  const severityOptions = useMemo(() => {
-    const set = new Set<string>();
-    rows.forEach(r => r.severity && set.add(r.severity));
-    return Array.from(set).sort().map(v => ({ value: v, label: v }));
-  }, [rows]);
-
-  const fields: FilterField[] = [];
-  if (filters.includes('dateRange')) {
-    fields.push({ key: 'from', label: 'From', type: 'date' });
-    fields.push({ key: 'to', label: 'To', type: 'date' });
-  }
-  if (filters.includes('status')) {
-    fields.push({ key: 'status', label: 'Status', type: 'select', options: [{ value: 'all', label: 'All' }, ...statusOptions] });
-  }
-  if (filters.includes('type')) {
-    fields.push({ key: 'type', label: 'Violation Type', type: 'select', options: [{ value: 'all', label: 'All' }, ...typeOptions] });
-  }
-  if (filters.includes('fund')) {
-    fields.push({ key: 'fund', label: 'Fund', type: 'select', options: [{ value: 'all', label: 'All' }, ...fundOptions] });
-  }
-  if (filters.includes('zone')) {
-    fields.push({ key: 'zone', label: 'Zone / Office', type: 'select', options: [{ value: 'all', label: 'All' }, ...zoneOptions] });
-  }
-  if (filters.includes('severity')) {
-    fields.push({ key: 'severity', label: 'Severity', type: 'select', options: [{ value: 'all', label: 'All' }, ...severityOptions] });
-  }
-
-  const filtered = useMemo(() => {
-    return rows.filter(r => {
-      const ref = r.discovered_date || r.created_at?.slice(0, 10) || '';
-      if (values.from && ref && ref < values.from) return false;
-      if (values.to && ref && ref > values.to) return false;
-      if (values.status && values.status !== 'all' && r.status !== values.status) return false;
-      if (values.type && values.type !== 'all' && r.violation_type_name !== values.type) return false;
-      if (values.fund && values.fund !== 'all' && r.fund_type !== values.fund) return false;
-      if (values.zone && values.zone !== 'all' && (r.zone_name || 'Unassigned') !== values.zone) return false;
-      if (values.severity && values.severity !== 'all' && r.severity !== values.severity) return false;
-      return true;
-    });
-  }, [rows, values]);
+  const fields: FilterField[] = useMemo(() => {
+    const f: FilterField[] = [];
+    if (filters.includes('dateRange')) {
+      f.push({ key: 'from', label: 'From', type: 'date' });
+      f.push({ key: 'to', label: 'To', type: 'date' });
+    }
+    if (filters.includes('status')) {
+      f.push({ key: 'status', label: 'Status', type: 'select', options: toOptions(options?.statuses, v => v.replace(/_/g, ' ')) });
+    }
+    if (filters.includes('type')) {
+      f.push({ key: 'type', label: 'Violation Type', type: 'select', options: toOptions(options?.types) });
+    }
+    if (filters.includes('fund')) {
+      f.push({ key: 'fund', label: 'Fund', type: 'select', options: toOptions(options?.funds) });
+    }
+    if (filters.includes('zone')) {
+      f.push({ key: 'zone', label: 'Zone / Office', type: 'select', options: toOptions(options?.zones) });
+    }
+    if (filters.includes('severity')) {
+      f.push({ key: 'severity', label: 'Severity', type: 'select', options: toOptions(options?.severities) });
+    }
+    return f;
+  }, [filters, options]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -139,9 +121,9 @@ export default function ViolationReportShell({
           <Button
             variant="outline"
             size="sm"
-            disabled={filtered.length === 0}
+            disabled={rows.length === 0}
             onClick={async () => {
-              const data = filtered.map(mapExportRow ? mapExportRow : (r) => r as any);
+              const data = rows.map(mapExportRow ? mapExportRow : (r) => r as any);
               await exportReportToExcel(data, exportColumns, exportFilename, breadcrumbLabel);
             }}
           >
@@ -156,17 +138,13 @@ export default function ViolationReportShell({
         </div>
       ) : isError ? (
         <EmptyState title="Unable to load violations" description="Please retry shortly or contact support." />
-      ) : filtered.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState
           title={`No violations match this ${breadcrumbLabel.toLowerCase()} report`}
-          description={
-            rows.length === 0
-              ? 'No violations have been recorded yet.'
-              : 'Try adjusting the filters above to broaden the results.'
-          }
+          description="Try adjusting the filters above to broaden the results."
         />
       ) : (
-        renderBody(filtered)
+        renderBody(rows)
       )}
     </div>
   );
