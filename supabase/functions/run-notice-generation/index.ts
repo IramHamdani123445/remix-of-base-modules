@@ -5,12 +5,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Default aging rules — overridden by job parameters if set
-const DEFAULT_RULES = [
-  { days_open: 7, template_code: 'TPL-VN-001', label: '1st Notice' },
-  { days_open: 21, template_code: 'TPL-VN-002', label: '2nd Notice' },
-  { days_open: 45, template_code: 'TPL-VN-003', label: 'Final Warning' },
-];
+/**
+ * Notice-stage timing is CONFIGURATION, not code. The stages (1st notice, 2nd
+ * notice, final warning) are owned by the JOB-NOTICE-GENERATION job parameters
+ * and administered from Compliance → Automation → Notice Generation. No default
+ * schedule is embedded here: an unconfigured job fails visibly so a notice can
+ * never be issued on a timing nobody approved.
+ */
+interface NoticeStageRule {
+  days_open: number;
+  template_code: string;
+  label: string;
+}
+
+function validateStageRules(raw: unknown): { rules: NoticeStageRule[]; errors: string[] } {
+  const errors: string[] = [];
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return {
+      rules: [],
+      errors: [
+        'No notice stage rules configured on JOB-NOTICE-GENERATION (parameters.notice_rules). Configure the notice stages and their day thresholds before running notice generation.',
+      ],
+    };
+  }
+  const rules: NoticeStageRule[] = [];
+  raw.forEach((r: any, i: number) => {
+    const days = Number(r?.days_open);
+    if (!Number.isInteger(days) || days < 0 || days > 3650) {
+      errors.push(`notice_rules[${i}].days_open must be a whole number of days (0-3650).`);
+    }
+    if (!r?.template_code) errors.push(`notice_rules[${i}].template_code is required.`);
+    if (!r?.label) errors.push(`notice_rules[${i}].label is required.`);
+    if (errors.length === 0) {
+      rules.push({ days_open: days, template_code: String(r.template_code), label: String(r.label) });
+    }
+  });
+  return { rules: rules.sort((a, b) => a.days_open - b.days_open), errors };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -64,7 +95,18 @@ Deno.serve(async (req) => {
       .single();
 
     const jobId = jobRecord?.id;
-    const rules = jobRecord?.parameters?.notice_rules || DEFAULT_RULES;
+    const { rules, errors: ruleErrors } = validateStageRules(jobRecord?.parameters?.notice_rules);
+    if (ruleErrors.length > 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          status: 'configuration_error',
+          errors: ruleErrors,
+          notice_rule_source: 'ce_automation_jobs.parameters.notice_rules',
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     // ── Create run record ──
     const { data: runRecord } = await supabase
