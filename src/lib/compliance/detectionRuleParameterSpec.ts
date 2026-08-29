@@ -655,7 +655,32 @@ export const CALCULATION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       min: 1,
       max: ABSOLUTE_CAP_MONTHS,
       integer: true,
-      help: "Optional safety cap on how many months of interest a single balance can accrue.",
+      help: "Optional cap on how many months of interest a single balance can accrue. NOT CLIENT APPROVED — leave unset until the CR-002-RETROACTIVITY decision is confirmed. No default is applied at runtime.",
+    },
+    {
+      key: "max_interest_amount",
+      label: "Maximum interest per balance (EC$)",
+      type: "number",
+      required: false,
+      min: 0,
+      help: "Optional ceiling on the cumulative interest a single balance can attract. Disabled unless approved (CR-002-RETROACTIVITY). No default is applied at runtime.",
+    },
+    {
+      key: "interest_effective_from",
+      label: "Interest effective from (date)",
+      type: "date",
+      required: false,
+      help: "Date from which the 5% interest policy is in force. Liabilities whose accrual anchor predates this date are governed by the retroactivity mode below. Unset means no approved effective date exists yet.",
+    },
+    {
+      key: "apply_to_pre_existing_liabilities",
+      label: "Retroactivity mode for pre-existing liabilities",
+      type: "string_array",
+      required: false,
+      help:
+        "Governed policy mode: not_approved (default behaviour — pre-effective liabilities are classified INTEREST_POLICY_REVIEW_REQUIRED and never posted in production), " +
+        "exclude_pre_effective (accrue only from the effective date forward), or apply_retrospectively (accrue from the original statutory anchor). " +
+        "Open business decision CR-002-RETROACTIVITY.",
     },
   ],
   "CR-003": [
