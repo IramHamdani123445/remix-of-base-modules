@@ -345,6 +345,16 @@ export default function ComplianceLegalReferralWizard() {
       toast.error("A Compliance case is required to submit. Pick one in Step 1.");
       return;
     }
+    if (eligibility && eligibility.integrationMode === "DISABLED") {
+      toast.error("Legal handoff is disabled by the configured handoff rule.");
+      return;
+    }
+    if (eligibility && !eligibility.eligible && !handoffOverride.trim()) {
+      toast.error("Legal handoff criteria not met", {
+        description: "Record a documented override reason to proceed.",
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       const items = candidates
