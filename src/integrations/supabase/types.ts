@@ -125165,6 +125165,9 @@ export type Database = {
           avg_resolution_days: number
           bucket: string
           employer_count: number
+          max_resolution_days: number
+          median_resolution_days: number
+          min_resolution_days: number
           resolved_count: number
           total_amount: number
           unresolved_count: number
