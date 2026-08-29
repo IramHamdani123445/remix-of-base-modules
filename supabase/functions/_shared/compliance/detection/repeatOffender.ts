@@ -24,7 +24,7 @@
  * MIRROR: supabase/functions/_shared/compliance/detection/repeatOffender.ts
  */
 
-import { buildReviewFlag, type CeReviewFlagRecord } from "./reviewFlag";
+import { buildReviewFlag, type CeReviewFlagRecord } from "./reviewFlag.ts";
 
 export interface CeRepeatOccurrence {
   violationId: string;

@@ -30,8 +30,8 @@ import {
   evaluatePaymentObligation,
   resolveObligationTimeline,
   type CeObligationPolicy,
-} from "../obligationDeadlineResolver";
-import { buildReviewFlag, type CeReviewFlagDraft, type CeReviewFlagRecord } from "./reviewFlag";
+} from "../obligationDeadlineResolver.ts";
+import { buildReviewFlag, type CeReviewFlagDraft, type CeReviewFlagRecord } from "./reviewFlag.ts";
 
 /** Documents (and enforces via test) that legal referral for self-employed non-compliance is manual only. */
 export const SELF_EMPLOYED_LEGAL_ESCALATION_IS_MANUAL_ONLY = true as const;
