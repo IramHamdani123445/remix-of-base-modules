@@ -205,6 +205,10 @@ export default function ComplianceSettings() {
         </CardContent>
       </Card>
 
+      {/* Obligation Reminder Notices */}
+      <ObligationReminderRulesCard />
+
+
       {/* Payment & Penalty Settings */}
       <Card>
         <CardHeader>
