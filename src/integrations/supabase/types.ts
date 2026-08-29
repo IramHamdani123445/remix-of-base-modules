@@ -45842,6 +45842,7 @@ export type Database = {
       ce_risk_config: {
         Row: {
           calculation_formula: string | null
+          canonical_factor: string | null
           category: string | null
           created_at: string | null
           created_by: string | null
@@ -45851,7 +45852,10 @@ export type Database = {
           factor_name: string
           id: string
           is_enabled: boolean | null
+          lifecycle_status: string
           max_score: number | null
+          measurement_code: string | null
+          measurement_params: Json
           scoring_method: string | null
           thresholds: Json | null
           updated_at: string | null
@@ -45860,6 +45864,7 @@ export type Database = {
         }
         Insert: {
           calculation_formula?: string | null
+          canonical_factor?: string | null
           category?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -45869,7 +45874,10 @@ export type Database = {
           factor_name: string
           id?: string
           is_enabled?: boolean | null
+          lifecycle_status?: string
           max_score?: number | null
+          measurement_code?: string | null
+          measurement_params?: Json
           scoring_method?: string | null
           thresholds?: Json | null
           updated_at?: string | null
@@ -45878,6 +45886,7 @@ export type Database = {
         }
         Update: {
           calculation_formula?: string | null
+          canonical_factor?: string | null
           category?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -45887,7 +45896,10 @@ export type Database = {
           factor_name?: string
           id?: string
           is_enabled?: boolean | null
+          lifecycle_status?: string
           max_score?: number | null
+          measurement_code?: string | null
+          measurement_params?: Json
           scoring_method?: string | null
           thresholds?: Json | null
           updated_at?: string | null
@@ -45910,10 +45922,13 @@ export type Database = {
           id: string
           policy_code: string
           policy_name: string
+          source_policy: Json
           status: string
           update_frequency: string
           updated_at: string | null
           updated_by: string | null
+          version_no: number
+          weights_confirmation: string
         }
         Insert: {
           activated_at?: string | null
@@ -45928,10 +45943,13 @@ export type Database = {
           id?: string
           policy_code: string
           policy_name: string
+          source_policy?: Json
           status?: string
           update_frequency?: string
           updated_at?: string | null
           updated_by?: string | null
+          version_no?: number
+          weights_confirmation?: string
         }
         Update: {
           activated_at?: string | null
@@ -45946,10 +45964,13 @@ export type Database = {
           id?: string
           policy_code?: string
           policy_name?: string
+          source_policy?: Json
           status?: string
           update_frequency?: string
           updated_at?: string | null
           updated_by?: string | null
+          version_no?: number
+          weights_confirmation?: string
         }
         Relationships: []
       }
@@ -46029,12 +46050,15 @@ export type Database = {
           audit_priority_score: number | null
           audit_priority_why: string | null
           audit_program: string | null
+          calculation_status: string | null
           consecutive_cycles_skipped: number | null
           created_at: string | null
           created_by: string | null
           employer_id: string
           employer_name: string | null
           enforcement_risk_score: number | null
+          engine_version: string | null
+          factor_breakdown: Json | null
           filing_score: number | null
           id: string
           inherent_band: string | null
@@ -46054,7 +46078,10 @@ export type Database = {
           override_by: string | null
           override_reason: string | null
           payment_behavior_score: number | null
+          policy_id: string | null
+          policy_version: number | null
           risk_band: string | null
+          score_hash: string | null
           scoring_version: string | null
           territory: string | null
           total_score: number | null
@@ -46073,12 +46100,15 @@ export type Database = {
           audit_priority_score?: number | null
           audit_priority_why?: string | null
           audit_program?: string | null
+          calculation_status?: string | null
           consecutive_cycles_skipped?: number | null
           created_at?: string | null
           created_by?: string | null
           employer_id: string
           employer_name?: string | null
           enforcement_risk_score?: number | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           filing_score?: number | null
           id?: string
           inherent_band?: string | null
@@ -46098,7 +46128,10 @@ export type Database = {
           override_by?: string | null
           override_reason?: string | null
           payment_behavior_score?: number | null
+          policy_id?: string | null
+          policy_version?: number | null
           risk_band?: string | null
+          score_hash?: string | null
           scoring_version?: string | null
           territory?: string | null
           total_score?: number | null
@@ -46117,12 +46150,15 @@ export type Database = {
           audit_priority_score?: number | null
           audit_priority_why?: string | null
           audit_program?: string | null
+          calculation_status?: string | null
           consecutive_cycles_skipped?: number | null
           created_at?: string | null
           created_by?: string | null
           employer_id?: string
           employer_name?: string | null
           enforcement_risk_score?: number | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           filing_score?: number | null
           id?: string
           inherent_band?: string | null
@@ -46142,7 +46178,10 @@ export type Database = {
           override_by?: string | null
           override_reason?: string | null
           payment_behavior_score?: number | null
+          policy_id?: string | null
+          policy_version?: number | null
           risk_band?: string | null
+          score_hash?: string | null
           scoring_version?: string | null
           territory?: string | null
           total_score?: number | null
@@ -46166,34 +46205,61 @@ export type Database = {
           calculated_at: string | null
           calculated_by: string | null
           calculation_details: Json | null
+          engine_version: string | null
+          factor_breakdown: Json | null
           id: string
           new_band: string | null
           new_score: number | null
+          policy_id: string | null
+          policy_snapshot: Json | null
+          policy_version: number | null
           previous_band: string | null
           previous_score: number | null
           risk_profile_id: string | null
+          run_id: string | null
+          score_hash: string | null
+          source_period_from: string | null
+          source_period_to: string | null
         }
         Insert: {
           calculated_at?: string | null
           calculated_by?: string | null
           calculation_details?: Json | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           id?: string
           new_band?: string | null
           new_score?: number | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          policy_version?: number | null
           previous_band?: string | null
           previous_score?: number | null
           risk_profile_id?: string | null
+          run_id?: string | null
+          score_hash?: string | null
+          source_period_from?: string | null
+          source_period_to?: string | null
         }
         Update: {
           calculated_at?: string | null
           calculated_by?: string | null
           calculation_details?: Json | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           id?: string
           new_band?: string | null
           new_score?: number | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          policy_version?: number | null
           previous_band?: string | null
           previous_score?: number | null
           risk_profile_id?: string | null
+          run_id?: string | null
+          score_hash?: string | null
+          source_period_from?: string | null
+          source_period_to?: string | null
         }
         Relationships: [
           {
@@ -124636,6 +124702,25 @@ export type Database = {
         Args: { p_allocations: Json; p_comments?: string; p_request_id: string }
         Returns: Json
       }
+      ce_risk_eval_threshold: {
+        Args: {
+          p_max_score?: number
+          p_method: string
+          p_raw: number
+          p_thresholds: Json
+        }
+        Returns: Json
+      }
+      ce_risk_measure_v1: {
+        Args: {
+          p_as_of?: string
+          p_employer_id: string
+          p_measurement_code: string
+          p_params?: Json
+          p_source_policy?: Json
+        }
+        Returns: Json
+      }
       ce_run_employer_compliance_refresh: {
         Args: { p_batch_size?: number; p_dry_run?: boolean }
         Returns: Json
@@ -124719,6 +124804,10 @@ export type Database = {
           p_source_payment_id?: number
           p_triggered_by?: string
         }
+        Returns: Json
+      }
+      ce_validate_risk_policy_v1: {
+        Args: { p_policy_id: string }
         Returns: Json
       }
       ce_waiver_deny: {
