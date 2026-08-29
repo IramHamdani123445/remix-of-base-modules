@@ -162,6 +162,7 @@ const ComplianceJobHistory = lazy(() => import('@/pages/compliance/automation/Jo
 const ComplianceRuleEngine = lazy(() => import('@/pages/compliance/settings/RuleEngine'));
 const ComplianceViolationTypes = lazy(() => import('@/pages/compliance/settings/ViolationTypes'));
 const EmployerStatusRegister = lazy(() => import('@/pages/compliance/settings/EmployerStatusRegister'));
+const OpenDecisionRegister = lazy(() => import('@/pages/compliance/settings/OpenDecisionRegister'));
 const ReviewFlagQueue = lazy(() => import('@/pages/compliance/settings/ReviewFlagQueue'));
 const SelfEmployedCompliance = lazy(() => import('@/pages/compliance/settings/SelfEmployedCompliance'));
 const ComplianceHeadcountTiers = lazy(() => import('@/pages/compliance/settings/HeadcountTiers'));
@@ -1606,6 +1607,7 @@ export const AppRoutes = () => {
       <Route path="/compliance/admin/settings/violation-types" element={<ComplianceViolationTypes />} />
       <Route path="/compliance/admin/settings/employer-status-register" element={<EmployerStatusRegister />} />
       <Route path="/compliance/admin/settings/review-flag-queue" element={<ReviewFlagQueue />} />
+      <Route path="/compliance/admin/settings/open-decisions" element={<OpenDecisionRegister />} />
       {/* Operational surface for enforcement officers (same governed screen) */}
       <Route path="/compliance/violations/review-flags" element={<ReviewFlagQueue />} />
       <Route path="/compliance/admin/settings/self-employed-compliance" element={<SelfEmployedCompliance />} />

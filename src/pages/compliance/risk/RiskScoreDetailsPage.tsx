@@ -22,6 +22,7 @@ import {
 } from '@/services/riskProfileService';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
 import { Activity, AlertCircle, ShieldOff, Edit3 } from 'lucide-react';
+import OpenDecisionNotice from '@/components/compliance/governance/OpenDecisionNotice';
 
 const PERMISSION = 'manage_compliance';
 const BANDS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -144,6 +145,8 @@ function Inner() {
           Explainable breakdown of the employer risk score by factor, weight, value, and points.
         </p>
       </div>
+
+      <OpenDecisionNotice codes={['E-RISK-FACTOR-WEIGHTS']} />
 
       <Card>
         <CardContent className="py-4 flex gap-2 items-end">

@@ -18,7 +18,19 @@ import {
   type OperationalInstallment,
   type AllocationTrailRow,
 } from '@/services/compliance/arrangementRegisterService';
+import { supabase } from '@/integrations/supabase/client';
 import { formatXCD, InstallmentStatusBadge } from './arrangementFormat';
+
+interface InstallmentReminder {
+  id: string;
+  installment_id: string | null;
+  reminder_date: string | null;
+  lead_days: number | null;
+  status: string | null;
+  dispatched_at: string | null;
+  dispatch_reference: string | null;
+  failure_reason: string | null;
+}
 
 interface Props {
   /** ce_payment_arrangements.id */
@@ -49,6 +61,20 @@ export const ArrangementInstallmentsPanel: React.FC<Props> = ({
   });
   const allTrail = allocations ?? trail;
 
+  const { data: reminders = [] } = useQuery({
+    queryKey: ['arrangement_installment_reminders', arrangementId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ce_arrangement_installment_reminders')
+        .select('id,installment_id,reminder_date,lead_days,status,dispatched_at,dispatch_reference,failure_reason')
+        .eq('arrangement_id', arrangementId)
+        .order('reminder_date', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as InstallmentReminder[];
+    },
+    enabled: !!arrangementId,
+  });
+
   if (isLoading) return <Skeleton className="h-56 w-full" />;
   if (isError) {
     return (
@@ -71,14 +97,40 @@ export const ArrangementInstallmentsPanel: React.FC<Props> = ({
 
   const renderDrill = (inst: OperationalInstallment) => {
     const rows = allTrail.filter((a) => a.installment_id === inst.installment_id);
+    const instReminders = reminders.filter((r) => r.installment_id === inst.installment_id);
     return (
       <TableRow className="bg-muted/30">
-        <TableCell colSpan={10} className="p-4">
+        <TableCell colSpan={11} className="p-4">
           <div className="grid gap-4 md:grid-cols-4 text-xs mb-3">
             <div><p className="text-muted-foreground">Scheduled</p><p className="font-medium">{formatXCD(inst.scheduled_amount)}</p></div>
             <div><p className="text-muted-foreground">Paid</p><p className="font-medium">{formatXCD(inst.paid_amount)}</p></div>
             <div><p className="text-muted-foreground">Outstanding</p><p className="font-medium">{formatXCD(inst.outstanding_amount)}</p></div>
             <div><p className="text-muted-foreground">Paid date</p><p className="font-medium">{inst.paid_date ? formatDateForDisplay(inst.paid_date) : '—'}</p></div>
+          </div>
+          <div className="mb-3">
+            <p className="text-xs font-medium mb-1">Reminders</p>
+            {instReminders.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No reminder has been scheduled for this installment.</p>
+            ) : (
+              <ul className="text-xs space-y-1">
+                {instReminders.map((r) => (
+                  <li key={r.id} className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">{r.status || 'PENDING'}</Badge>
+                    <span>
+                      {r.reminder_date ? formatDateForDisplay(r.reminder_date) : '—'}
+                      {r.lead_days != null && ` (${r.lead_days} day lead)`}
+                    </span>
+                    {r.dispatched_at && (
+                      <span className="text-muted-foreground">
+                        sent {formatDateForDisplay(r.dispatched_at)}
+                        {r.dispatch_reference ? ` · ${r.dispatch_reference}` : ''}
+                      </span>
+                    )}
+                    {r.failure_reason && <span className="text-destructive">{r.failure_reason}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           {rows.length === 0 ? (
             <p className="text-xs text-muted-foreground">
@@ -163,6 +215,7 @@ export const ArrangementInstallmentsPanel: React.FC<Props> = ({
                 <TableHead>Paid date</TableHead>
                 <TableHead className="text-right">Days overdue</TableHead>
                 <TableHead className="text-center">Allocations</TableHead>
+                <TableHead className="text-center">Reminders</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -211,6 +264,9 @@ export const ArrangementInstallmentsPanel: React.FC<Props> = ({
                           <Coins className="h-3 w-3 text-muted-foreground" />
                           {inst.allocation_count}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        {reminders.filter((r) => r.installment_id === inst.installment_id).length || '—'}
                       </TableCell>
                     </TableRow>
                     {open && renderDrill(inst)}

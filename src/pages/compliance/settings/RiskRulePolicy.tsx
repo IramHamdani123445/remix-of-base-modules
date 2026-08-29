@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Target } from 'lucide-react';
+import OpenDecisionNotice from '@/components/compliance/governance/OpenDecisionNotice';
 import RiskModelTab from './risk-policy/RiskModelTab';
 import RiskFactorsTab from './risk-policy/RiskFactorsTab';
 import RiskPoliciesTab from './risk-policy/RiskPoliciesTab';
@@ -43,6 +44,8 @@ export default function RiskRulePolicy() {
           </Badge>
         </div>
       </div>
+
+      <OpenDecisionNotice codes={['E-RISK-FACTOR-WEIGHTS', 'D-LEGAL-ARREARS-MULTIPLIER']} />
 
       {/* Tabs */}
       <Card className="p-6">

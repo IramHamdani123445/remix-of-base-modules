@@ -258,6 +258,7 @@ const administration: SubItem = {
     },
     { title: "Violation Types", url: "/compliance/admin/settings/violation-types", icon: AlertTriangle, requiresPermission: "manage_compliance" },
     { title: "Employer Status Register", url: "/compliance/admin/settings/employer-status-register", icon: Building2, requiresPermission: "manage_compliance" },
+    { title: "Open Client Decisions", url: "/compliance/admin/settings/open-decisions", icon: ShieldQuestion, requiresPermission: "manage_compliance" },
     { title: "Review Flag Queue", url: "/compliance/admin/settings/review-flag-queue", icon: ShieldQuestion, requiresPermission: "manage_compliance" },
     { title: "Self-Employed Compliance", url: "/compliance/admin/settings/self-employed-compliance", icon: Users, requiresPermission: "manage_compliance" },
     { title: "Headcount Tiers", url: "/compliance/admin/settings/headcount-tiers", icon: Users, requiresPermission: "manage_compliance" },
