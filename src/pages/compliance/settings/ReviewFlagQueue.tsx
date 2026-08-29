@@ -408,21 +408,19 @@ export default function ReviewFlagQueue() {
         </CardContent>
       </Card>
 
+      {/* Disposition */}
       <Dialog open={!!actionTarget} onOpenChange={(o) => !o && setActionTarget(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {actionTarget?.disposition === 'confirm' && 'Confirm Flag — Raise Violation'}
-              {actionTarget?.disposition === 'dismiss' && 'Dismiss Flag'}
-              {actionTarget?.disposition === 'annotate' && 'Annotate Flag'}
-            </DialogTitle>
+            <DialogTitle>{actionTarget ? DISPOSITION_LABEL[actionTarget.disposition] : ''}</DialogTitle>
             <DialogDescription>
               {actionTarget?.flag.flag_number} — {actionTarget?.flag.summary}
-              {actionTarget?.disposition === 'dismiss' && ' A reason is mandatory.'}
+              {actionTarget && actionTarget.disposition !== 'UNDER_REVIEW' && ' A written reason is mandatory.'}
+              {actionTarget?.disposition === 'CONFIRMED' && ' Confirming does not itself raise a violation — use Convert afterwards.'}
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder={actionTarget?.disposition === 'dismiss' ? 'Reason for dismissal (required)...' : 'Notes (optional)...'}
+            placeholder={actionTarget?.disposition === 'UNDER_REVIEW' ? 'Notes (optional)...' : 'Reason (required)...'}
             value={notes}
             onChange={e => setNotes(e.target.value)}
           />
@@ -433,6 +431,65 @@ export default function ReviewFlagQueue() {
               disabled={dispositionMutation.isPending}
             >
               {dispositionMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert to violation */}
+      <Dialog open={!!convertTarget} onOpenChange={(o) => !o && setConvertTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Convert Flag to Violation</DialogTitle>
+            <DialogDescription>
+              {convertTarget?.flag_number} — a new violation will be raised against employer{' '}
+              <span className="font-mono">{convertTarget?.employer_id}</span>, carrying rule{' '}
+              <span className="font-mono">{convertTarget?.rule_code || '—'}</span> and the flag's de-duplication key.
+              This is audited and cannot be undone from this screen.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Justification for raising a violation (required)..."
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertTarget(null)}>Cancel</Button>
+            <Button
+              onClick={() => convertTarget && convertMutation.mutate({ flag: convertTarget, notes })}
+              disabled={convertMutation.isPending}
+            >
+              {convertMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Raise Violation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign */}
+      <Dialog open={!!assignTarget} onOpenChange={(o) => !o && setAssignTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Assign Review Flag</DialogTitle>
+            <DialogDescription>
+              {assignTarget?.flag_number} — {assignTarget?.summary}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Select value={assigneeId} onValueChange={setAssigneeId}>
+              <SelectTrigger><SelectValue placeholder="Select an officer" /></SelectTrigger>
+              <SelectContent>
+                {officers.map(o => <SelectItem key={o.userId} value={o.userId}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Textarea placeholder="Assignment note (optional)..." value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignTarget(null)}>Cancel</Button>
+            <Button
+              onClick={() => assignTarget && assignMutation.mutate({ flag: assignTarget, userId: assigneeId, notes })}
+              disabled={assignMutation.isPending || !assigneeId}
+            >
+              {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Assign
             </Button>
           </DialogFooter>
         </DialogContent>
