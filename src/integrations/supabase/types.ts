@@ -128134,6 +128134,10 @@ export type Database = {
         Returns: Json
       }
       ia_comms_ctx: { Args: { p_engagement_id: string }; Returns: Json }
+      ia_comms_department_domain: {
+        Args: { p_department_id: string }
+        Returns: string
+      }
       ia_comms_emit: {
         Args: {
           p_correlation_id?: string
@@ -128192,6 +128196,7 @@ export type Database = {
         Args: { p_today?: string }
         Returns: Json
       }
+      ia_comms_owner_department_id: { Args: never; Returns: string }
       ia_comms_policy_days: {
         Args: { p_code: string; p_default: number }
         Returns: number
