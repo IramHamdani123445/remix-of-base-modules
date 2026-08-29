@@ -113,7 +113,10 @@ export async function upsertWaiverRule(
     required_documents: r.required_documents ?? [],
     approval_workflow_required: r.approval_workflow_required ?? true,
     audit_required: r.audit_required ?? true,
+    required_approval_role: r.required_approval_role ?? 'senior',
+    escalated_approval_role: r.escalated_approval_role ?? 'head',
     notes: r.notes ?? null,
+
     sort_order: r.sort_order ?? 0,
     updated_by: userCode,
     updated_at: new Date().toISOString(),
