@@ -23,7 +23,7 @@ import {
   CeCalculationTrace,
   round2,
   wholeMonthsBetween,
-} from "./calculationTrace";
+} from "./calculationTrace.ts";
 
 export type CeCompoundingBasis =
   | "monthly_compound"
