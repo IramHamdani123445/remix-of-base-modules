@@ -1189,6 +1189,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                   asOf: asOfDate,
                 });
                 if (outcome === "NOT_PAID") {
+                  // DR-003 must stand down where a governed partial payment
+                  // authority (or a pending decision) covers the period.
+                  if (partialPaymentSuppressesNonPayment(authorityFor(emp.regno, ym), asOfDate)) continue;
                   pushPeriod(
                     emp,
                     ym,
@@ -1202,10 +1205,18 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "payment_partial": {
-            // Per-period shortfall between declared C3 and money received.
+            // DR-004 Partial Payment: a shortfall against the declared
+            // liability that has passed the resolved payment deadline WITHOUT
+            // a live approved payment authority. There is no percentage or
+            // amount threshold — a partial payment is a governed event, and
+            // approval (not size) decides whether it is a violation.
+            if (obligationPolicyError) {
+              markObligationConfigError(rule.rule_code, obligationPolicyError);
+              shouldFlag = false;
+              break;
+            }
             const cap = Math.min(ABSOLUTE_CAP_MONTHS, Number(params.lookback_months ?? ABSOLUTE_CAP_MONTHS));
-            const minAmt = Number(params.min_shortfall_amount_xcd);
-            const minPct = Number(params.min_shortfall_percent);
+            const policy = timelinePolicyFor(Number(params.grace_period_days), params.payment_due_day);
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
             if (c3 && paid) {
@@ -1213,21 +1224,31 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
               for (const [ym, rec] of c3) {
                 if (rec.declared <= 0 || ym < win.from || ym > win.to) continue;
                 const amountPaid = paid.get(ym) || 0;
-                if (amountPaid <= 0) continue; // handled by non-payment rule
+                const timeline = resolveObligationTimeline(ym, policy, "CONTRIBUTION_PAYMENT");
+                const authority = authorityFor(emp.regno, ym);
+                const outcome = evaluatePartialPaymentObligation({
+                  graceEndDate: timeline.grace_end_date,
+                  declaredAmount: rec.declared,
+                  paidAmount: amountPaid,
+                  asOf: asOfDate,
+                  authority,
+                });
+                if (!isPartialPaymentViolation(outcome)) continue;
                 const shortfall = rec.declared - amountPaid;
-                if (shortfall <= 0) continue;
-                const pct = (shortfall / rec.declared) * 100;
-                if (shortfall < minAmt || pct < minPct) continue;
+                const reason = outcome === "AUTHORITY_EXPIRED"
+                  ? `the approved payment authority expired on ${authority?.authority_expires_on}`
+                  : "no approved partial payment authority exists";
                 pushPeriod(
                   emp,
                   ym,
-                  `Partial payment: ${ym} declared $${rec.declared.toLocaleString()}, paid $${amountPaid.toLocaleString()}, shortfall $${shortfall.toLocaleString()} (${pct.toFixed(1)}%).`,
+                  `Partial payment: ${ym} declared $${rec.declared.toLocaleString()}, paid $${amountPaid.toLocaleString()}, shortfall $${shortfall.toLocaleString()} unsettled after ${timeline.grace_end_date} — ${reason}.`,
                 );
               }
             }
 
             shouldFlag = false;
             break;
+
           }
 
 
