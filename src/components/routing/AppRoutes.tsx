@@ -169,7 +169,6 @@ const ComplianceWageBenchmarks = lazy(() => import('@/pages/compliance/settings/
 const ComplianceContributionExemptions = lazy(() => import('@/pages/compliance/settings/ContributionExemptions'));
 const ComplianceUnregisteredLeads = lazy(() => import('@/pages/compliance/settings/UnregisteredEmployerLeads'));
 const ComplianceNumberTemplates = lazy(() => import('@/pages/compliance/settings/NumberTemplates'));
-const ComplianceRiskScoringConfig = lazy(() => import('@/pages/compliance/settings/RiskScoringConfig'));
 const ComplianceCommTriggerRulesPage = lazy(() => import('@/pages/compliance/admin/CommTriggerRulesPage'));
 
 const ComplianceTemplates = lazy(() => import('@/pages/compliance/settings/ComplianceTemplates'));
