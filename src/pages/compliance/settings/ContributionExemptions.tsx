@@ -64,6 +64,8 @@ export default function ContributionExemptions() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Exemption | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [revoking, setRevoking] = useState<Exemption | null>(null);
+  const [revokeReason, setRevokeReason] = useState('');
 
   const { data: exemptions = [], isLoading } = useQuery({
     queryKey: ['ce_contribution_exemptions'],
@@ -76,6 +78,23 @@ export default function ContributionExemptions() {
       return (data || []) as unknown as Exemption[];
     },
   });
+
+  // Grant / amend / revoke actions are written to the canonical compliance
+  // audit trail by the governed commands; this is the read-only history view.
+  const { data: history = [] } = useQuery({
+    queryKey: ['ce_contribution_exemption_history'],
+    queryFn: async (): Promise<AuditEntry[]> => {
+      const { data, error } = await supabase
+        .from('system_audit_trail')
+        .select('id, action, entity_id, user_name, timestamp, payload_json')
+        .eq('entity_type', 'ce_contribution_exemptions')
+        .order('timestamp', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data || []) as unknown as AuditEntry[];
+    },
+  });
+
 
   // Granting, amending and revoking an exemption is a governed business action:
   // the server command verifies `compliance.exemption.manage`, validates the
