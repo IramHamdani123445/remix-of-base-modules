@@ -111,6 +111,7 @@ const violations: SubItem = {
   subItems: filterEnabled<SubItem & { __feature?: string }>([
     { title: "All Violations", url: "/compliance/violations", icon: FolderOpen, requiresPermission: "manage_compliance" },
     { title: "Verification Queue", url: "/compliance/violations/verification-queue", icon: ClipboardCheck, requiresPermission: "manage_compliance", __feature: "violations.verificationQueue" },
+    { title: "Review Flags", url: "/compliance/violations/review-flags", icon: ShieldQuestion, requiresPermission: "manage_compliance" },
     { title: "Manual Violation Entry", url: "/compliance/violations/manual-entry", icon: AlertTriangle, requiresPermission: "manage_compliance" },
     { title: "Rule Detected Violations", url: "/compliance/violations/rule-detected", icon: Zap, requiresPermission: "manage_compliance", __feature: "violations.ruleDetected" },
     { title: "Duplicate Review", url: "/compliance/violations/duplicate-review", icon: Eye, requiresPermission: "manage_compliance", __feature: "violations.duplicateReview" },
