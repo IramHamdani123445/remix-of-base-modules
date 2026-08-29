@@ -26,12 +26,16 @@ DECLARE
 
 BEGIN
   -- 1. Principal charged.
-  PERFORM public.ce_post_ledger_entry(emp, 'C3_DUES_POSTED', 'SS', per, 1000,
-    'dues', 'TEST', 'reg-dues-1', 'TEST');
+  PERFORM public.ce_post_ledger_entry(
+    p_employer_id => emp, p_entry_type => 'C3_DUES_POSTED', p_fund_type => 'SS',
+    p_period => per, p_amount => 1000, p_description => 'dues',
+    p_reference_type => 'TEST', p_idempotency_key => 'reg-dues-1', p_posted_by => 'TEST');
 
   -- 2. Interest accrual must NOT erase principal (the original defect).
-  PERFORM public.ce_post_ledger_entry(emp, 'INTEREST_ACCRUED', 'SS', per, 4.17,
-    'interest m1', 'TEST', 'reg-int-1', 'TEST');
+  PERFORM public.ce_post_ledger_entry(
+    p_employer_id => emp, p_entry_type => 'INTEREST_ACCRUED', p_fund_type => 'SS',
+    p_period => per, p_amount => 4.17, p_description => 'interest m1',
+    p_reference_type => 'TEST', p_idempotency_key => 'reg-int-1', p_posted_by => 'TEST');
 
   SELECT * INTO v FROM public.ce_v_ledger_period_balances
    WHERE employer_id = emp AND period = per AND fund_type = 'SS';
@@ -56,8 +60,10 @@ BEGIN
   END IF;
 
   -- 4. Partial payment reduces principal, leaves interest standing.
-  PERFORM public.ce_post_ledger_entry(emp, 'PAYMENT_RECEIVED', 'SS', per, 400,
-    'partial payment', 'TEST', 'reg-pay-1', 'TEST');
+  PERFORM public.ce_post_ledger_entry(
+    p_employer_id => emp, p_entry_type => 'PAYMENT_RECEIVED', p_fund_type => 'SS',
+    p_period => per, p_amount => 400, p_description => 'partial payment',
+    p_reference_type => 'TEST', p_idempotency_key => 'reg-pay-1', p_posted_by => 'TEST');
 
   SELECT * INTO v FROM public.ce_v_ledger_period_balances
    WHERE employer_id = emp AND period = per AND fund_type = 'SS';
@@ -67,8 +73,10 @@ BEGIN
   END IF;
 
   -- 5. Penalty is an independent bucket.
-  PERFORM public.ce_post_ledger_entry(emp, 'PENALTY_ASSESSED', 'SS', per, 50,
-    'penalty', 'TEST', 'reg-pen-1', 'TEST');
+  PERFORM public.ce_post_ledger_entry(
+    p_employer_id => emp, p_entry_type => 'PENALTY_ASSESSED', p_fund_type => 'SS',
+    p_period => per, p_amount => 50, p_description => 'penalty',
+    p_reference_type => 'TEST', p_idempotency_key => 'reg-pen-1', p_posted_by => 'TEST');
   SELECT * INTO v FROM public.ce_v_ledger_period_balances
    WHERE employer_id = emp AND period = per AND fund_type = 'SS';
   IF v.principal_outstanding <> 600 OR v.penalty_outstanding <> 50 OR v.interest_outstanding <> 4.17 THEN
@@ -78,8 +86,10 @@ BEGIN
 
   -- 6. Idempotency — re-posting the same key must be a no-op.
   BEGIN
-    PERFORM public.ce_post_ledger_entry(emp, 'INTEREST_ACCRUED', 'SS', per, 4.17,
-      'interest m1 replay', 'TEST', 'reg-int-1', 'TEST');
+    PERFORM public.ce_post_ledger_entry(
+    p_employer_id => emp, p_entry_type => 'INTEREST_ACCRUED', p_fund_type => 'SS',
+    p_period => per, p_amount => 4.17, p_description => 'interest m1 replay',
+    p_reference_type => 'TEST', p_idempotency_key => 'reg-int-1', p_posted_by => 'TEST');
   EXCEPTION WHEN OTHERS THEN
     NULL; -- rejection is an acceptable idempotent outcome
   END;
@@ -91,8 +101,8 @@ BEGIN
 
   -- 7. Reversal restores the pre-payment position.
   PERFORM public.ce_reverse_ledger_entry(
-    (SELECT id FROM ce_employer_financial_ledger WHERE idempotency_key = 'reg-pay-1'),
-    'regression reversal', 'TEST');
+    p_original_entry_id => (SELECT id FROM ce_employer_financial_ledger WHERE idempotency_key = 'reg-pay-1'),
+    p_reversal_reason => 'regression reversal', p_reversed_by => 'TEST');
   SELECT * INTO v FROM public.ce_v_ledger_period_balances
    WHERE employer_id = emp AND period = per AND fund_type = 'SS';
   IF v.principal_outstanding <> 1000 THEN
