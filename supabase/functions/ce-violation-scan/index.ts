@@ -592,6 +592,7 @@ function emptyCarry(): ScanCarry {
     by_rule: [],
     sample_violations: [],
     review_flags_created: 0,
+    review_flags_would_create: 0,
   };
 }
 
