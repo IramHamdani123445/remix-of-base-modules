@@ -14,6 +14,7 @@ import {
   approvePartialPayment,
   getActivePartialPaymentPolicy,
   getPartialPaymentEvents,
+  listEmployerArrangements,
   rejectPartialPayment,
   type PartialPaymentRequest,
 } from '@/services/partialPaymentService';
@@ -43,6 +44,11 @@ export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Pr
     queryKey: ['ce-pp-events', request?.id],
     queryFn: () => getPartialPaymentEvents(request!.id),
     enabled: open && !!request?.id,
+  });
+  const arrangementsQ = useQuery({
+    queryKey: ['ce-pp-arrangements', request?.employer_id],
+    queryFn: () => listEmployerArrangements(request!.employer_id),
+    enabled: open && !!request?.employer_id,
   });
 
   useEffect(() => {
@@ -244,6 +250,57 @@ export function PartialPaymentApprovalDialog({ request, open, onOpenChange }: Pr
             </div>
           </div>
         )}
+
+        <div>
+          <Label className="text-xs">Existing payment arrangements</Label>
+          {arrangementsQ.isLoading && (
+            <p className="text-xs text-muted-foreground mt-1">Loading arrangements…</p>
+          )}
+          {!arrangementsQ.isLoading && (arrangementsQ.data ?? []).length === 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              This employer holds no payment arrangement.
+            </p>
+          )}
+          {(arrangementsQ.data ?? []).length > 0 && (
+            <div className="mt-2 rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Arrangement</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Debt</TableHead>
+                    <TableHead className="text-right">Paid</TableHead>
+                    <TableHead>Next due</TableHead>
+                    <TableHead>Health</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(arrangementsQ.data ?? []).map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">{a.arrangement_number}</TableCell>
+                      <TableCell><Badge variant="outline">{a.status}</Badge></TableCell>
+                      <TableCell className="text-right">{formatCurrency(Number(a.total_debt ?? 0))}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(Number(a.total_paid ?? 0))}</TableCell>
+                      <TableCell>
+                        {a.next_due_date ? format(new Date(a.next_due_date), 'dd MMM yyyy') : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {a.breach_detected ? (
+                          <Badge variant="destructive">Breached</Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {Number(a.missed_payments ?? 0)} missed ·{' '}
+                            {Number(a.installments_paid ?? 0)}/{Number(a.number_of_installments ?? 0)} paid
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
 
         <div>
           <Label className="text-xs">History</Label>
