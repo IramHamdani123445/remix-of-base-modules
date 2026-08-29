@@ -26,7 +26,9 @@ export type CeParamType = "number" | "boolean" | "string_array";
 export type CePolicyColumn =
   | "c3_submission_deadline_day"
   | "payment_due_date_day"
-  | "c3_grace_period_days";
+  | "c3_grace_period_days"
+  | "payment_grace_period_days"
+  | "deadline_fixed_day";
 
 export interface CeParamSpec {
   key: string;
@@ -74,19 +76,20 @@ export const DETECTION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       min: 0,
       max: 365,
       integer: true,
-      help: "Days allowed after the statutory C3 due day before a filing counts as late.",
-      suggested: 14,
+      policyFallback: "c3_grace_period_days",
+      help: "Days allowed after the resolved C3 due date before a filing counts as late. Leave unset to inherit the Compliance Policy filing grace days.",
+      suggested: 0,
     },
     {
       key: "submission_due_day",
-      label: "C3 due day of month",
+      label: "C3 due day of month (fixed-day basis only)",
       type: "number",
-      required: true,
+      required: false,
       min: 1,
       max: 31,
       integer: true,
       policyFallback: "c3_submission_deadline_day",
-      help: "Statutory C3 submission day. Owned by the active Compliance Policy; set here only to override it for this rule.",
+      help: "Only used when the Compliance Policy deadline basis is 'fixed_day_of_month'. Under the current calendar-month-end basis the deadline is resolved from the calendar and this value is ignored.",
     },
     { ...LOOKBACK_CAP },
     {
@@ -107,19 +110,19 @@ export const DETECTION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       min: 0,
       max: 365,
       integer: true,
-      help: "Days after the C3 due day at which an unfiled period is treated as non-filing.",
+      help: "Additional days after the resolved obligation deadline (including policy grace) at which an unfiled period becomes Unreported C3.",
       suggested: 30,
     },
     {
       key: "submission_due_day",
-      label: "C3 due day of month",
+      label: "C3 due day of month (fixed-day basis only)",
       type: "number",
-      required: true,
+      required: false,
       min: 1,
       max: 31,
       integer: true,
       policyFallback: "c3_submission_deadline_day",
-      help: "Statutory C3 submission day. Owned by the active Compliance Policy unless overridden here.",
+      help: "Only used when the Compliance Policy deadline basis is 'fixed_day_of_month'. Under the current calendar-month-end basis the deadline is resolved from the calendar and this value is ignored.",
     },
     {
       key: "min_missed_months",
@@ -144,19 +147,19 @@ export const DETECTION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       min: 0,
       max: 365,
       integer: true,
-      help: "Days after the C3 due day at which a gap period is recognised.",
+      help: "Additional days after the resolved obligation deadline (including policy grace) at which a gap period is recognised.",
       suggested: 30,
     },
     {
       key: "submission_due_day",
-      label: "C3 due day of month",
+      label: "C3 due day of month (fixed-day basis only)",
       type: "number",
-      required: true,
+      required: false,
       min: 1,
       max: 31,
       integer: true,
       policyFallback: "c3_submission_deadline_day",
-      help: "Statutory C3 submission day. Owned by the active Compliance Policy unless overridden here.",
+      help: "Only used when the Compliance Policy deadline basis is 'fixed_day_of_month'. Under the current calendar-month-end basis the deadline is resolved from the calendar and this value is ignored.",
     },
     {
       key: "min_missed_months",
@@ -181,19 +184,20 @@ export const DETECTION_PARAM_SPEC: Record<string, CeParamSpec[]> = {
       min: 0,
       max: 365,
       integer: true,
-      help: "Days after the payment due day before a declared but unpaid period is flagged.",
+      policyFallback: "payment_grace_period_days",
+      help: "Days allowed after the resolved payment due date before a declared but unpaid period is flagged. Leave unset to inherit the Compliance Policy payment grace days.",
       suggested: 0,
     },
     {
       key: "payment_due_day",
-      label: "Payment due day of month",
+      label: "Payment due day of month (fixed-day basis only)",
       type: "number",
-      required: true,
+      required: false,
       min: 1,
       max: 31,
       integer: true,
       policyFallback: "payment_due_date_day",
-      help: "Statutory payment day. Owned by the active Compliance Policy unless overridden here.",
+      help: "Only used when the Compliance Policy deadline basis is 'fixed_day_of_month'. Under the current calendar-month-end basis the payment deadline is resolved from the calendar and this value is ignored.",
     },
     { ...LOOKBACK_CAP },
   ],

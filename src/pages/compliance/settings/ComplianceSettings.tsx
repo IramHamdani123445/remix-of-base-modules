@@ -44,6 +44,8 @@ import {
   CompliancePolicyRow,
 } from "@/services/compliancePolicyService";
 import { format } from "date-fns";
+import { ObligationReminderRulesCard } from "@/components/compliance/settings/ObligationReminderRulesCard";
+
 
 export default function ComplianceSettings() {
   const queryClient = useQueryClient();
@@ -204,6 +206,10 @@ export default function ComplianceSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Obligation Reminder Notices */}
+      <ObligationReminderRulesCard />
+
 
       {/* Payment & Penalty Settings */}
       <Card>
