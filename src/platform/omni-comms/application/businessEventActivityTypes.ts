@@ -33,7 +33,7 @@ export const BUSINESS_EVENT_STATUS_LABEL: Record<BusinessEventStatus, string> = 
   preparing_communication: 'Preparing communication',
   no_communication_configured: 'No communication configured',
   waiting_to_send: 'Waiting to send',
-  not_sent_historical: 'Not sent — historical record',
+  not_sent_historical: 'Historical record — no delivery',
   sending: 'Sending',
   provider_accepted: 'Provider accepted',
   delivered: 'Delivered',
@@ -49,7 +49,7 @@ export const BUSINESS_EVENT_STATUS_LABEL: Record<BusinessEventStatus, string> = 
  */
 export const BUSINESS_EVENT_STATUS_HINT: Partial<Record<BusinessEventStatus, string>> = {
   not_sent_historical:
-    'Recorded before delivery was switched on. Kept as audit evidence; it will never be sent.',
+    'Recorded before delivery was switched on. Kept as audit evidence only.',
   waiting_to_send: 'Authorised work still waiting for its next automatic run.',
   no_communication_configured: 'No template or channel is configured for this event.',
 };
