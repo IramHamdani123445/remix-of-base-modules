@@ -613,79 +613,25 @@ async function dispatchExternal(params: {
  * 4. Sends via appropriate channels
  * 5. Logs to notification_logs + audit_logs
  */
+/**
+ * QUARANTINED LEGACY PATH — Omni-Comms convergence.
+ *
+ * This dispatcher wrote Benefits notifications directly to
+ * `in_app_notifications` / `notification_logs`, bypassing the governed
+ * Omni-Comms spine. It has no remaining callers. It is retained for
+ * historical reference and reading of legacy records only, and refuses to
+ * dispatch. Benefits business communications go through
+ * `triggerClaimCommunicationViaOmniComms()` → `sendCommunication`.
+ */
 export async function dispatchBnNotification(
   request: BnNotificationDispatchRequest
 ): Promise<BnNotificationResult> {
-  const config = EVENT_CONFIGS[request.eventCode];
-  if (!config) {
-    console.warn(`[BN-Notif] No config for event: ${request.eventCode}`);
-    return { dispatched: false, channels: [], workflowGoverned: false };
-  }
-
-  // 1. Check workflow governance
-  const governed = await isWorkflowGoverned(request.entityId);
-  if (governed) {
-    // Log audit event only; workflow handles notification dispatch
-    await logAuditEvent({
-      action: 'NOTIFICATION_DELEGATED_TO_WORKFLOW',
-      entityType: config.entityType,
-      entityId: request.entityId,
-      afterValue: {
-        event_code: request.eventCode,
-        delegation_reason: 'Active workflow instance governs this entity',
-      },
-      userId: request.triggeredBy,
-    });
-
-    return { dispatched: true, channels: [], workflowGoverned: true };
-  }
-
-  // 2. Resolve SSN for claimant contact
-  const ssn = request.ssn || await resolveClaimSsn(request.claimId || request.entityId);
-  const channels = request.channelOverride || config.channels;
-  const results: BnNotificationResult['channels'] = [];
-
-  // 3. Process each channel
-  for (const channel of channels) {
-    if (channel === 'in_app' || channel === 'push') {
-      // Internal: in-app notification to staff
-      const internalResult = await handleInternalNotification(
-        request, config, ssn
-      );
-      results.push({
-        channel: 'in_app',
-        success: internalResult.success,
-        logId: internalResult.logId,
-        error: internalResult.error,
-      });
-    } else if ((channel === 'email' || channel === 'sms') && config.externalRecipient && ssn) {
-      // External: email/SMS to claimant
-      const externalResult = await handleExternalNotification(
-        request, config, channel, ssn
-      );
-      results.push(externalResult);
-    }
-  }
-
-  // 4. Audit event
-  await logAuditEvent({
-    action: results.some(r => r.success) ? 'NOTIFICATION_DISPATCHED' : 'NOTIFICATION_FAILED',
-    entityType: config.entityType,
-    entityId: request.entityId,
-    afterValue: {
-      event_code: request.eventCode,
-      channels: results.map(r => ({ channel: r.channel, success: r.success })),
-      triggered_by: request.triggeredBy,
-    },
-    userId: request.triggeredBy,
-  });
-
-  return {
-    dispatched: results.some(r => r.success),
-    channels: results,
-    workflowGoverned: false,
-  };
+  throw new Error(
+    'dispatchBnNotification is quarantined. Raise Benefits communications through Omni-Comms ' +
+      '(triggerClaimCommunicationViaOmniComms / sendCommunication).',
+  );
 }
+
 
 // ─── Internal Helpers ──────────────────────────────────────────────
 
