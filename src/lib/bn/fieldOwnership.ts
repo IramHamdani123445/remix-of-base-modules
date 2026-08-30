@@ -51,12 +51,13 @@ const SUPERVISOR_ROLES = new Set(['admin', 'supervisor', 'manager']);
  * Add new categories incrementally; unknown fields default to STAFF_REVIEW.
  */
 export const BN_FIELD_OWNERSHIP: Record<string, Record<string, FieldOwnershipDef>> = {
-  // Sickness Benefit
+  // Sickness / Maternity Benefit (short-term cash benefits)
   SHORT_TERM: {
     illness_start_date: { ownership: 'CITIZEN_SUBMITTED', aliases: ['incapacity_date', 'onset_date'] },
     incapacity_date: { ownership: 'CITIZEN_SUBMITTED', aliases: ['illness_start_date'] },
     last_worked_date: { ownership: 'CITIZEN_SUBMITTED' },
     expected_return_date: { ownership: 'CITIZEN_SUBMITTED', aliases: ['return_date'] },
+    incapacity_period_days: { ownership: 'SYSTEM_DERIVED' },
 
     diagnosis_code: { ownership: 'STAFF_REVIEW' },
     doctor_name: { ownership: 'STAFF_REVIEW' },
@@ -65,46 +66,92 @@ export const BN_FIELD_OWNERSHIP: Record<string, Record<string, FieldOwnershipDef
     hospital_name: { ownership: 'STAFF_REVIEW', aliases: ['hospital_clinic'] },
     hospital_clinic: { ownership: 'STAFF_REVIEW', aliases: ['hospital_name'] },
     medical_cert_verified: { ownership: 'STAFF_REVIEW' },
-    is_work_related: { ownership: 'STAFF_REVIEW', aliases: ['work_related'] },
-    work_related: { ownership: 'STAFF_REVIEW', aliases: ['is_work_related'] },
+    is_work_related: { ownership: 'STAFF_REVIEW', aliases: ['work_related', 'work_related_confirmed'] },
+    work_related: { ownership: 'STAFF_REVIEW', aliases: ['is_work_related', 'work_related_confirmed'] },
     employer_notified: { ownership: 'STAFF_REVIEW' },
+
+    // Maternity
+    expected_confinement_date: { ownership: 'CITIZEN_SUBMITTED' },
+    actual_confinement_date: { ownership: 'STAFF_REVIEW' },
+    maternity_leave_start: { ownership: 'CITIZEN_SUBMITTED' },
+    maternity_leave_end: { ownership: 'CITIZEN_SUBMITTED' },
   },
 
   // Age Pension / Long-term
   LONG_TERM: {
     retirement_date: { ownership: 'CITIZEN_SUBMITTED', aliases: ['last_worked_date'] },
     pension_type: { ownership: 'STAFF_REVIEW' },
+    pension_path: { ownership: 'STAFF_REVIEW' },
+    still_employed: { ownership: 'CITIZEN_SUBMITTED' },
     best_years_start: { ownership: 'SYSTEM_DERIVED' },
     best_years_end: { ownership: 'SYSTEM_DERIVED' },
     total_contribution_weeks: { ownership: 'SYSTEM_DERIVED' },
+
+    // Invalidity
+    incapacity_start_date: { ownership: 'CITIZEN_SUBMITTED' },
+    employment_cessation_date: { ownership: 'CITIZEN_SUBMITTED' },
+    permanent_incapacity: { ownership: 'STAFF_REVIEW' },
+    review_interval_months: { ownership: 'STAFF_REVIEW' },
   },
   PENSION: {
     retirement_date: { ownership: 'CITIZEN_SUBMITTED' },
     pension_type: { ownership: 'STAFF_REVIEW' },
+    pension_path: { ownership: 'STAFF_REVIEW' },
+    still_employed: { ownership: 'CITIZEN_SUBMITTED' },
     tier_applied: { ownership: 'SYSTEM_DERIVED' },
     total_contribution_weeks: { ownership: 'SYSTEM_DERIVED' },
+    incapacity_start_date: { ownership: 'CITIZEN_SUBMITTED' },
+    employment_cessation_date: { ownership: 'CITIZEN_SUBMITTED' },
+    permanent_incapacity: { ownership: 'STAFF_REVIEW' },
+    review_interval_months: { ownership: 'STAFF_REVIEW' },
   },
 
-  // Employment Injury
+  // Employment Injury / Disablement / Medical Expense
   INJURY: {
-    injury_date: { ownership: 'CITIZEN_SUBMITTED', aliases: ['incapacity_date'] },
+    injury_date: { ownership: 'CITIZEN_SUBMITTED', aliases: ['incapacity_date', 'accident_datetime'] },
+    accident_datetime: { ownership: 'CITIZEN_SUBMITTED', aliases: ['injury_date'] },
     injury_description: { ownership: 'CITIZEN_SUBMITTED' },
-    injury_location: { ownership: 'CITIZEN_SUBMITTED' },
+    injury_location: { ownership: 'CITIZEN_SUBMITTED', aliases: ['accident_place'] },
+    accident_place: { ownership: 'CITIZEN_SUBMITTED', aliases: ['injury_location'] },
+    witnesses: { ownership: 'CITIZEN_SUBMITTED' },
     body_part_affected: { ownership: 'STAFF_REVIEW' },
     disablement_percentage: { ownership: 'STAFF_REVIEW' },
+    disablement_type: { ownership: 'STAFF_REVIEW' },
+    prior_injury_claim_ref: { ownership: 'CITIZEN_SUBMITTED' },
+    review_schedule_months: { ownership: 'STAFF_REVIEW' },
     is_temporary: { ownership: 'STAFF_REVIEW' },
     employer_report_date: { ownership: 'STAFF_REVIEW' },
+    work_related: { ownership: 'STAFF_REVIEW', aliases: ['is_work_related', 'work_related_confirmed'] },
+    is_work_related: { ownership: 'STAFF_REVIEW', aliases: ['work_related', 'work_related_confirmed'] },
+    work_related_confirmed: { ownership: 'STAFF_REVIEW', aliases: ['work_related', 'is_work_related'] },
+
+    // Medical expense
+    treatment_provider: { ownership: 'CITIZEN_SUBMITTED' },
+    treatment_start: { ownership: 'CITIZEN_SUBMITTED' },
+    treatment_end: { ownership: 'CITIZEN_SUBMITTED' },
+    expense_category: { ownership: 'STAFF_REVIEW' },
+    reimbursement_amount: { ownership: 'STAFF_REVIEW' },
   },
 
-  // Funeral Grant
+  // Funeral Grant / Maternity Grant / Employment-Injury Death
   GRANT: {
     deceased_ssn: { ownership: 'CITIZEN_SUBMITTED' },
     deceased_name: { ownership: 'CITIZEN_SUBMITTED' },
     date_of_death: { ownership: 'CITIZEN_SUBMITTED' },
-    relationship_to_claimant: { ownership: 'CITIZEN_SUBMITTED' },
+    cause_of_death: { ownership: 'CITIZEN_SUBMITTED' },
+    relationship_to_claimant: { ownership: 'CITIZEN_SUBMITTED', aliases: ['relationship_to_deceased'] },
+    relationship_to_deceased: { ownership: 'CITIZEN_SUBMITTED', aliases: ['relationship_to_claimant'] },
     funeral_date: { ownership: 'CITIZEN_SUBMITTED' },
+    funeral_expense_amount: { ownership: 'CITIZEN_SUBMITTED' },
     funeral_home: { ownership: 'STAFF_REVIEW' },
-    is_employment_injury_death: { ownership: 'STAFF_REVIEW' },
+    is_employment_injury_death: { ownership: 'STAFF_REVIEW', aliases: ['work_related_death_confirmed'] },
+    work_related_death_confirmed: { ownership: 'STAFF_REVIEW', aliases: ['is_employment_injury_death'] },
+
+    // Maternity grant
+    expected_confinement_date: { ownership: 'CITIZEN_SUBMITTED' },
+    actual_confinement_date: { ownership: 'STAFF_REVIEW' },
+    maternity_leave_start: { ownership: 'CITIZEN_SUBMITTED' },
+    maternity_leave_end: { ownership: 'CITIZEN_SUBMITTED' },
   },
 
   // Survivor Benefit
@@ -113,7 +160,10 @@ export const BN_FIELD_OWNERSHIP: Record<string, Record<string, FieldOwnershipDef
     deceased_name: { ownership: 'CITIZEN_SUBMITTED' },
     date_of_death: { ownership: 'CITIZEN_SUBMITTED' },
     relationship: { ownership: 'CITIZEN_SUBMITTED' },
+    survivor_category: { ownership: 'CITIZEN_SUBMITTED', aliases: ['relationship'] },
     survivor_dob: { ownership: 'CITIZEN_SUBMITTED' },
+    guardian_name: { ownership: 'CITIZEN_SUBMITTED' },
+    relationship_proof_provided: { ownership: 'STAFF_REVIEW' },
     is_dependent_child: { ownership: 'STAFF_REVIEW' },
     school_name: { ownership: 'STAFF_REVIEW' },
   },
@@ -122,6 +172,10 @@ export const BN_FIELD_OWNERSHIP: Record<string, Record<string, FieldOwnershipDef
   NON_CONTRIBUTORY: {
     means_test_date: { ownership: 'STAFF_REVIEW' },
     monthly_income: { ownership: 'CITIZEN_SUBMITTED' },
+    household_income: { ownership: 'CITIZEN_SUBMITTED' },
+    residency_years: { ownership: 'CITIZEN_SUBMITTED' },
+    other_pension_declared: { ownership: 'CITIZEN_SUBMITTED' },
+    inspector_assessment: { ownership: 'STAFF_REVIEW' },
     income_threshold: { ownership: 'SYSTEM_DERIVED' },
     means_test_passed: { ownership: 'SUPERVISOR_DECISION' },
     living_arrangement: { ownership: 'CITIZEN_SUBMITTED' },
@@ -130,9 +184,14 @@ export const BN_FIELD_OWNERSHIP: Record<string, Record<string, FieldOwnershipDef
   ASSISTANCE: {
     means_test_date: { ownership: 'STAFF_REVIEW' },
     monthly_income: { ownership: 'CITIZEN_SUBMITTED' },
+    household_income: { ownership: 'CITIZEN_SUBMITTED' },
+    residency_years: { ownership: 'CITIZEN_SUBMITTED' },
+    other_pension_declared: { ownership: 'CITIZEN_SUBMITTED' },
+    inspector_assessment: { ownership: 'STAFF_REVIEW' },
     means_test_passed: { ownership: 'SUPERVISOR_DECISION' },
   },
 };
+
 
 export function getFieldOwnership(
   category: string,
