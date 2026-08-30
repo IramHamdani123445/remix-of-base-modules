@@ -19,7 +19,10 @@ export interface PendingApproval {
   assigned_designation: string | null;
   assigned_to: string | null;
   submitter_name: string | null;
+  /** Why the server considers this user entitled to the task. */
+  eligibility_basis?: string;
 }
+
 
 /**
  * Helper function to calculate priority based on due date
