@@ -635,7 +635,12 @@ export const OmniCommsOperationsPage: React.FC = () => {
           Technical details
         </summary>
         <div className="space-y-4 pt-4">
-          <OperationsSummaryCards summary={summary} loading={loading && !summary} />
+          <OperationsSummaryCards
+            summary={summary}
+            loading={loading && !summary}
+            attention={holdBreakdown}
+          />
+
           <div className="flex flex-wrap items-center gap-2">
             <Select value={mode} onValueChange={setMode}>
               <SelectTrigger
