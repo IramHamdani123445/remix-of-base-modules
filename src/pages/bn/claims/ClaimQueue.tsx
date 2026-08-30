@@ -1,11 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Inbox, HandMetal, ArrowUpRight, Clock } from 'lucide-react';
-import { useBnWorkbaskets, useBnQueueClaims, useBnMyQueue, usePickBnClaim, useReleaseBnClaim } from '@/hooks/bn/useBnWorkbasket';
+import {
+  useBnWorkbaskets,
+  useBnQueueClaims,
+  useBnMyQueue,
+  usePickBnClaim,
+  useReleaseBnClaim,
+  useBasketClaimCounts,
+} from '@/hooks/bn/useBnWorkbasket';
+import { useMyWorkbaskets } from '@/hooks/bn/useMyWorkbaskets';
+import { useMyEffectiveRoles } from '@/hooks/bn/useEffectiveRoles';
 import { useUserCode } from '@/hooks/useUserCode';
 import { BN_CLAIM_STATUS_LABELS } from '@/types/bn';
 import { formatDateForDisplay } from '@/lib/format-config';
@@ -14,15 +23,78 @@ import { toast } from 'sonner';
 import type { BnClaimQueueAssignment, BnWorkbasket } from '@/types/bn';
 import { UnroutedClaimsPanel } from '@/components/bn/claims/UnroutedClaimsPanel';
 
+/** Roles allowed to look beyond their own baskets. */
+const OVERSIGHT_ROLES = ['BN_SUPERVISOR', 'BN_MANAGER', 'BN_DIRECTOR', 'BN_CONFIG_ADMIN'];
+
+interface QueueBasket {
+  id: string;
+  basket_name: string;
+  role_name?: string;
+  is_primary?: boolean;
+}
+
 export default function ClaimQueue() {
   const navigate = useNavigate();
   const { userCode } = useUserCode();
-  const { data: workbaskets = [] } = useBnWorkbaskets();
+  const { data: myBaskets = [], isLoading: myBasketsLoading } = useMyWorkbaskets();
+  const { data: myRoles = [] } = useMyEffectiveRoles();
+  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  const { data: allBaskets = [] } = useBnWorkbaskets();
   const [selectedBasket, setSelectedBasket] = useState<string | null>(null);
   const { data: queueClaims = [], isLoading: queueLoading } = useBnQueueClaims(selectedBasket || undefined);
   const { data: myQueue = [] } = useBnMyQueue(userCode);
   const pickClaim = usePickBnClaim();
   const releaseClaim = useReleaseBnClaim();
+
+  const roleNames = useMemo(
+    () => Array.from(new Set(myRoles.map((r) => r.role_name))).sort(),
+    [myRoles],
+  );
+  const canSeeAll = roleNames.some((r) => OVERSIGHT_ROLES.includes(r));
+
+  // Deduplicate: the same basket can be reachable through several roles.
+  const mineBaskets: QueueBasket[] = useMemo(() => {
+    const map = new Map<string, QueueBasket>();
+    for (const b of myBaskets) {
+      const existing = map.get(b.workbasket_id);
+      if (existing) {
+        existing.is_primary = existing.is_primary || b.is_primary;
+        continue;
+      }
+      map.set(b.workbasket_id, {
+        id: b.workbasket_id,
+        basket_name: b.basket_name,
+        role_name: b.role_name,
+        is_primary: b.is_primary,
+      });
+    }
+    return Array.from(map.values()).sort((a, b) => a.basket_name.localeCompare(b.basket_name));
+  }, [myBaskets]);
+
+  const baskets: QueueBasket[] =
+    scope === 'all'
+      ? (allBaskets as BnWorkbasket[]).map((b) => ({
+          id: b.id,
+          basket_name: b.basket_name,
+          role_name: (b as any).assigned_role,
+        }))
+      : mineBaskets;
+
+  const basketIds = useMemo(() => baskets.map((b) => b.id), [baskets]);
+  const { data: counts = {} } = useBasketClaimCounts(basketIds);
+
+  // Auto-select: primary basket first, then the first basket holding work.
+  useEffect(() => {
+    if (baskets.length === 0) {
+      setSelectedBasket(null);
+      return;
+    }
+    if (selectedBasket && baskets.some((b) => b.id === selectedBasket)) return;
+    const withWork = baskets.find((b) => (counts[b.id]?.total ?? 0) > 0);
+    const primary = baskets.find((b) => b.is_primary && (counts[b.id]?.total ?? 0) > 0);
+    setSelectedBasket((primary || withWork || baskets.find((b) => b.is_primary) || baskets[0]).id);
+  }, [baskets, counts, selectedBasket]);
+
 
   const handlePick = async (assignmentId: string) => {
     if (!userCode) return;
