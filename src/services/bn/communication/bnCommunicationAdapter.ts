@@ -704,7 +704,7 @@ export async function retryCommunication(logId: string, userCode: string) {
     last_retry_at: new Date().toISOString(),
     status: 'RETRYING',
   }).eq('id', logId);
-  return triggerClaimCommunication(log.event_code, log.claim_id, { userCode });
+  return triggerClaimCommunication(log.event_code, log.claim_id, { userCode }, { legacyLogId: logId });
 }
 
 // ─── Manual / fallback actions ────────────────────────────────────
