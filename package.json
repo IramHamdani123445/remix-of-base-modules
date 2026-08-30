@@ -23,8 +23,8 @@
     "test:bn-life-certificate-db": "bash scripts/bn/run-life-certificate-db-tests.sh",
     "check:omni-comms-architecture": "bunx tsx scripts/omni-comms/check-architecture.ts",
     "verify:omni-build-revision": "node scripts/omni-comms/generate-build-revision.mjs --check",
-    "audit:bn-eligibility-rules": "tsx scripts/bn/audit-eligibility-rules.ts"
-
+    "audit:bn-eligibility-rules": "tsx scripts/bn/audit-eligibility-rules.ts",
+    "audit:bn-benefit-fields": "tsx scripts/bn/audit-benefit-field-mapping.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -278,6 +278,7 @@ export default function ClaimWorkbench() {
     retirement_date: facts.retirement_date ?? facts.last_worked_date,
     injury_date: facts.injury_date ?? facts.accident_date,
     date_of_death: facts.date_of_death ?? facts.deceased_date,
+    work_related: facts.work_related ?? facts.is_work_related ?? facts.work_related_confirmed,
   };
   const mergedDetail = { ...factsAliased, ...(detailJson || {}), ...(localDetail || {}) };
 
@@ -540,6 +541,7 @@ export default function ClaimWorkbench() {
           <ClaimWorkbenchTabBoundary tabName="Benefit Details">
             <BenefitDetailSection
               category={product?.category || 'SHORT_TERM'}
+              productCode={(product as any)?.benefit_code}
               detailJson={mergedDetail}
               claimStatus={claim.status}
               roles={userRoles}
