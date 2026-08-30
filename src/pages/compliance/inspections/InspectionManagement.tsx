@@ -9,6 +9,7 @@ import { fetchInspections, InspectionRecord } from '@/services/complianceReporti
 import { supabase } from '@/integrations/supabase/client';
 import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
 import { Link } from 'react-router-dom';
+import ScheduleInspectionDialog from '@/components/compliance/inspection/ScheduleInspectionDialog';
 
 export default function InspectionManagement() {
   const [statusFilter, setStatusFilter] = useState('All');
