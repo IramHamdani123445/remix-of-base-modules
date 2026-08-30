@@ -51,6 +51,8 @@ const ExternalTaskLanding = lazy(() => import('@/portals/ExternalTaskLanding'));
 const PublicLayout = lazy(() => import('@/pages/public/PublicLayout'));
 const PublicHome = lazy(() => import('@/pages/public/Home'));
 const UatDownloadsPublic = lazy(() => import('@/pages/public/UatDownloadsPublic'));
+const AuditUserManuals = lazy(() => import('@/pages/audit/manuals/AuditUserManuals'));
+
 const RegisterWizard = lazy(() => import('@/pages/public/register/RegisterWizard'));
 const ExternalPortalApprovals = lazy(() => import('@/pages/admin/ExternalPortalApprovals'));
 const PublicCatalogValidation = lazy(() => import('@/pages/admin/PublicCatalogValidation'));
@@ -1812,6 +1814,10 @@ export const AppRoutes = () => {
       <Route path="/audit/time-tracking" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_TIME_TRACKING"><Suspense fallback={<div />}><TimeTracking /></Suspense></AuditFeatureGate>} />
       
       <Route path="/audit/leave" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_LEAVE_MANAGEMENT"><Suspense fallback={<div />}><AuditorLeaveManagement /></Suspense></AuditFeatureGate>} />
+      <Route path="/audit/user-manuals" element={<Suspense fallback={<div />}><AuditUserManuals /></Suspense>} />
+      <Route path="/audit/manuals" element={<Navigate to="/audit/user-manuals" replace />} />
+
+
 
       {/* Legacy redirects */}
       <Route path="/audit/engagements" element={<Navigate to="/audit/audits" replace />} />

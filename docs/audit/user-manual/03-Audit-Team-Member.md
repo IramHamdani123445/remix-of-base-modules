@@ -120,3 +120,29 @@ and activity daily. Time feeds workload, capacity planning and audit cost report
 | Change audit configuration or risk settings | Audit Administrator |
 
 Controls you are not entitled to use are hidden, not merely disabled.
+
+---
+
+## Document Control — Version History & Change Log
+
+**Document owner:** Head of Internal Audit  **Classification:** Internal  
+**Review cycle:** Annually, or on any change to the Internal Audit module.
+
+| Version | Date | Author | Summary of change | Approval |
+|---------|------|--------|-------------------|----------|
+| 1.0 | 2026-08-30 | Internal Audit / Platform Team | First issued manual, generated from the live TEST environment (routes, tabs, governed commands and screenshots). | Reviewed: Lead Auditor. Approved by Head of Internal Audit on: _Pending_ |
+
+### How to record an update
+1. Add a new row at the top of the table for every content change — never edit a released row.
+2. Increment the minor version (1.1, 1.2 …) for clarifications and screenshot refreshes;
+   increment the major version (2.0) when a process, role or gate changes.
+3. State the change in business terms (what a reader must now do differently), not file edits.
+4. The manual is only "released" once the Head of Internal Audit records an approval date.
+   Until then it is marked *Pending* and must not be used as certification evidence.
+5. Re-export the PDF and DOCX from the Internal Audit User Manuals page after each approval.
+
+### Change log
+
+| Version | Change | Sections affected |
+|---------|--------|-------------------|
+| 1.0 | Initial release. | All |

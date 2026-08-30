@@ -1,0 +1,93 @@
+[
+  {
+    "id": "00-Internal-Audit-User-Manual-Overview",
+    "title": "Overview \u2014 All Roles",
+    "description": "Shared concepts, navigation, the 14-tab engagement workspace and the 9-tab Action Centre.",
+    "role": "Everyone",
+    "version": "1.0",
+    "generated": "2026-08-30",
+    "approvalDate": null,
+    "pdf": "/downloads/audit/user-manual/00-Internal-Audit-User-Manual-Overview.pdf",
+    "docx": "/downloads/audit/user-manual/00-Internal-Audit-User-Manual-Overview.docx",
+    "pdfSizeKb": 646,
+    "docxSizeKb": 514
+  },
+  {
+    "id": "01-Head-of-Internal-Audit",
+    "title": "Head of Internal Audit",
+    "description": "Annual planning, plan approval, risk oversight, engagement and plan closure, board reporting.",
+    "role": "IA_HEAD_OF_AUDIT",
+    "version": "1.0",
+    "generated": "2026-08-30",
+    "approvalDate": null,
+    "pdf": "/downloads/audit/user-manual/01-Head-of-Internal-Audit.pdf",
+    "docx": "/downloads/audit/user-manual/01-Head-of-Internal-Audit.docx",
+    "pdfSizeKb": 1656,
+    "docxSizeKb": 1617
+  },
+  {
+    "id": "02-Lead-Auditor",
+    "title": "Lead Auditor",
+    "description": "Engagement launch, preparation, RCM programme, fieldwork supervision, findings, report issuance.",
+    "role": "IA_LEAD_AUDITOR",
+    "version": "1.0",
+    "generated": "2026-08-30",
+    "approvalDate": null,
+    "pdf": "/downloads/audit/user-manual/02-Lead-Auditor.pdf",
+    "docx": "/downloads/audit/user-manual/02-Lead-Auditor.docx",
+    "pdfSizeKb": 1512,
+    "docxSizeKb": 1441
+  },
+  {
+    "id": "03-Audit-Team-Member",
+    "title": "Audit Team Member",
+    "description": "Daily work: activities, control tests, evidence, working papers and drafting findings.",
+    "role": "IA_AUDITOR",
+    "version": "1.0",
+    "generated": "2026-08-30",
+    "approvalDate": null,
+    "pdf": "/downloads/audit/user-manual/03-Audit-Team-Member.pdf",
+    "docx": "/downloads/audit/user-manual/03-Audit-Team-Member.docx",
+    "pdfSizeKb": 1040,
+    "docxSizeKb": 970
+  },
+  {
+    "id": "04-Quality-Reviewer",
+    "title": "Quality Reviewer",
+    "description": "QA queue, review checklist, sign-off outcomes and the gates you enforce.",
+    "role": "IA_QUALITY_REVIEWER",
+    "version": "1.0",
+    "generated": "2026-08-30",
+    "approvalDate": null,
+    "pdf": "/downloads/audit/user-manual/04-Quality-Reviewer.pdf",
+    "docx": "/downloads/audit/user-manual/04-Quality-Reviewer.docx",
+    "pdfSizeKb": 344,
+    "docxSizeKb": 272
+  },
+  {
+    "id": "05-Management-Respondent",
+    "title": "Management Respondent",
+    "description": "Responding to findings, working corrective actions, evidence and follow-ups.",
+    "role": "IA_MANAGEMENT_RESPONDENT",
+    "version": "1.0",
+    "generated": "2026-08-30",
+    "approvalDate": null,
+    "pdf": "/downloads/audit/user-manual/05-Management-Respondent.pdf",
+    "docx": "/downloads/audit/user-manual/05-Management-Respondent.docx",
+    "pdfSizeKb": 738,
+    "docxSizeKb": 652
+  },
+  {
+    "id": "06-Audit-Administrator",
+    "title": "Audit Administrator",
+    "description": "Master data, risk configuration, module settings, templates and auditor resources.",
+    "role": "IA_AUDIT_ADMIN",
+    "version": "1.0",
+    "generated": "2026-08-30",
+    "approvalDate": null,
+    "pdf": "/downloads/audit/user-manual/06-Audit-Administrator.pdf",
+    "docx": "/downloads/audit/user-manual/06-Audit-Administrator.docx",
+    "pdfSizeKb": 1629,
+    "docxSizeKb": 1501
+  }
+]
