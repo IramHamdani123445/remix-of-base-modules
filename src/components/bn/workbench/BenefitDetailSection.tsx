@@ -23,6 +23,7 @@ import {
   isFieldEditable,
   type FieldOwnership,
 } from '@/lib/bn/fieldOwnership';
+import { BENEFIT_FIELDS, normalizeBenefitKey } from '@/services/bn/forms/sectionCatalogue';
 
 interface BenefitDetailSectionProps {
   category: string;
@@ -31,6 +32,8 @@ interface BenefitDetailSectionProps {
   claimStatus: string;
   /** Roles of the current user — drives editability gates. */
   roles: string[];
+  /** Product / benefit code — overlays the product's own captured fields. */
+  productCode?: string | null;
   onDetailChange: (key: string, value: any) => void;
 }
 
