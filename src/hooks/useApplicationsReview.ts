@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { resolveReportingManagerForTask } from '@/services/resolveReportingManager';
+import { emitWorkflowDecisionNotification } from '@/platform/omni-comms/integrations/business/platformApprovalAlertProducer';
 
 export type NextStepType = 'next_step' | 'specific_step' | 'end_workflow' | 'send_back_to_applicant';
 export type EndState = 'Approved' | 'Rejected' | null;
@@ -692,29 +693,32 @@ export function useProcessReviewAction() {
               if (logError) {
                 console.error('[Notification] Failed to insert notification log:', logError);
               } else if (logData && recipientEmail && channel === 'email') {
-                // Immediately send email via edge function
-                try {
-                  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-                  
-                  const sendResponse = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${supabaseKey}`,
-                    },
-                    body: JSON.stringify({
-                      notification_log_id: logData.id,
-                      recipient_email: recipientEmail,
-                      subject,
-                      body,
-                    }),
-                  });
-                  
-                  const sendResult = await sendResponse.json();
-                  console.log('[Notification] Send result:', sendResult);
-                } catch (sendError) {
-                  console.error('[Notification] Failed to send email:', sendError);
+                // ── Omni-Comms convergence (Wave 4) ─────────────────────
+                // The applicant-facing email is a governed business
+                // communication and is raised through the single facade.
+                // The provider is never called from the browser. The
+                // notification_logs row above is retained as the
+                // compatibility record until PLATFORM communications are
+                // certified for live delivery.
+                const emission = await emitWorkflowDecisionNotification({
+                  workflowInstanceId: String(task.instance_id ?? ''),
+                  stepId: task.step_id ? String(task.step_id) : null,
+                  actionName,
+                  actionType,
+                  decisionOutcome: endState || actionType,
+                  applicationTitle: mergeData.application_title,
+                  reviewerName: mergeData.reviewer_name,
+                  comments: comments || null,
+                  recipientUserId,
+                  recipientEmail,
+                  recipientName: mergeData.applicant_name ?? null,
+                });
+
+                if (emission.outcome === 'blocked' || emission.outcome === 'unavailable') {
+                  console.warn(
+                    '[Notification] Governed emission not accepted:',
+                    emission.blockers,
+                  );
                 }
               }
             }
