@@ -130109,6 +130109,32 @@ export type Database = {
         Args: { p_reason: string }
         Returns: Json
       }
+      omni_comms_in_app_list_my_communications: {
+        Args: { p_limit?: number; p_offset?: number; p_unread_only?: boolean }
+        Returns: {
+          acted_at: string
+          action_label: string
+          body: string
+          category: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_code: string
+          event_name: string
+          has_attachment: boolean
+          id: string
+          is_read: boolean
+          link: string
+          message_id: string
+          module_code: string
+          read_at: string
+          request_id: string
+          severity: string
+          title: string
+          total_count: number
+        }[]
+      }
+      omni_comms_in_app_my_unread_count: { Args: never; Returns: number }
       omni_comms_in_app_record_engagement: {
         Args: { p_engagement: string; p_notification_id: string }
         Returns: boolean
