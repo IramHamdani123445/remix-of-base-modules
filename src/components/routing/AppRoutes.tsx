@@ -595,6 +595,8 @@ const MyProfile = lazy(() => import('@/pages/profile/MyProfile'));
 
 // Notification Pages
 const NotificationCenter = lazy(() => import('@/pages/notifications/NotificationCenter'));
+const MyCommunications = lazy(() => import('@/pages/communications/MyCommunications'));
+
 const ProviderSettings = lazy(() => import('@/pages/admin/notifications/ProviderSettings'));
 const EmailCampaigns = lazy(() => import('@/pages/admin/EmailCampaigns'));
 const EmailLogs = lazy(() => import('@/pages/admin/EmailLogs'));
@@ -1833,8 +1835,12 @@ export const AppRoutes = () => {
       <Route path="/registration/approval-workflow" element={<ApprovalWorkflow />} />
       <Route path="/registration/documentation" element={<DocumentationRequirements />} />
 
+      {/* Omni-Comms user inbox */}
+      <Route path="/my-communications" element={<MyCommunications />} />
+
       {/* User Profile & Permissions Routes */}
       <Route path="/profile" element={<MyProfile />} />
+
       <Route path="/profile/change-password" element={<ProfileChangePassword />} />
       <Route path="/profile/notifications" element={<NotificationPreferences />} />
       <Route path="/profile/sessions" element={<ActiveSessions />} />

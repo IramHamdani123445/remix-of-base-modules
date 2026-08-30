@@ -6,6 +6,8 @@ import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
 import { useSystemSettingsContext } from "@/contexts/SystemSettingsContext";
 import { InAppNotificationBell } from "@/components/notifications/InAppNotificationBell";
 import { OmniCommsHeaderShortcut } from "@/platform/omni-comms/admin/components/OmniCommsHeaderShortcut";
+import { MyCommunicationsHeaderButton } from "@/components/communications/MyCommunicationsHeaderButton";
+
 import { MeetingCalendarModal } from "@/components/meetings/MeetingCalendarModal";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { useTodayMeetingCount } from "@/hooks/useTodayMeetingCount";
@@ -81,11 +83,15 @@ export const Header = () => {
         {/* Theme Switcher */}
         <ThemeSwitcher />
 
-        {/* Omnichannel Communications (operations attention indicator) */}
+        {/* My Communications (messages addressed to the signed-in user) */}
+        <MyCommunicationsHeaderButton />
+
+        {/* Omni-Comms operations attention indicator (administrators) */}
         <OmniCommsHeaderShortcut />
 
-        {/* Notifications */}
+        {/* Notifications & workflow approvals (legacy bell) */}
         <InAppNotificationBell />
+
 
 
         {/* User Menu */}
