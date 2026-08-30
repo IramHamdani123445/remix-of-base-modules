@@ -88,3 +88,23 @@ Impact: Console noise only; no functional effect.
 | SEC-001 Plan approval restricted to Head of Internal Audit | Confirmed — denied for Lead Auditor, Quality Reviewer and Administrator |
 | Anonymous access | Confirmed — all `/audit/*` routes redirect to `/login` |
 | Department scoping for Management Respondents | Confirmed — only own-department audits are listed |
+
+---
+
+## Remediation Wave 1 — Closure Evidence (retest 2026-08-30)
+
+Scope: UAT-DEF-01 / 02 / 03 / 04 only. No UAT data rebuilt; certified business lifecycle
+and Omni-Comms routing untouched.
+
+| Defect | Root cause | Fix | Retest evidence | Result |
+|---|---|---|---|---|
+| UAT-DEF-01 Audit Admin sees no reference data | `ia_is_ia_user()` excluded `IA_AUDIT_ADMIN`; role lacked `configure` entitlements | Added `ia_is_audit_admin()`, widened `ia_is_ia_user()`, granted admin entitlements | `audit.admin` → `/audit/departments` renders Department Master, 10 departments, Add/Export/Recalculate available | PASS |
+| UAT-DEF-02 Management sees auditor-private workspace | `EngagementDetail` rendered all tabs regardless of persona | Persona gating via `useInternalAuditPersona`; management limited to Overview / Findings / Responses / Actions / Timeline | `audit.mgmt.benefits` → ENG-2029-002 shows only the 5 permitted tabs; no Programme/Activities/Evidence/Working Papers/Quality/Closure | PASS |
+| UAT-DEF-03 Admin controls advertised to unentitled users | Administration routes not entitlement-gated | `AuditEntitlementGate` applied to `/audit/config`, `/audit/departments`, `/audit/functions`, `/audit/auditors` | `audit.lead` denied on all 4 admin routes; `/audit/audits` still accessible | PASS |
+| UAT-DEF-04 Engagement Summary counts zero | PostgREST embed on `annual_plan_id` (no FK) failed the whole request (PGRST200) | Removed embed; fiscal year resolved with a second `ia_annual_plans` read | `audit.hia` → Engagement Summary shows 57 engagements, 7 closed, 50 in flight, 11 with high/critical findings, plan years populated | PASS |
+
+Targeted retest: **100% PASS (4/4)**
+RLS/entitlement regression check: internal-audit-only tables still closed to management respondents.
+Build/typecheck: clean.
+
+**READY FOR FINAL BUSINESS UAT SIGN-OFF: YES**
