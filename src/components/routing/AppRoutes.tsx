@@ -1812,6 +1812,10 @@ export const AppRoutes = () => {
       <Route path="/audit/time-tracking" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_TIME_TRACKING"><Suspense fallback={<div />}><TimeTracking /></Suspense></AuditFeatureGate>} />
       
       <Route path="/audit/leave" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_LEAVE_MANAGEMENT"><Suspense fallback={<div />}><AuditorLeaveManagement /></Suspense></AuditFeatureGate>} />
+      <Route path="/audit/user-manuals" element={<Suspense fallback={<div />}><AuditUserManuals /></Suspense>} />
+      <Route path="/audit/manuals" element={<Navigate to="/audit/user-manuals" replace />} />
+
+
 
       {/* Legacy redirects */}
       <Route path="/audit/engagements" element={<Navigate to="/audit/audits" replace />} />
