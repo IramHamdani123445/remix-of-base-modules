@@ -41,7 +41,7 @@ export interface AuditCommunicationRecipientInput {
 }
 
 export interface AuditCommunicationIssuedInput {
-  /** `ce_audit_communications.id` — the approved communication being issued. */
+  /** Compliance communication record id — the approved communication being issued. */
   communicationId: string;
   commType?: string | null;
   caseType?: string | null;
