@@ -220,7 +220,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [s, p, ev] = await Promise.all([
+      const [s, p, ev, holds] = await Promise.all([
         getOpsSummary(client, { organizationId, departmentId: null }),
         listOpsRequests(client, {
           organizationId,
@@ -240,16 +240,23 @@ export const OmniCommsOperationsPage: React.FC = () => {
           limit: BUSINESS_EVENT_PAGE_SIZE_DEFAULT,
           offset,
         }),
+        // The hold breakdown is supplementary: it must never fail the page.
+        getOpsAttentionSummary(client, { organizationId, departmentId: null }).catch(
+          () => null,
+        ),
       ]);
       setSummary(s);
       setPage(p);
       setEvents(ev);
+      setHoldBreakdown(holds);
     } catch (e: unknown) {
       setSummary(null);
       setPage(null);
       setEvents(null);
+      setHoldBreakdown(null);
       setError(e instanceof Error ? e.message : "Unable to load activity data");
     } finally {
+
       setLoading(false);
     }
   }, [client, organizationId, mode, status, callerModule, dateFrom, debouncedSearch, offset]);
