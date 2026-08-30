@@ -72,6 +72,7 @@ function CommunicationRow({
       <button
         type="button"
         disabled={busy}
+        data-testid="communication-row"
         onClick={() => onOpen(item)}
         aria-label={`${item.isRead ? 'Read' : 'Unread'} communication: ${item.title}`}
         className={`w-full text-left p-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
