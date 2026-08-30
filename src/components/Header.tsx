@@ -5,6 +5,7 @@ import { Settings, User, LogOut, CalendarDays } from "lucide-react";
 import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
 import { useSystemSettingsContext } from "@/contexts/SystemSettingsContext";
 import { InAppNotificationBell } from "@/components/notifications/InAppNotificationBell";
+import { OmniCommsHeaderShortcut } from "@/platform/omni-comms/admin/components/OmniCommsHeaderShortcut";
 import { MeetingCalendarModal } from "@/components/meetings/MeetingCalendarModal";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { useTodayMeetingCount } from "@/hooks/useTodayMeetingCount";
