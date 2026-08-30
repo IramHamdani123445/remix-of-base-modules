@@ -128415,6 +128415,7 @@ export type Database = {
         Returns: Json
       }
       ia_has: { Args: { _action: string; _module: string }; Returns: boolean }
+      ia_is_audit_admin: { Args: never; Returns: boolean }
       ia_is_department_respondent: {
         Args: { _department_id: string }
         Returns: boolean
