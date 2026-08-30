@@ -134141,6 +134141,27 @@ export type Database = {
         Args: { p_cycle_id: string; p_reason: string }
         Returns: Json
       }
+      workflow_my_pending_tasks: {
+        Args: never
+        Returns: {
+          assigned_designation: string
+          assigned_role: string
+          assigned_to: string
+          created_at: string
+          due_at: string
+          eligibility_basis: string
+          id: string
+          instance_id: string
+          is_overdue: boolean
+          source_module: string
+          source_record_id: string
+          source_record_name: string
+          status: string
+          step_name: string
+          submitter_name: string
+          workflow_name: string
+        }[]
+      }
       write_comm_hub_operating_mode_audit: {
         Args: {
           p_actor: string
