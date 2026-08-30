@@ -541,6 +541,7 @@ export default function ClaimWorkbench() {
           <ClaimWorkbenchTabBoundary tabName="Benefit Details">
             <BenefitDetailSection
               category={product?.category || 'SHORT_TERM'}
+              productCode={(product as any)?.benefit_code}
               detailJson={mergedDetail}
               claimStatus={claim.status}
               roles={userRoles}
