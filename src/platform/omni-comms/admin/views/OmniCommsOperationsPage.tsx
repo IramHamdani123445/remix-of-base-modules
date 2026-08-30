@@ -66,6 +66,8 @@ import {
 import {
   needsAttentionCount,
 } from "@/platform/omni-comms/application/activityStatusLabels";
+import type { OmniCommsAttentionSummary } from "@/platform/omni-comms/application/holdClassification";
+
 import {
   BUSINESS_EVENT_PAGE_SIZE_DEFAULT,
   businessEventStatusLabel,
