@@ -51,7 +51,9 @@ import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useAutomationStatus } from "../hooks/useAutomationStatus";
 import AutomationSection from "./channels/simple/AutomationSection";
 import {
+  getOpsAttentionSummary,
   getOpsSummary,
+
   listOpsRequests,
   OPS_PAGE_SIZE_DEFAULT,
   OPS_REQUEST_MODES,
