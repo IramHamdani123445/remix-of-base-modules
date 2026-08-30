@@ -2,7 +2,7 @@
  * Wave 5 — Business producer: Compliance employer audit / visit communications.
  *
  * EVIDENCE, not invention. `auditCommunicationService.send()` already issues an
- * APPROVED employer audit communication (`ce_audit_communications`) over email
+ * APPROVED employer audit communication  over email
  * and SMS. Before this producer it called the platform notification function
  * directly, which is a provider bypass: no Hub template resolution, no
  * branding, no governed delivery state and no Omni audit trail.
