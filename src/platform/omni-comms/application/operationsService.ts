@@ -117,6 +117,40 @@ export function getOpsRequestDetail(
   });
 }
 
+/**
+ * Per-job authorization projection.
+ *
+ * `stored_hold_reason` is the last claim blocker persisted on the job;
+ * `authorization_outcome` is the current authoritative dispatch-authorization
+ * result. They are deliberately exposed separately — the certified claim
+ * function is NOT reordered to make the UI read better.
+ */
+export interface OpsJobAuthorization {
+  job_id: string;
+  channel: string;
+  status: string;
+  is_runnable: boolean;
+  stored_hold_reason: string | null;
+  authorization_outcome: string | null;
+  authorization_evaluated_at: string | null;
+  authorization_evaluation_count: number | null;
+  classification: { bucket: string; actionable: boolean; label: string } | null;
+}
+
+export async function getOpsJobAuthorization(
+  client: OmniCommsRpcClient,
+  requestId: string,
+): Promise<OpsJobAuthorization[]> {
+  const res = await callOmniCommsRpc<{ jobs?: OpsJobAuthorization[] }>(
+    client,
+    'omni_comms_ops_job_authorization',
+    { p_request_id: requestId },
+  );
+  return Array.isArray(res?.jobs) ? res.jobs : [];
+}
+
+
+
 export function getOpsMessageContent(
   client: OmniCommsRpcClient,
   input: { messageId: string; organizationId: string; revealSensitive?: boolean },

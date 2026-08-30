@@ -19,13 +19,25 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
 import { useIsAdmin, useModulePermissions } from "@/hooks/useNavigationMenu";
+import {
+  attentionTotal,
+  type OmniCommsAttentionSummary,
+} from "@/platform/omni-comms/application/holdClassification";
+
 
 const OPERATIONS_ROUTE = "/admin/omnichannel-communications/operations";
 
 /**
- * Bounded attention probe: held / blocked / failed work needing an operator
- * decision. Resolves the caller's own organisation through the same
- * RLS-scoped source the module shell uses, so no extra privilege is implied.
+ * Bounded ACTIONABLE-attention probe.
+ *
+ * The badge answers "how many Omni-Comms items currently require operational
+ * attention?" — never "how many non-delivered historical jobs exist?".
+ * Permanent governance outcomes (a business event that predates dispatch
+ * activation), superseded records and temporary volume holds are deliberately
+ * excluded by `omni_comms_ops_attention_summary`.
+ *
+ * Resolves the caller's own organisation through the same RLS-scoped source
+ * the module shell uses, so no extra privilege is implied.
  */
 async function fetchAttentionCount(): Promise<number> {
   const { data: orgs, error: orgError } = await supabase
@@ -39,25 +51,16 @@ async function fetchAttentionCount(): Promise<number> {
     null;
   if (!organizationId) return 0;
 
-  const { data, error } = await supabase.rpc("omni_comms_ops_summary", {
+  const { data, error } = await supabase.rpc("omni_comms_ops_attention_summary", {
     p_organization_id: organizationId,
     p_department_id: null,
-    p_since_hours: 720,
   });
   if (error) return 0;
-  const summary = (data ?? null) as Record<string, unknown> | null;
-  if (!summary) return 0;
-  const numeric = (key: string): number => {
-    const value = summary[key];
-    const parsed = typeof value === "string" ? Number(value) : value;
-    return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : 0;
-  };
-  return (
-    numeric("blocked_requests") +
-    numeric("failed_requests") +
-    numeric("held_jobs")
+  return attentionTotal(
+    (data ?? null) as unknown as OmniCommsAttentionSummary | null,
   );
 }
+
 
 
 export const OmniCommsHeaderShortcut: React.FC = () => {
