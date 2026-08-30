@@ -157,6 +157,14 @@ export const BN_FIELD_OWNERSHIP: Record<string, Record<string, FieldOwnershipDef
     actual_confinement_date: { ownership: 'STAFF_REVIEW' },
     maternity_leave_start: { ownership: 'CITIZEN_SUBMITTED' },
     maternity_leave_end: { ownership: 'CITIZEN_SUBMITTED' },
+
+    // Age-grant and survivor-grant products filed under the GRANT category
+    retirement_date: { ownership: 'CITIZEN_SUBMITTED' },
+    pension_path: { ownership: 'STAFF_REVIEW' },
+    still_employed: { ownership: 'CITIZEN_SUBMITTED' },
+    survivor_category: { ownership: 'CITIZEN_SUBMITTED' },
+    relationship_proof_provided: { ownership: 'STAFF_REVIEW' },
+    guardian_name: { ownership: 'CITIZEN_SUBMITTED' },
   },
 
   // Survivor Benefit
