@@ -72,13 +72,21 @@ export function matchesActivityFilter(
   filter: ActivityFilterId,
 ): boolean {
   const label = activityStatusLabel(row);
-  const held = row.held_job_count > 0 && label.startsWith('Held');
-  const heldActionable = held && classifyHold(row.hold_reason ?? null).actionable;
+  const classification = classifyHold(row.hold_reason ?? null);
+  const held = row.held_job_count > 0;
+  const heldActionable = held && classification.actionable;
+  // A permanently held historical record is audit evidence. It is not pending
+  // work, so it is excluded from "Waiting" and gets its own filter.
+  const heldHistorical = held && classification.bucket === 'PERMANENT_HISTORICAL';
   switch (filter) {
     case 'all':
       return true;
     case 'waiting':
-      return label === 'Event queued' || label === 'Preparing' || (held && !heldActionable);
+      return (
+        label === 'Event queued' ||
+        label === 'Preparing' ||
+        (held && !heldActionable && !heldHistorical)
+      );
     case 'accepted':
       return label === 'Sending' || label === 'Provider accepted';
     case 'delivered':
@@ -92,9 +100,12 @@ export function matchesActivityFilter(
         label === 'Failed' ||
         heldActionable
       );
+    case 'historical':
+      return heldHistorical;
     default:
       return true;
   }
+
 }
 
 
