@@ -85,6 +85,13 @@ export default function PaymentArrangements() {
   }
 
   if (selectedArrangementId) {
+    // Allow deep links by arrangement number (e.g. U020-ARR-008) as well as by id.
+    const matched = register.find(
+      (a) =>
+        a.arrangement_id === selectedArrangementId ||
+        (a.arrangement_number ?? '').toLowerCase() === selectedArrangementId.toLowerCase(),
+    );
+    const resolvedId = matched?.arrangement_id ?? selectedArrangementId;
     return (
       <div className="container mx-auto p-6 space-y-6">
         <PageHeader
@@ -93,23 +100,14 @@ export default function PaymentArrangements() {
           breadcrumbs={[
             { label: 'Compliance', href: '/compliance/dashboard' },
             { label: 'Payment Arrangements', href: '/compliance/enforcement/arrangements' },
-            { label: 'Detail' },
+            { label: matched?.arrangement_number ?? 'Detail' },
           ]}
         />
-        <ArrangementDetailPanel
-          arrangementId={selectedArrangementId}
-          onBack={() => {
-            setSelectedArrangementId(null);
-            if (searchParams.get('arr')) {
-              const next = new URLSearchParams(searchParams);
-              next.delete('arr');
-              setSearchParams(next, { replace: true });
-            }
-          }}
-        />
+        <ArrangementDetailPanel arrangementId={resolvedId} onBack={closeArrangement} />
       </div>
     );
   }
+
 
   const activeCount = arrangements.filter((a) => a.status === 'ACTIVE').length;
   const defaultedCount = arrangements.filter((a) => a.status === 'DEFAULTED').length;
