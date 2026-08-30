@@ -70,8 +70,9 @@ Internal Audit appears in the left sidebar. The groups and their entries are:
 | Configuration | Escalation Roles | `/audit/escalation-roles` |
 | Configuration | Communication Templates | `/audit/templates` |
 
-You only see the entries your role is entitled to. A Management Respondent, for example,
-sees Internal Audit → Action Centre only.
+You only see the entries your role is entitled to. A Management Respondent, for example, sees
+a restricted **Internal Audit → Management Workspace** group with four entries only: My Work,
+Findings Register, Corrective Actions and Follow-Ups.
 
 ![Head of Internal Audit dashboard](screenshots/01-login-navigation/hia-dashboard.png)
 
