@@ -153,6 +153,7 @@ export const COMPLIANCE_ROUTE_ALIASES: Record<string, string> = {
   '/compliance/arrangements/breaches': '/compliance/enforcement/breaches',
   '/compliance/payment-arrangements': '/compliance/arrangements',
   '/compliance/monitoring': '/compliance/workbench/monitoring',
+  '/compliance/dashboard/legal': '/compliance/workbench/legal',
   '/compliance/operations/queues': '/compliance/workbench/queues',
   '/compliance/operations/reassignment': '/compliance/workbench/reassignment',
   '/compliance/operations/review-queue': '/compliance/workbench/review-queue',
