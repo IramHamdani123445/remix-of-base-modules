@@ -88,6 +88,11 @@ export const Header = () => {
         {/* My Communications (messages addressed to the signed-in user) */}
         <MyCommunicationsHeaderButton />
 
+        {/* My Tasks (work awaiting the signed-in user's decision) */}
+        <MyTasksHeaderButton />
+
+
+
         {/* Omni-Comms operations attention indicator (administrators) */}
         <OmniCommsHeaderShortcut />
 
