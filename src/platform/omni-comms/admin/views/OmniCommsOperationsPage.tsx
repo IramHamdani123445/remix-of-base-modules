@@ -90,17 +90,26 @@ const EVENT_FILTERS = [
   { id: "sending", label: "Sending" },
   { id: "delivered", label: "Delivered" },
   { id: "needs_attention", label: "Needs attention" },
+  { id: "historical", label: "Historical (not sent)" },
 ] as const;
 
 type EventFilterId = (typeof EVENT_FILTERS)[number]["id"];
 
+/**
+ * "Waiting" means work that is still expected to go out. A permanently held
+ * historical record (recorded before delivery was switched on) is audit
+ * evidence, never pending work, so it has its own filter and is deliberately
+ * excluded from "Waiting".
+ */
 const EVENT_FILTER_STATUSES: Record<EventFilterId, readonly string[] | null> = {
   all: null,
   waiting: ["event_recorded", "preparing_communication", "waiting_to_send", "retrying"],
   sending: ["sending", "provider_accepted"],
   delivered: ["delivered"],
   needs_attention: ["needs_configuration", "needs_review", "failed"],
+  historical: ["not_sent_historical"],
 };
+
 
 
 const ALL = "__all__";

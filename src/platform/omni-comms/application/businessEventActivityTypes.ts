@@ -16,6 +16,7 @@ export const BUSINESS_EVENT_STATUSES = [
   'preparing_communication',
   'no_communication_configured',
   'waiting_to_send',
+  'not_sent_historical',
   'sending',
   'provider_accepted',
   'delivered',
@@ -32,6 +33,7 @@ export const BUSINESS_EVENT_STATUS_LABEL: Record<BusinessEventStatus, string> = 
   preparing_communication: 'Preparing communication',
   no_communication_configured: 'No communication configured',
   waiting_to_send: 'Waiting to send',
+  not_sent_historical: 'Not sent — historical record',
   sending: 'Sending',
   provider_accepted: 'Provider accepted',
   delivered: 'Delivered',
@@ -41,12 +43,28 @@ export const BUSINESS_EVENT_STATUS_LABEL: Record<BusinessEventStatus, string> = 
   failed: 'Failed',
 };
 
+/**
+ * Explanatory sub-text for statuses whose business meaning is easy to
+ * misread. A historical record is deliberately never delivered.
+ */
+export const BUSINESS_EVENT_STATUS_HINT: Partial<Record<BusinessEventStatus, string>> = {
+  not_sent_historical:
+    'Recorded before delivery was switched on. Kept as audit evidence; it will never be sent.',
+  waiting_to_send: 'Authorised work still waiting for its next automatic run.',
+  no_communication_configured: 'No template or channel is configured for this event.',
+};
+
+export function businessEventStatusHint(status: string): string | null {
+  return BUSINESS_EVENT_STATUS_HINT[status as BusinessEventStatus] ?? null;
+}
+
 /** Statuses an operator is expected to act on. */
 export const BUSINESS_EVENT_ATTENTION_STATUSES: readonly BusinessEventStatus[] = [
   'needs_configuration',
   'needs_review',
   'failed',
 ];
+
 
 export function businessEventStatusLabel(status: string): string {
   return (

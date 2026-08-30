@@ -9,7 +9,9 @@
  * `omni_comms.view_sensitive_content` and explicitly requests disclosure.
  */
 import type { OmniCommsRpcClient } from './eventCatalogueService';
+import type { OmniCommsAttentionSummary } from './holdClassification';
 import { callOmniCommsRpc } from './omniCommsRpcCall';
+
 import {
   OPS_PAGE_SIZE_DEFAULT,
   OPS_PAGE_SIZE_MAX,
@@ -81,6 +83,26 @@ export function getOpsSummary(
     p_since_hours: input.sinceHours ?? 720,
   });
 }
+
+/**
+ * Canonical hold breakdown. Separates holds an operator can act on from
+ * permanently held historical evidence, so the two are never reported as one
+ * undifferentiated "held" figure.
+ */
+export function getOpsAttentionSummary(
+  client: OmniCommsRpcClient,
+  input: { organizationId: string; departmentId?: string | null },
+): Promise<OmniCommsAttentionSummary> {
+  return callOmniCommsRpc<OmniCommsAttentionSummary>(
+    client,
+    'omni_comms_ops_attention_summary',
+    {
+      p_organization_id: input.organizationId,
+      p_department_id: input.departmentId ?? null,
+    },
+  );
+}
+
 
 export function listOpsRequests(
   client: OmniCommsRpcClient,

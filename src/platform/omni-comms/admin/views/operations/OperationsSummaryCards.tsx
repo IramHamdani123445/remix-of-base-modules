@@ -1,14 +1,21 @@
 /**
  * Omni-Comms Operations — summary counter cards (read-only).
+ *
+ * The held figure is deliberately split. An operator must be able to see, at a
+ * glance, how many holds they can actually do something about versus how many
+ * are permanently held historical records kept only as audit evidence.
  */
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { OpsSummary } from "@/platform/omni-comms/application/operationsService";
+import type { OmniCommsAttentionSummary } from "@/platform/omni-comms/application/holdClassification";
 
 export interface OperationsSummaryCardsProps {
   summary: OpsSummary | null;
   loading: boolean;
+  /** Canonical hold breakdown; when absent only the combined held figure shows. */
+  attention?: OmniCommsAttentionSummary | null;
 }
 
 interface Cell {
@@ -18,16 +25,46 @@ interface Cell {
   hint?: string;
 }
 
+const num = (value: unknown): number => {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return typeof parsed === "number" && Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
 export const OperationsSummaryCards: React.FC<OperationsSummaryCardsProps> = ({
   summary,
   loading,
+  attention = null,
 }) => {
+  const heldCells: Cell[] = attention
+    ? [
+        {
+          key: "held-actionable",
+          label: "Held — action required",
+          value: num(attention.actionable_held),
+          hint: "An operator can resolve these now",
+        },
+        {
+          key: "held-historical",
+          label: "Held — historical record",
+          value: num(attention.held_by_bucket?.PERMANENT_HISTORICAL),
+          hint: "Audit evidence only; never delivered",
+        },
+      ]
+    : [
+        {
+          key: "held-jobs",
+          label: "Held dispatch jobs",
+          value: summary?.held_jobs ?? 0,
+          hint: "Awaiting a governance condition",
+        },
+      ];
+
   const cells: Cell[] = summary
     ? [
         { key: "requests", label: "Requests", value: summary.requests },
         { key: "recipients", label: "Recipients", value: summary.recipients },
         { key: "messages", label: "Messages", value: summary.messages },
-        { key: "held-jobs", label: "Held dispatch jobs", value: summary.held_jobs, hint: "Awaiting a governance condition" },
+        ...heldCells,
         { key: "runnable-jobs", label: "Runnable jobs", value: summary.runnable_jobs, hint: "Picked up automatically each minute" },
         { key: "delivery-attempts", label: "Delivery attempts", value: summary.delivery_attempts },
         { key: "blocked", label: "Blocked requests", value: summary.blocked_requests },
@@ -36,6 +73,7 @@ export const OperationsSummaryCards: React.FC<OperationsSummaryCardsProps> = ({
         { key: "failed", label: "Failed", value: summary.failed_requests },
       ]
     : [];
+
 
   if (loading) {
     return (
