@@ -339,6 +339,20 @@ export const OmniCommsOperationsPage: React.FC = () => {
     [summary, automation.status],
   );
 
+  /**
+   * Permanently held historical records. Reported separately from attention so
+   * that audit evidence never inflates an operational figure.
+   */
+  const historicalHolds = useMemo(() => {
+    const raw = holdBreakdown?.held_by_bucket?.PERMANENT_HISTORICAL;
+    const parsed = typeof raw === "string" ? Number(raw) : raw;
+    return typeof parsed === "number" && Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : 0;
+  }, [holdBreakdown]);
+
+
+
   if (!tenantLoading && !organizationId) {
     return (
       <OmniCommsEmptyState
