@@ -259,13 +259,13 @@ export default function PaymentArrangements() {
                       onClick={(e) => {
                         // Ignore clicks that originate from interactive controls inside the row
                         if ((e.target as HTMLElement).closest('a,button,input,select,[role="button"][data-interactive]')) return;
-                        setSelectedArrangementId(arr.arrangement_id);
+                        openArrangement(arr.arrangement_id);
                       }}
                       onKeyDown={(e) => {
                         if (e.target !== e.currentTarget) return;
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setSelectedArrangementId(arr.arrangement_id);
+                          openArrangement(arr.arrangement_id);
                         }
                       }}
                     >
@@ -310,7 +310,7 @@ export default function PaymentArrangements() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedArrangementId(arr.arrangement_id)}
+                          onClick={() => openArrangement(arr.arrangement_id)}
                           title="View arrangement details"
                         >
                           <Eye className="h-4 w-4" />
