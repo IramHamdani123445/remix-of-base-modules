@@ -28,7 +28,7 @@ export default function PaymentArrangements() {
   const navigate = useNavigate();
   const { regno } = useRegnoParam();
   const { arrangementId: routeArrangementId } = useParams<{ arrangementId?: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [healthFilter, setHealthFilter] = useState<string>('ALL');
   const [overdueOnly, setOverdueOnly] = useState(false);
