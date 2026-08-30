@@ -31,6 +31,7 @@ import {
 } from "./legalReferralUnifiedService";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveLegalEnterprise } from "@/lib/enterprise/legalEnterpriseMetadata";
+import { emitLegalInfoResponded } from "@/platform/omni-comms/integrations/business/legalCommunicationProducer";
 
 const sb = supabase as any;
 
@@ -249,6 +250,8 @@ export const legalReferralCollaborationService = {
         matterKind: "LEGAL_REFERRAL",
       });
       const ent = enterprise.notification;
+      // Compatibility record ONLY — see legalCommunicationProducer. Retired
+      // once Legal in-app delivery is certified live in the Hub.
       if (prof?.user_id) {
         await sb.from("in_app_notifications").insert({
           user_id: prof.user_id,
@@ -268,33 +271,20 @@ export const legalReferralCollaborationService = {
           },
         });
       }
-      if (prof?.email) {
-        await sb.functions
-          .invoke("send-transactional-email", {
-            body: {
-              templateName: "legal-info-response",
-              recipientEmail: prof.email,
-              replyTo: ent.reply_to_email || undefined,
-              idempotencyKey: `lir-resp-${infoRequestId}`,
-              templateData: {
-                referral_no: ir.referral?.referral_no,
-                source_module: ir.referral?.source_module,
-                response_notes: ir.response_notes,
-                review_link: `/legal/intake/${ir.referral?.lg_intake_id ?? ir.legal_referral_id}`,
-                organization_name: ent.organization_name,
-                department_name: ent.department_name,
-                sender_email: ent.sender_email,
-                reply_to_email: ent.reply_to_email,
-                email_signature_html: ent.email_signature_html,
-                email_signature_text: ent.email_signature_text,
-                email_footer: ent.email_footer,
-                disclaimer: ent.disclaimer,
-                logo_url: ent.org_logo_url,
-              },
-            },
-          })
-          .catch(() => null);
-      }
+      await emitLegalInfoResponded({
+        infoRequestId,
+        legalReferralId: ir.legal_referral_id,
+        referralNo: ir.referral?.referral_no ?? null,
+        sourceModule: ir.referral?.source_module ?? null,
+        responseNotes: ir.response_notes,
+        reviewLink: `/legal/intake/${ir.referral?.lg_intake_id ?? ir.legal_referral_id}`,
+        recipient: {
+          userId: prof?.user_id ?? null,
+          email: prof?.email ?? null,
+        },
+        organizationId: enterprise.metadata.organization_id ?? null,
+        departmentId: enterprise.metadata.department_id ?? null,
+      });
     } catch (e) {
       console.warn("notifyLegalResponseReceived failed:", e);
     }
