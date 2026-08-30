@@ -12,6 +12,7 @@ import { formatDateForDisplay } from '@/lib/format-config';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { toast } from 'sonner';
 import type { BnClaimQueueAssignment, BnWorkbasket } from '@/types/bn';
+import { UnroutedClaimsPanel } from '@/components/bn/claims/UnroutedClaimsPanel';
 
 export default function ClaimQueue() {
   const navigate = useNavigate();
@@ -102,6 +103,9 @@ export default function ClaimQueue() {
     <PermissionWrapper moduleName="benefits_management">
       <div className="space-y-6 p-6">
         <h1 className="t-page-title">Claim Queue</h1>
+
+        {/* Claims no queue owns — invisible until now. */}
+        <UnroutedClaimsPanel />
 
         {/* My Queue */}
         {myQueue.length > 0 && (

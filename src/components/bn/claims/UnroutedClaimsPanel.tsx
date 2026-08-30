@@ -38,8 +38,8 @@ export function UnroutedClaimsPanel() {
   const refreshQueues = async () => {
     await Promise.all([
       refetch(),
-      queryClient.invalidateQueries({ queryKey: ['bn-queue-claims'] }),
-      queryClient.invalidateQueries({ queryKey: ['bn-my-queue'] }),
+      queryClient.invalidateQueries({ queryKey: ['bn', 'queue-claims'] }),
+      queryClient.invalidateQueries({ queryKey: ['bn', 'my-queue'] }),
     ]);
   };
 
