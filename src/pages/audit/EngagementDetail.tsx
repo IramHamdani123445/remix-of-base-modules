@@ -357,30 +357,33 @@ export default function EngagementDetail() {
             />
           </TabsContent>
 
-          <TabsContent value="preparation">
-            <AuditPreparationTab auditId={id!} audit={audit} engagementContext={engagementContext} />
-          </TabsContent>
+          {canSeeAuditorWorkspace && (
+            <>
+              <TabsContent value="preparation">
+                <AuditPreparationTab auditId={id!} audit={audit} engagementContext={engagementContext} />
+              </TabsContent>
 
-          <TabsContent value="programme">
-            <AuditProgrammeRcmTab auditId={id!} departmentId={audit?.department_id} functionId={(audit as any)?.function_id} />
-          </TabsContent>
+              <TabsContent value="programme">
+                <AuditProgrammeRcmTab auditId={id!} departmentId={audit?.department_id} functionId={(audit as any)?.function_id} />
+              </TabsContent>
 
-          <TabsContent value="activities">
-            <AuditActivitiesTab auditId={id!} auditors={auditors} />
-          </TabsContent>
+              <TabsContent value="activities">
+                <AuditActivitiesTab auditId={id!} auditors={auditors} />
+              </TabsContent>
 
-          <TabsContent value="control-tests">
-            <AuditControlTestsTab auditId={id!} />
-          </TabsContent>
+              <TabsContent value="control-tests">
+                <AuditControlTestsTab auditId={id!} />
+              </TabsContent>
 
+              <TabsContent value="evidence">
+                <AuditEvidenceTab auditId={id!} auditFindings={auditFindings} auditActivities={auditActivities} />
+              </TabsContent>
 
-          <TabsContent value="evidence">
-            <AuditEvidenceTab auditId={id!} auditFindings={auditFindings} auditActivities={auditActivities} />
-          </TabsContent>
-
-          <TabsContent value="working-papers">
-            <AuditWorkingPapersTab auditId={id!} />
-          </TabsContent>
+              <TabsContent value="working-papers">
+                <AuditWorkingPapersTab auditId={id!} />
+              </TabsContent>
+            </>
+          )}
 
           <TabsContent value="findings">
             <AuditFindingsTab auditId={id!} auditFindings={auditFindings} auditResponses={auditResponses} auditActions={auditActions} auditEvidence={auditEvidence} auditWorkingPapers={auditWorkingPapers} departmentId={audit?.department_id} />
@@ -394,14 +397,18 @@ export default function EngagementDetail() {
             <AuditActionsTab auditId={id!} audit={audit} auditFindings={auditFindings} auditActions={auditActions} auditResponses={auditResponses} auditEvidence={auditEvidence} onClose={handleCloseAudit} />
           </TabsContent>
 
-          <TabsContent value="follow-ups">
-            <AuditFollowUpsTab auditId={id!} auditFindings={auditFindings} departmentId={audit?.department_id} />
-          </TabsContent>
+          {canSeeAuditorWorkspace && (
+            <>
+              <TabsContent value="follow-ups">
+                <AuditFollowUpsTab auditId={id!} auditFindings={auditFindings} departmentId={audit?.department_id} />
+              </TabsContent>
 
+              <TabsContent value="quality-review">
+                <AuditQualityReviewTab auditId={id!} />
+              </TabsContent>
+            </>
+          )}
 
-          <TabsContent value="quality-review">
-            <AuditQualityReviewTab auditId={id!} />
-          </TabsContent>
 
           <TabsContent value="timeline">
             <AuditTimelineTab auditId={id!} departmentId={audit?.department_id} />
