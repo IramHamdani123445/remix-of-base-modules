@@ -81,8 +81,12 @@ export const Header = () => {
         {/* Theme Switcher */}
         <ThemeSwitcher />
 
+        {/* Omnichannel Communications (operations attention indicator) */}
+        <OmniCommsHeaderShortcut />
+
         {/* Notifications */}
         <InAppNotificationBell />
+
 
         {/* User Menu */}
         <DropdownMenu>
