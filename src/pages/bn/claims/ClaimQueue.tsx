@@ -171,10 +171,39 @@ export default function ClaimQueue() {
     );
   };
 
+  const selected = baskets.find((b) => b.id === selectedBasket);
+
   return (
     <PermissionWrapper moduleName="benefits_management">
       <div className="space-y-6 p-6">
-        <h1 className="t-page-title">Claim Queue</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="t-page-title">Claim Queue</h1>
+            <p className="t-page-subtitle mt-1">
+              {scope === 'mine'
+                ? `Workbaskets you serve as ${roleNames.length ? roleNames.join(', ') : 'your assigned roles'}.`
+                : 'All active workbaskets.'}
+            </p>
+          </div>
+          {canSeeAll && (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={scope === 'mine' ? 'default' : 'outline'}
+                onClick={() => { setScope('mine'); setSelectedBasket(null); }}
+              >
+                My baskets
+              </Button>
+              <Button
+                size="sm"
+                variant={scope === 'all' ? 'default' : 'outline'}
+                onClick={() => { setScope('all'); setSelectedBasket(null); }}
+              >
+                All baskets
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Claims no queue owns — invisible until now. */}
         <UnroutedClaimsPanel />
@@ -210,20 +239,37 @@ export default function ClaimQueue() {
         {/* Workbaskets */}
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-3 space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Workbaskets</h3>
-            {workbaskets.map((basket: BnWorkbasket) => (
-              <Button
-                key={basket.id}
-                variant={selectedBasket === basket.id ? 'default' : 'outline'}
-                className="w-full justify-start"
-                onClick={() => setSelectedBasket(basket.id)}
-              >
-                <Inbox className="mr-2 h-4 w-4" />
-                {basket.basket_name}
-              </Button>
-            ))}
-            {workbaskets.length === 0 && (
-              <p className="text-sm text-muted-foreground">No workbaskets configured</p>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">
+              {scope === 'mine' ? 'My Workbaskets' : 'All Workbaskets'}
+            </h3>
+            {baskets.map((basket) => {
+              const count = counts[basket.id];
+              return (
+                <Button
+                  key={basket.id}
+                  variant={selectedBasket === basket.id ? 'default' : 'outline'}
+                  className="w-full justify-start"
+                  onClick={() => setSelectedBasket(basket.id)}
+                >
+                  <Inbox className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">{basket.basket_name}</span>
+                  <span className="ml-auto flex items-center gap-1">
+                    {count?.overdue ? (
+                      <Badge variant="destructive" className="px-1.5">{count.overdue}</Badge>
+                    ) : null}
+                    <Badge variant="secondary" className="px-1.5">{count?.total ?? 0}</Badge>
+                  </span>
+                </Button>
+              );
+            })}
+            {baskets.length === 0 && !myBasketsLoading && (
+              <p className="text-sm text-muted-foreground">
+                {scope === 'mine'
+                  ? roleNames.length > 0
+                    ? `No workbasket is configured for your role${roleNames.length > 1 ? 's' : ''} (${roleNames.join(', ')}).`
+                    : 'You hold no benefits role, so no workbasket is assigned to you.'
+                  : 'No workbaskets configured'}
+              </p>
             )}
           </div>
 
@@ -232,14 +278,19 @@ export default function ClaimQueue() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
-                    {workbaskets.find(b => b.id === selectedBasket)?.basket_name || 'Queue'}
+                    {selected?.basket_name || 'Queue'}
+                    {selected?.role_name && (
+                      <Badge variant="outline" className="ml-2 font-normal">{selected.role_name}</Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {queueLoading ? (
                     <p className="text-sm text-muted-foreground">Loading...</p>
                   ) : queueClaims.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No claims in this queue</p>
+                    <p className="text-sm text-muted-foreground">
+                      No claims currently in {selected?.basket_name || 'this queue'}.
+                    </p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -268,6 +319,7 @@ export default function ClaimQueue() {
             )}
           </div>
         </div>
+
       </div>
     </PermissionWrapper>
   );
