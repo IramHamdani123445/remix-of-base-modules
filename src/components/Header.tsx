@@ -7,6 +7,8 @@ import { useSystemSettingsContext } from "@/contexts/SystemSettingsContext";
 import { InAppNotificationBell } from "@/components/notifications/InAppNotificationBell";
 import { OmniCommsHeaderShortcut } from "@/platform/omni-comms/admin/components/OmniCommsHeaderShortcut";
 import { MyCommunicationsHeaderButton } from "@/components/communications/MyCommunicationsHeaderButton";
+import { MyTasksHeaderButton } from "@/components/tasks/MyTasksHeaderButton";
+
 
 import { MeetingCalendarModal } from "@/components/meetings/MeetingCalendarModal";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
@@ -85,6 +87,11 @@ export const Header = () => {
 
         {/* My Communications (messages addressed to the signed-in user) */}
         <MyCommunicationsHeaderButton />
+
+        {/* My Tasks (work awaiting the signed-in user's decision) */}
+        <MyTasksHeaderButton />
+
+
 
         {/* Omni-Comms operations attention indicator (administrators) */}
         <OmniCommsHeaderShortcut />

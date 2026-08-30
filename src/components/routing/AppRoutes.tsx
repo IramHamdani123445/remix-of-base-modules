@@ -596,6 +596,8 @@ const MyProfile = lazy(() => import('@/pages/profile/MyProfile'));
 // Notification Pages
 const NotificationCenter = lazy(() => import('@/pages/notifications/NotificationCenter'));
 const MyCommunications = lazy(() => import('@/pages/communications/MyCommunications'));
+const MyTasks = lazy(() => import('@/pages/tasks/MyTasks'));
+
 
 const ProviderSettings = lazy(() => import('@/pages/admin/notifications/ProviderSettings'));
 const EmailCampaigns = lazy(() => import('@/pages/admin/EmailCampaigns'));
@@ -1837,6 +1839,10 @@ export const AppRoutes = () => {
 
       {/* Omni-Comms user inbox */}
       <Route path="/my-communications" element={<MyCommunications />} />
+
+      {/* Personal task surface (read-only projection) */}
+      <Route path="/my-tasks" element={<MyTasks />} />
+
 
       {/* User Profile & Permissions Routes */}
       <Route path="/profile" element={<MyProfile />} />
