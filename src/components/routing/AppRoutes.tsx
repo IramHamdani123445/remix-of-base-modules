@@ -36,6 +36,7 @@ import { PermissionProtectedRoute } from '@/components/auth/PermissionProtectedR
 import { useLegalAuth } from '@/contexts/LegalAuthContext';
 import React, { Suspense, lazy } from 'react';
 import { AuditFeatureGate } from '@/components/audit/AuditFeatureGate';
+import { AuditEntitlementGate, AUDIT_ADMIN_ENTITLEMENTS } from '@/components/audit/AuditEntitlementGate';
 import { ComplianceFeatureGate } from '@/components/compliance/ComplianceFeatureGate';
 import LegalRouteGuard from '@/components/legal/LegalRouteGuard';
 // ComplianceRouteGuard retired — global ComplianceAccessGate (in ProtectedLayout) handles permission gating for /compliance/*; ComplianceFeatureGate handles feature-flag gating.
@@ -1784,10 +1785,10 @@ export const AppRoutes = () => {
 
       {/* Audit Module Routes — Simplified Department Function Audit */}
       <Route path="/audit/dashboard" element={<AuditDashboard />} />
-      <Route path="/audit/departments" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_DEPARTMENT_MASTER"><DepartmentMaster /></AuditFeatureGate>} />
+      <Route path="/audit/departments" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_DEPARTMENT_MASTER"><DepartmentMaster /></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/universe" element={<Navigate to="/audit/departments" replace />} />
       <Route path="/audit/risk-register" element={<Suspense fallback={<div />}><RiskRegister /></Suspense>} />
-      <Route path="/audit/functions" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_FUNCTION_MASTER"><FunctionMaster /></AuditFeatureGate>} />
+      <Route path="/audit/functions" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_FUNCTION_MASTER"><FunctionMaster /></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/department-view/:id" element={<DepartmentView />} />
       <Route path="/audit/risk-assessment" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_RISK_ASSESSMENT"><RiskAssessment /></AuditFeatureGate>} />
       <Route path="/audit/entity-summary" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_RISK_ASSESSMENT"><EntitySummary /></AuditFeatureGate>} />
@@ -1804,11 +1805,11 @@ export const AppRoutes = () => {
       <Route path="/audit/audit-reports" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_REPORTS"><AuditReports /></AuditFeatureGate>} />
       <Route path="/audit/report-builder" element={<Suspense fallback={<div>Loading...</div>}><AuditReportBuilder /></Suspense>} />
       <Route path="/audit/plan-approval" element={<PlanApproval />} />
-      <Route path="/audit/config" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><AuditConfig /></AuditFeatureGate>} />
+      <Route path="/audit/config" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><AuditConfig /></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/risk-settings" element={<Suspense fallback={<div />}><RiskSettings /></Suspense>} />
-      <Route path="/audit/document-templates" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><Suspense fallback={<div />}><DocumentTemplateSettings /></Suspense></AuditFeatureGate>} />
+      <Route path="/audit/document-templates" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><Suspense fallback={<div />}><DocumentTemplateSettings /></Suspense></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/queries" element={<Suspense fallback={<div />}><AuditQueries /></Suspense>} />
-      <Route path="/audit/auditors" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_AUDITOR_PROFILES"><Suspense fallback={<div />}><AuditorProfiles /></Suspense></AuditFeatureGate>} />
+      <Route path="/audit/auditors" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_AUDITOR_PROFILES"><Suspense fallback={<div />}><AuditorProfiles /></Suspense></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/auditor-profiles" element={<Navigate to="/audit/auditors" replace />} />
       <Route path="/audit/workload" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_WORKLOAD_CAPACITY"><Suspense fallback={<div />}><WorkloadCapacity /></Suspense></AuditFeatureGate>} />
       <Route path="/audit/time-tracking" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_TIME_TRACKING"><Suspense fallback={<div />}><TimeTracking /></Suspense></AuditFeatureGate>} />
