@@ -35,15 +35,37 @@ export default function EngagementSummaryReport() {
   const { data: engagements = [], isLoading } = useQuery({
     queryKey: ['ia_engagement_summary_report'],
     queryFn: async () => {
+      // NOTE: `ia_audit_engagements.annual_plan_id` has no declared foreign key, so a
+      // PostgREST embed (`plan:annual_plan_id(...)`) fails the whole request and the
+      // report renders as empty. Fiscal year is therefore resolved with a second read.
       const { data, error } = await supabase
         .from('ia_audit_engagements' as any)
-        .select('id, engagement_code, engagement_name, status, execution_status, planned_start_date, planned_end_date, actual_start_date, actual_end_date, annual_plan_id, engagement_risk_rating, plan:annual_plan_id(fiscal_year)')
+        .select('id, engagement_code, engagement_name, status, execution_status, planned_start_date, planned_end_date, actual_start_date, actual_end_date, annual_plan_id, engagement_risk_rating')
         .order('engagement_code', { ascending: true })
         .limit(500);
       if (error) throw error;
-      return (data as any[]) || [];
+      const engagementRows = (data as any[]) || [];
+
+      const planIds = Array.from(
+        new Set(engagementRows.map((e: any) => e.annual_plan_id).filter(Boolean)),
+      );
+      const planYearById = new Map<string, any>();
+      if (planIds.length > 0) {
+        const { data: plans, error: planError } = await supabase
+          .from('ia_annual_plans' as any)
+          .select('id, fiscal_year')
+          .in('id', planIds);
+        if (planError) throw planError;
+        ((plans as any[]) || []).forEach((p: any) => planYearById.set(p.id, p.fiscal_year));
+      }
+
+      return engagementRows.map((e: any) => ({
+        ...e,
+        plan: e.annual_plan_id ? { fiscal_year: planYearById.get(e.annual_plan_id) } : null,
+      }));
     },
   });
+
 
   const findings = useIaFindingRegister();
 
