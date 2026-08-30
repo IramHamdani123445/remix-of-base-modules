@@ -23,6 +23,7 @@ import path from 'node:path';
 
 import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/registry/readinessManifest';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
+import { allowedMigrationTableNames } from '@/platform/omni-comms/registry/migrationTableGovernance';
 import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
 
 // ----- shared hook mocks (auth + permissions) ---------------------------
@@ -248,9 +249,7 @@ describe('Omni-Comms Story 2 — architectural boundaries', () => {
   it('introduces only the approved Epic 2 Story 1 omni_comms_* business-table migration', () => {
     const migrationsDir = path.resolve(__dirname, '..', '..', '..', 'supabase', 'migrations');
     if (!existsSync(migrationsDir)) return;
-    const allowed = new Set(
-      OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'AVAILABLE').map((o) => o.name),
-    );
+    const allowed = allowedMigrationTableNames();
     const offenders: string[] = [];
     for (const file of readdirSync(migrationsDir)) {
       if (!file.endsWith('.sql')) continue;

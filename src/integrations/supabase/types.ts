@@ -99787,6 +99787,10 @@ export type Database = {
       omni_comms_dispatch_job: {
         Row: {
           attempt_count: number
+          authorization_evaluated_at: string | null
+          authorization_evaluation_count: number
+          authorization_outcome: string | null
+          authorization_outcome_at: string | null
           cancelled_at: string | null
           channel: string
           completed_at: string | null
@@ -99819,6 +99823,10 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
+          authorization_evaluated_at?: string | null
+          authorization_evaluation_count?: number
+          authorization_outcome?: string | null
+          authorization_outcome_at?: string | null
           cancelled_at?: string | null
           channel: string
           completed_at?: string | null
@@ -99851,6 +99859,10 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
+          authorization_evaluated_at?: string | null
+          authorization_evaluation_count?: number
+          authorization_outcome?: string | null
+          authorization_outcome_at?: string | null
           cancelled_at?: string | null
           channel?: string
           completed_at?: string | null
@@ -130093,6 +130105,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_hold_classification: {
+        Args: { p_reason: string }
+        Returns: Json
+      }
       omni_comms_in_app_record_engagement: {
         Args: { p_engagement: string; p_notification_id: string }
         Returns: boolean
@@ -130181,6 +130197,14 @@ export type Database = {
           p_sender_identity_id: string
         }
         Returns: string
+      }
+      omni_comms_ops_attention_summary: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_ops_job_authorization: {
+        Args: { p_request_id: string }
+        Returns: Json
       }
       omni_comms_ops_message_content: {
         Args: {

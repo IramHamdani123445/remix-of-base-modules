@@ -14,6 +14,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
+import { allowedMigrationTableNames } from '@/platform/omni-comms/registry/migrationTableGovernance';
 import { OMNI_COMMS_DEFERRED_OBJECTS } from '@/platform/omni-comms/registry/deferredObjects';
 import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_INTEGRATION_REGISTRY } from '@/platform/omni-comms/registry/integrationRegistry';
@@ -163,9 +164,7 @@ describe('Omni-Comms Story 3 — no runtime implementation was created', () => {
 
   it('no omni_comms_* migration exists beyond registry-approved AVAILABLE tables, and no omni-comms-* edge function exists', () => {
     const migrationsDir = path.join(REPO_ROOT, 'supabase', 'migrations');
-    const allowed = new Set(
-      OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'AVAILABLE').map((o) => o.name),
-    );
+    const allowed = allowedMigrationTableNames();
     if (existsSync(migrationsDir)) {
       const offenders: string[] = [];
       for (const file of readdirSync(migrationsDir)) {
