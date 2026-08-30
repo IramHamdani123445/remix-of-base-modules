@@ -27,6 +27,8 @@ import {
 } from '@/services/bn/bnWorkflowIntegrationService';
 import { BENEFITS_CLAIM_SUBMITTED_EVENT_CODE } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
 import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
+import { normalizeChannelCode } from '@/services/bn/workflow/channelNormalization';
+
 
 const db = supabase as any;
 
