@@ -128230,6 +128230,10 @@ export type Database = {
         Returns: Json
       }
       ia_comms_owner_department_id: { Args: never; Returns: string }
+      ia_comms_plan_recipient_fact: {
+        Args: { p_plan: Database["public"]["Tables"]["ia_annual_plans"]["Row"] }
+        Returns: Json
+      }
       ia_comms_policy_days: {
         Args: { p_code: string; p_default: number }
         Returns: number
