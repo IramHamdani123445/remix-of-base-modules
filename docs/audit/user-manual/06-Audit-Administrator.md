@@ -156,3 +156,30 @@ Quality Reviewer, Management Respondent — rather than to individuals.
 | Monthly | Auditor profiles and escalation roles still match the org chart |
 | Quarterly | Risk configuration still matches the approved methodology |
 | Annually | Audit universe refresh: new departments and functions added before planning starts |
+
+---
+
+## Document Control — Version History & Change Log
+
+**Document owner:** Head of Internal Audit  **Classification:** Internal  
+**Review cycle:** Annually, or on any change to the Internal Audit module.
+
+| Version | Date | Author | Summary of change | Reviewed by | Approved by | Approval date |
+|---------|------|--------|-------------------|-------------|-------------|---------------|
+| 1.0 | 2026-08-30 | Internal Audit / Platform Team | First issued manual, generated from the live TEST environment (routes, tabs, governed commands and screenshots). | Lead Auditor | Head of Internal Audit | _Pending_ |
+| | | | | | | |
+
+### How to record an update
+1. Add a new row at the top of the table for every content change — never edit a released row.
+2. Increment the minor version (1.1, 1.2 …) for clarifications and screenshot refreshes;
+   increment the major version (2.0) when a process, role or gate changes.
+3. State the change in business terms (what a reader must now do differently), not file edits.
+4. The manual is only "released" once the Head of Internal Audit records an approval date.
+   Until then it is marked *Pending* and must not be used as certification evidence.
+5. Re-export the PDF and DOCX from the Internal Audit User Manuals page after each approval.
+
+### Change log
+
+| Version | Change | Sections affected |
+|---------|--------|-------------------|
+| 1.0 | Initial release. | All |
