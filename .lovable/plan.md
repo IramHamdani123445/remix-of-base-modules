@@ -1,4 +1,4 @@
-# Claim → Workbasket Routing: How It Works Today, and Why Claims Are Missing From the Queue
+# Claim → Workbasket Routing: Analysis and Remediation Plan (rev. 2)
 
 ## 1. How routing is designed to work
 
@@ -6,21 +6,24 @@ A claim's queue is a property of its **product**, not of the claim:
 
 ```text
 claim.product_version_id + channel
-  -> bn_product_version_workflow (channel match -> default -> legacy bn_product_version.workflow_template_id)
-  -> bn_workflow_template.steps_config[0]      e.g. { step: "INTAKE", role: "CLERK", sla_days: 2 }
-  -> step role mapped to a basket role         CLERK -> BN_INTAKE_OFFICER
+  -> workflow template resolution (fallback chain, see 4A)
+  -> bn_workflow_template.steps_config[n]   e.g. { step: "INTAKE", role: "CLERK", sla_days: 2 }
+  -> step role mapped to a basket role      CLERK -> BN_INTAKE_OFFICER
   -> bn_workbasket WHERE assigned_role = basket role AND is_active
        (product_category-specific basket preferred, then a general one)
-  -> bn_claim_queue_assignment row (claim_id, workbasket_id, due_at = assigned_at + sla_days)
+  -> bn_claim_queue_assignment (claim_id, workbasket_id, due_at = assigned_at + sla_days)
 ```
 
-Claim Queue (`/bn/claims` → Claim Queue) reads only `bn_claim_queue_assignment`
-(active, not completed) joined to the basket. **No assignment row = the claim
-does not appear in any workbasket**, regardless of its status.
+The Claim Queue screen is **`/bn/queue`** (`ClaimQueue.tsx`) and reads only
+`bn_claim_queue_assignment` (active, not completed) joined to the basket.
+**No assignment row = the claim appears in no workbasket**, whatever its status.
 
-There is no "workbasket" column on the product or on the workflow mapping —
-the basket is derived from the workflow's first step role. That is the only link
-between "workflow assigned to product" and "which basket the claim lands in".
+`/bn/claims` is `ClaimWorklist` — a status list with no workbasket column.
+Showing claims by basket there is a separate change and is **not** in this plan.
+
+There is no "workbasket" column on the product or on the workflow mapping — the
+basket is derived from the workflow step's role. That derivation is the only
+link between "workflow assigned to product" and "which basket the claim lands in".
 
 ## 2. Live state (measured)
 
@@ -33,77 +36,125 @@ between "workflow assigned to product" and "which basket the claim lands in".
 | Product versions | 70 |
 | Versions with a `bn_product_version_workflow` mapping | 4 |
 | Versions with legacy `workflow_template_id` | 43 |
-| Workflow templates with an executable `workflow_definition_id` | **0** |
+| Versions with neither | 27 |
+| `bn_product_channel_config` rows carrying a `workflow_template_id` | 54 of 95 |
+| Workflow templates with an executable `workflow_definition_id` | **0 of 45** |
+| Baskets for MEDICAL / INSPECTOR roles | **0** |
 
-So ~60 of 64 claims sit in no basket at all, and the Claim Queue looks empty for
-most baskets.
+## 3. Root causes
 
-## 3. Root causes found
+1. **The table the Product Editor writes to is never read.**
+   `bn_product_channel_config.workflow_template_id` (54 rows) is what the
+   Application Channels tab saves; `resolveProductWorkflow` never references
+   that table. This is why "I set the workflow template and nothing happened".
+2. **Three channel vocabularies that do not match.**
+   Intake passes `STAFF_OFFLINE`; `bn_product_channel_config` holds `OFFLINE`
+   (51) / `ONLINE` (44); `bn_product_version_workflow` holds `ONLINE_PORTAL` (4);
+   template `channel_code` is always null. Channel-specific matching therefore
+   never fires — the four mapped versions survive only via `is_default`.
+3. **Claims created outside `claimIntakeService` are never routed** — no
+   assignment row, no backfill, no repair path.
+4. **Routing happens once, at intake.** Always `steps_config[0]`. A claim never
+   moves through the workflow's later baskets. Re-assignment exists only in the
+   post-approval orchestrator and the escalation runner.
+5. **Step-role vocabulary is narrow** — CLERK, OFFICER, SUPERVISOR, MANAGER,
+   FINANCE only. `INSPECTOR` and `MEDICAL_BOARD` steps route nowhere, and no
+   basket exists for either role, so mapping them today would move the failure
+   rather than fix it.
+6. **No executable workflow definitions** (0 of 45), so the central engine owns
+   nothing. Status-driven routing proceeds now; the engine is a later swap.
 
-1. **No executable workflow definitions.** Every `bn_workflow_template` has
-   `workflow_definition_id = NULL` and `is_executable = false`. The central
-   engine therefore never starts, and routing always falls to the intake
-   "direct assignment" fallback. That fallback works, but only for claims
-   created through `claimIntakeService`.
-2. **Claims created outside the intake service are never routed.** Seeded /
-   RPC-created / legacy claims never call the resolver, so they have no
-   assignment row and can never surface in the queue. There is no backfill and
-   no repair path.
-3. **Routing happens once, at intake only.** The basket is derived from
-   `steps_config[0]` (always INTAKE/CLERK → BN_INTAKE_OFFICER). When a claim
-   moves to ELIGIBILITY, DECISION, PAYMENT, nothing re-derives the basket from
-   the corresponding step, so a claim never travels down the workflow's baskets.
-   Re-assignment exists only in the post-approval orchestrator and the
-   escalation runner, not on ordinary status transitions.
-4. **Step-role vocabulary is narrow.** `STEP_ROLE_TO_BASKET_ROLE` maps only
-   CLERK, OFFICER, SUPERVISOR, MANAGER, FINANCE. Templates also use
-   `INSPECTOR`, `MEDICAL_BOARD`, `SYSTEM`, which have no basket, so those steps
-   would leave a claim unrouted.
-5. **Only 4 of 70 product versions have a channel workflow mapping.** The rest
-   rely on the legacy version-level template; 27 versions have neither.
+## 4. Remediation
 
-## 4. Proposed remediation
+### A. Channel normalisation — first, everything depends on it
+One exported function, used at every point a channel is compared. Derived from
+values actually present, no new vocabulary invented:
 
-**A. Routing on every workflow step, not just intake**
-- Add a `resolveWorkbasketForStep(productVersionId, channel, stepName)` that
-  reads the step matching the claim's current status instead of always
-  `steps_config[0]`.
-- Call it from the claim status transition path so each transition closes the
-  current `bn_claim_queue_assignment` and opens the next one with that step's
-  SLA. This is what makes the claim visibly travel across baskets.
+```text
+STAFF_OFFLINE, OFFLINE, STAFF_ASSISTED, COUNTER, WALK_IN -> OFFLINE
+ONLINE, ONLINE_PORTAL, PORTAL, SELF_SERVICE              -> ONLINE
+```
 
-**B. Route every claim, whatever created it**
-- Move the resolve-and-assign step behind a single reusable
-  `routeClaimToWorkbasket(claimId)` service used by intake, transitions, and a
-  repair action.
-- Add a backfill (one-off run) that routes existing unassigned open claims.
+No call site re-spells the mapping. Test asserts every distinct `channel_code`
+in the three tables, plus every channel string intake passes, normalises to a
+known value.
 
-**C. Close the vocabulary and configuration gaps**
-- Extend the step-role → basket-role map to cover INSPECTOR and MEDICAL_BOARD
-  (or create the missing baskets); `SYSTEM` steps stay unrouted by design and
-  should pass through to the next human step rather than stall.
-- Product Assembly: surface the resolved basket per workflow step read-only, so
-  a configurator can see where claims will land before publishing.
+### B. Workflow resolution fallback chain
+`resolveProductWorkflow` gains `bn_product_channel_config` and normalised
+channel matching, in this order:
 
-**D. Make unrouted claims visible instead of silent**
-- A "Not in any queue" panel on the Claim Queue screen listing open claims with
-  no active assignment plus the recorded reason, with a Re-route action.
+1. `bn_product_version_workflow` — channel match, active, within effective dates
+2. `bn_product_channel_config.workflow_template_id` for that channel — **new**
+3. `bn_product_version_workflow` where `is_default = true`
+4. `bn_product_version.workflow_template_id` (legacy)
 
-## 5. Technical notes
+Returns **which source answered**, surfaced in the intake result and the
+"Not in any queue" panel.
 
-- Files involved: `src/services/bn/intake/claimWorkbasketResolver.ts`,
-  `src/services/bn/intake/claimIntakeService.ts`,
-  `src/services/bn/approvalLevelService.ts` (`assignClaimToWorkbasket`),
-  `src/services/bn/workflow/resolveProductWorkflow.ts`,
-  `src/pages/bn/claims/ClaimQueue.tsx`,
-  `src/pages/bn/config/ProductCatalog.tsx`.
-- Tables: `bn_claim_queue_assignment`, `bn_workbasket`,
-  `bn_product_version_workflow`, `bn_workflow_template`.
-- No new tables required; routing stays derived from workflow configuration.
+### C. One routing service
+`routeClaimToWorkbasket(claimId)` becomes the single entry point, used by
+intake, status transitions and the repair action. When the central engine
+becomes real, only this service changes.
 
-## 6. Decision needed before building
+### D. Status → step mapping and step-level re-routing
+An **explicit** status → step table, not a name comparison — only three of the
+two vocabularies' values overlap, and new claims currently carry status
+`INTAKE`, which appears in neither list. The mapping covers all 16 claim
+statuses plus `INTAKE`. A status that maps to nothing leaves the claim in its
+**current** basket and records the reason; it is never dropped out of every
+queue. Each transition closes the active assignment and opens the next with
+that step's SLA.
 
-Whether step-level re-routing should be driven by the claim's `status` mapped to
-`steps_config[].step`, or whether the workflow templates should first be made
-executable (`workflow_definition_id` linked) so the central engine owns routing.
-The first is deliverable now; the second is the longer-term target.
+### E. Role / basket gap made visible, not papered over
+No map entries are added for `INSPECTOR` or `MEDICAL_BOARD` while no basket
+carries those roles. The resolver reports three distinct findings:
+"no workflow for this product/channel", "this step's role has no basket
+configured", and "routed". Creating the baskets is a configuration decision
+that can proceed in parallel.
+
+### F. "Not in any queue" panel
+On `/bn/queue`: open claims with no active assignment, the recorded reason, the
+resolution source, and a Re-route action.
+
+### G. Backfill — last
+Routes existing unassigned open claims, only once A–D are proven. No undo, so it
+does not run earlier.
+
+## 5. Sequence
+
+```text
+0. Channel normalisation (A) + channel-config fallback (B)
+1. routeClaimToWorkbasket, used by intake and transitions (C)
+2. Status -> step mapping and step-level re-routing (D)
+3. "Not in any queue" panel (F)
+4. Backfill (G)
+E (basket/role configuration) runs in parallel
+```
+
+## 6. Constraints
+
+- **No database migration.** No changes to `bn_product.category`,
+  `bn_product_channel_config` data, or any existing claim.
+- The 27 product versions with no workflow mapping are a **configuration gap** —
+  reported, never defaulted.
+- No new tables; routing stays derived from workflow configuration.
+
+## 7. Files involved
+
+`src/services/bn/workflow/resolveProductWorkflow.ts`,
+`src/services/bn/intake/claimWorkbasketResolver.ts`,
+`src/services/bn/intake/claimIntakeService.ts`,
+`src/services/bn/approvalLevelService.ts` (`assignClaimToWorkbasket`),
+`src/pages/bn/claims/ClaimQueue.tsx`, `src/pages/bn/claims/ClaimRegistration.tsx`.
+Tables read: `bn_claim_queue_assignment`, `bn_workbasket`,
+`bn_product_version_workflow`, `bn_product_channel_config`,
+`bn_product_version`, `bn_workflow_template`.
+
+## 8. Verification to report back
+
+- `npx tsc --noEmit` exits 0
+- Full suite shows **24 failing test files and no more** (existing baseline)
+- Unit tests: channel normaliser, every listed value
+- Unit tests: status → step mapping, all 16 statuses plus `INTAKE`
+- Post-change count of how many of the 64 claims resolve to a basket, how many
+  do not, and the reason for each that does not
