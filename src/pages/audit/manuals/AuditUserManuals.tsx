@@ -74,19 +74,25 @@ export default function AuditUserManuals() {
                 </div>
               </dl>
               <div className="flex gap-2">
-                <Button asChild variant="outline" size="sm" className="flex-1">
-                  <a href={m.pdf} download>
-                    <FileType2 className="h-4 w-4" />
-                    PDF
-                    <span className="text-xs text-muted-foreground">{m.pdfSizeKb} KB</span>
-                  </a>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => downloadFile(m.pdf)}
+                >
+                  <FileType2 className="h-4 w-4" />
+                  PDF
+                  <span className="text-xs text-muted-foreground">{m.pdfSizeKb} KB</span>
                 </Button>
-                <Button asChild variant="outline" size="sm" className="flex-1">
-                  <a href={m.docx} download>
-                    <FileText className="h-4 w-4" />
-                    DOCX
-                    <span className="text-xs text-muted-foreground">{m.docxSizeKb} KB</span>
-                  </a>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => downloadFile(m.docx)}
+                >
+                  <FileText className="h-4 w-4" />
+                  DOCX
+                  <span className="text-xs text-muted-foreground">{m.docxSizeKb} KB</span>
                 </Button>
               </div>
             </CardContent>
