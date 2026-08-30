@@ -65,7 +65,8 @@ const NONE = (reason: string): ResolvedClaimWorkbasket => ({
  * unmapped and reported, rather than routed to an approximate basket — a claim
  * sitting in the wrong officer's queue is worse than one reported as unrouted.
  * `SYSTEM` steps have no human queue by definition; `INSPECTOR` and
- * `MEDICAL_BOARD` have no basket in the catalogue at all.
+ * `MEDICAL_BOARD` have no basket in the catalogue at all, which the resolver
+ * reports as a configuration gap instead of substituting a nearby basket.
  *
  * In practice every seeded template starts at INTAKE / CLERK, so the first
  * entry carries almost all real traffic.
@@ -78,27 +79,62 @@ export const STEP_ROLE_TO_BASKET_ROLE: Record<string, string> = {
   FINANCE: 'BN_PAYMENT_OFFICER',
 };
 
+/**
+ * Fallback owner for a workflow STEP when the product's template does not
+ * declare that step.
+ *
+ * Most seeded templates declare only INTAKE, yet a claim genuinely moves on to
+ * eligibility, calculation, decision and payment. Without this the claim would
+ * sit in the intake basket for its whole life, which is the behaviour the queue
+ * screens showed. This says who owns each stage by role, and the basket lookup
+ * is unchanged — so a step still routes to a real, configured basket or is
+ * reported as a gap.
+ */
+export const STEP_NAME_TO_BASKET_ROLE: Record<string, string> = {
+  INTAKE: 'BN_INTAKE_OFFICER',
+  EMPLOYER_VERIFY: 'BN_INTAKE_OFFICER',
+  ELIGIBILITY: 'BN_ELIGIBILITY_OFFICER',
+  EVIDENCE_REVIEW: 'BN_ELIGIBILITY_OFFICER',
+  MEANS_TEST: 'BN_ELIGIBILITY_OFFICER',
+  CALCULATION: 'BN_ELIGIBILITY_OFFICER',
+  DECISION: 'BN_SUPERVISOR',
+  AWARD_SETUP: 'BN_SUPERVISOR',
+  PAYMENT: 'BN_PAYMENT_OFFICER',
+};
+
 interface StepConfig {
   step?: string;
   role?: string;
   sla_days?: number;
 }
 
+/** All steps of a template's `steps_config`, tolerating the shapes seen in data. */
+export function allSteps(stepsConfig: unknown): StepConfig[] {
+  const asArray = (v: unknown): StepConfig[] =>
+    Array.isArray(v)
+      ? v.filter((s): s is StepConfig => !!s && typeof s === 'object')
+      : [];
+  if (Array.isArray(stepsConfig)) return asArray(stepsConfig);
+  if (stepsConfig && typeof stepsConfig === 'object') {
+    return asArray((stepsConfig as Record<string, unknown>).steps);
+  }
+  return [];
+}
+
 /** First step of a template's `steps_config`, tolerating the shapes seen in data. */
 export function firstStep(stepsConfig: unknown): StepConfig | null {
-  if (Array.isArray(stepsConfig) && stepsConfig.length > 0) {
-    const s = stepsConfig[0];
-    return s && typeof s === 'object' ? (s as StepConfig) : null;
-  }
-  // Some templates store { steps: [...] } rather than a bare array.
-  if (stepsConfig && typeof stepsConfig === 'object') {
-    const inner = (stepsConfig as Record<string, unknown>).steps;
-    if (Array.isArray(inner) && inner.length > 0) {
-      const s = inner[0];
-      return s && typeof s === 'object' ? (s as StepConfig) : null;
-    }
-  }
-  return null;
+  return allSteps(stepsConfig)[0] ?? null;
+}
+
+/** The step with this name, if the template declares it. */
+export function stepByName(stepsConfig: unknown, stepName: string | null | undefined): StepConfig | null {
+  const target = String(stepName ?? '').trim().toUpperCase();
+  if (!target) return null;
+  return (
+    allSteps(stepsConfig).find(
+      (s) => String(s.step ?? '').trim().toUpperCase() === target,
+    ) ?? null
+  );
 }
 
 /**
@@ -112,6 +148,7 @@ export function basketRoleForStepRole(stepRole: string | null | undefined): stri
   if (role.startsWith('BN_')) return role;
   return STEP_ROLE_TO_BASKET_ROLE[role] ?? null;
 }
+
 
 function addDays(iso: string, days: number): string {
   const d = new Date(iso);
