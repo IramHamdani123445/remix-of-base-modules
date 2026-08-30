@@ -27,24 +27,34 @@ const HEALTH_FILTERS = ['ALL', 'HEALTHY', 'AT_RISK', 'BREACHED'];
 export default function PaymentArrangements() {
   const navigate = useNavigate();
   const { regno } = useRegnoParam();
+  const { arrangementId: routeArrangementId } = useParams<{ arrangementId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [healthFilter, setHealthFilter] = useState<string>('ALL');
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedArrangementId, setSelectedArrangementId] = useState<string | null>(
-    () => searchParams.get('arr'),
+
+  // URL is the single source of truth: /compliance/enforcement/arrangements/:arrangementId
+  // (canonical deep link) or ?arr=<id> (legacy links, still honoured).
+  const selectedArrangementId = routeArrangementId ?? searchParams.get('arr');
+
+  const openArrangement = useCallback(
+    (id: string) => {
+      const qs = searchParams.toString();
+      navigate(
+        `/compliance/enforcement/arrangements/${encodeURIComponent(id)}${qs ? `?${qs.replace(/(^|&)arr=[^&]*/g, '').replace(/^&/, '')}` : ''}`,
+      );
+    },
+    [navigate, searchParams],
   );
 
-  // Keep URL <-> state in sync so a deep link like ?arr=<id> auto-opens the detail
-  // and closing the detail cleans the query param.
-  useEffect(() => {
-    const urlArr = searchParams.get('arr');
-    if (urlArr !== selectedArrangementId) {
-      setSelectedArrangementId(urlArr);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  const closeArrangement = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('arr');
+    const qs = next.toString();
+    navigate(`/compliance/enforcement/arrangements${qs ? `?${qs}` : ''}`, { replace: true });
+  }, [navigate, searchParams]);
+
 
   const { data: register = [], isLoading } = useQuery({
     queryKey: ['ce_v_arrangement_register'],
