@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardCheck, Plus, Eye, MapPin, Loader2, Inbox } from 'lucide-react';
+import { ClipboardCheck, Eye, MapPin, Loader2, Inbox } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchInspections, InspectionRecord } from '@/services/complianceReportingService';
 import { supabase } from '@/integrations/supabase/client';
