@@ -22,13 +22,30 @@ import { useIsAdmin, useModulePermissions } from "@/hooks/useNavigationMenu";
 
 const OPERATIONS_ROUTE = "/admin/omnichannel-communications/operations";
 
-/** Bounded attention probe: held/blocked work needing an operator decision. */
+/**
+ * Bounded attention probe: held / blocked / failed work needing an operator
+ * decision. Resolves the caller's own organisation through the same
+ * RLS-scoped source the module shell uses, so no extra privilege is implied.
+ */
 async function fetchAttentionCount(): Promise<number> {
-  const { data, error } = await supabase.rpc("omni_comms_ops_summary");
+  const { data: orgs, error: orgError } = await supabase
+    .from("core_organization")
+    .select("id, status")
+    .order("legal_name", { ascending: true })
+    .limit(5);
+  if (orgError || !orgs?.length) return 0;
+  const organizationId =
+    orgs.find((o) => (o.status ?? "active").toLowerCase() !== "archived")?.id ??
+    null;
+  if (!organizationId) return 0;
+
+  const { data, error } = await supabase.rpc("omni_comms_ops_summary", {
+    p_organization_id: organizationId,
+    p_department_id: null,
+    p_since_hours: 720,
+  });
   if (error) return 0;
-  const summary = (Array.isArray(data) ? data[0] : data) as
-    | Record<string, unknown>
-    | null;
+  const summary = (data ?? null) as Record<string, unknown> | null;
   if (!summary) return 0;
   const numeric = (key: string): number => {
     const value = summary[key];
@@ -38,9 +55,10 @@ async function fetchAttentionCount(): Promise<number> {
   return (
     numeric("blocked_requests") +
     numeric("failed_requests") +
-    numeric("held_job_count")
+    numeric("held_jobs")
   );
 }
+
 
 export const OmniCommsHeaderShortcut: React.FC = () => {
   const navigate = useNavigate();
