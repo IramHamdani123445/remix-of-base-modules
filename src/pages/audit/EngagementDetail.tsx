@@ -270,33 +270,39 @@ export default function EngagementDetail() {
             <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Eye className="h-3.5 w-3.5 mr-1.5" />Overview
             </TabsTrigger>
-            <TabsTrigger value="preparation" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              Preparation
-            </TabsTrigger>
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="preparation" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                Preparation
+              </TabsTrigger>
+            )}
 
-            <TabSep />
+            {canSeeAuditorWorkspace && (
+              <>
+                <TabSep />
 
-            {/* === Fieldwork Group === */}
-            <TabsTrigger value="programme" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Network className="h-3.5 w-3.5 mr-1.5" />Programme / RCM
-            </TabsTrigger>
-            <TabsTrigger value="activities" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />Activities
-              <TabBadge count={auditActivities.length} />
-            </TabsTrigger>
-            <TabsTrigger value="control-tests" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />Control Tests
-              <TabBadge count={auditControlTests.length} />
-            </TabsTrigger>
-            <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Paperclip className="h-3.5 w-3.5 mr-1.5" />Evidence
-              <TabBadge count={auditEvidence.length} />
-            </TabsTrigger>
+                {/* === Fieldwork Group (audit team only) === */}
+                <TabsTrigger value="programme" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Network className="h-3.5 w-3.5 mr-1.5" />Programme / RCM
+                </TabsTrigger>
+                <TabsTrigger value="activities" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />Activities
+                  <TabBadge count={auditActivities.length} />
+                </TabsTrigger>
+                <TabsTrigger value="control-tests" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />Control Tests
+                  <TabBadge count={auditControlTests.length} />
+                </TabsTrigger>
+                <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Paperclip className="h-3.5 w-3.5 mr-1.5" />Evidence
+                  <TabBadge count={auditEvidence.length} />
+                </TabsTrigger>
 
-            <TabsTrigger value="working-papers" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <FolderOpen className="h-3.5 w-3.5 mr-1.5" />Working Papers
-              <TabBadge count={auditWorkingPapers.length} />
-            </TabsTrigger>
+                <TabsTrigger value="working-papers" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <FolderOpen className="h-3.5 w-3.5 mr-1.5" />Working Papers
+                  <TabBadge count={auditWorkingPapers.length} />
+                </TabsTrigger>
+              </>
+            )}
 
             <TabSep />
 
@@ -313,24 +319,31 @@ export default function EngagementDetail() {
               <CheckCircle className="h-3.5 w-3.5 mr-1.5" />Actions
               <TabBadge count={overdueActionsCount} variant="danger" />
             </TabsTrigger>
-            <TabsTrigger value="follow-ups" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Search className="h-3.5 w-3.5 mr-1.5" />Follow-ups
-              <TabBadge count={auditFollowUps.length} />
-            </TabsTrigger>
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="follow-ups" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <Search className="h-3.5 w-3.5 mr-1.5" />Follow-ups
+                <TabBadge count={auditFollowUps.length} />
+              </TabsTrigger>
+            )}
 
             <TabSep />
 
             {/* === Output Group === */}
-            <TabsTrigger value="quality-review" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <BadgeCheck className="h-3.5 w-3.5 mr-1.5" />Quality Review
-            </TabsTrigger>
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="quality-review" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <BadgeCheck className="h-3.5 w-3.5 mr-1.5" />Quality Review
+              </TabsTrigger>
+            )}
             <TabsTrigger value="timeline" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Clock className="h-3.5 w-3.5 mr-1.5" />Timeline
             </TabsTrigger>
 
-            <TabsTrigger value="closure" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Shield className="h-3.5 w-3.5 mr-1.5" />Closure
-            </TabsTrigger>
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="closure" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <Shield className="h-3.5 w-3.5 mr-1.5" />Closure
+              </TabsTrigger>
+            )}
+
 
 
             {/* === Report Center CTA === */}
