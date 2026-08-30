@@ -415,9 +415,12 @@ export default function EngagementDetail() {
           </TabsContent>
 
 
-          <TabsContent value="closure">
-            <AuditClosureTab auditId={id!} audit={audit} />
-          </TabsContent>
+          {canSeeAuditorWorkspace && (
+            <TabsContent value="closure">
+              <AuditClosureTab auditId={id!} audit={audit} />
+            </TabsContent>
+          )}
+
         </Tabs>
       </AuditWorkspaceShell>
     </div>
