@@ -18,7 +18,8 @@ export type ActivityFilterId =
   | 'accepted'
   | 'delivered'
   | 'failed'
-  | 'needs_attention';
+  | 'needs_attention'
+  | 'historical';
 
 export const ACTIVITY_FILTERS: ReadonlyArray<{ id: ActivityFilterId; label: string }> = [
   { id: 'all', label: 'All' },
@@ -27,7 +28,9 @@ export const ACTIVITY_FILTERS: ReadonlyArray<{ id: ActivityFilterId; label: stri
   { id: 'delivered', label: 'Delivered' },
   { id: 'failed', label: 'Failed' },
   { id: 'needs_attention', label: 'Needs attention' },
+  { id: 'historical', label: 'Historical (not sent)' },
 ];
+
 
 /**
  * Business label for one activity row.
