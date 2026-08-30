@@ -103,6 +103,78 @@ export function findComplianceFeatureRule(pathname: string, selectedRoute?: stri
   }) ?? null;
 }
 
+/**
+ * Legacy / alias compliance routes that are reachable in AppRoutes but have no
+ * dedicated `app_modules` row. Each alias resolves to the canonical registered
+ * route so the gate evaluates the SAME permission as the canonical screen
+ * instead of falling closed for every non-admin persona.
+ *
+ * Longest alias prefix wins. Only the permission lookup is affected — routing,
+ * navigation and rendering are untouched.
+ */
+export const COMPLIANCE_ROUTE_ALIASES: Record<string, string> = {
+  '/compliance/settings': '/compliance/admin/settings',
+  '/compliance/settings/risk-config': '/compliance/admin/settings/risk-policy',
+  '/compliance/settings/legal-escalation-policy': '/compliance/legal-escalation-policy',
+  '/compliance/staff': '/compliance/admin/staff',
+  '/compliance/staff/link-legacy': '/compliance/admin/staff/officers',
+  '/compliance/admin/staff/link-legacy': '/compliance/admin/staff/officers',
+  '/compliance/geography': '/compliance/admin/geography',
+  '/compliance/automation': '/compliance/admin/automation',
+  '/compliance/tools': '/compliance/admin/tools',
+  '/compliance/templates': '/compliance/admin/settings/templates',
+  '/compliance/admin/comm-trigger-rules': '/compliance/admin/communication-templates',
+  '/compliance/admin/feature-toggle-diagnostics': '/compliance/admin/feature-toggles',
+  '/compliance/admin/risk-scoring': '/compliance/admin/settings/risk-policy',
+  '/compliance/admin/risk-operations': '/compliance/admin/settings/risk-policy',
+  '/compliance/audits': '/compliance/field/audit-management',
+  '/compliance/employer': '/compliance/field/employer-360',
+  '/compliance/employer-statements': '/compliance/field/employer-statements',
+  '/compliance/employers/findings': '/compliance/field/findings',
+  '/compliance/inspections/field-execution': '/compliance/field/execution',
+  '/compliance/inspector-plans': '/compliance/field/my-plans',
+  '/compliance/field/plan-builder-v2': '/compliance/field/plan-builder',
+  '/compliance/audit-planning/all-reports': '/compliance/field/all-reports',
+  '/compliance/audit-planning/monthly-candidates': '/compliance/field/sampling/candidates',
+  '/compliance/audit-planning/my-plans': '/compliance/field/my-plans',
+  '/compliance/audit-planning/pending-review': '/compliance/field/pending-review',
+  '/compliance/audit-planning/sampling-dashboard': '/compliance/field/sampling',
+  '/compliance/audit-planning/settings': '/compliance/admin/settings/sampling',
+  '/compliance/audit-planning/weekly-plan-builder': '/compliance/field/plan-builder',
+  '/compliance/audit-planning/weekly-reports': '/compliance/field/weekly-reports',
+  '/compliance/sampling': '/compliance/field/sampling',
+  '/compliance/sampling/candidates': '/compliance/field/sampling/candidates',
+  '/compliance/sampling/settings': '/compliance/admin/settings/sampling',
+  '/compliance/legal-referral': '/compliance/enforcement/legal-referral',
+  '/compliance/legal/queue': '/compliance/enforcement/legal-queue',
+  '/compliance/legal/proceedings': '/compliance/enforcement/proceedings',
+  '/compliance/enforcement/partial-payments': '/compliance/enforcement/arrangements',
+  '/compliance/waivers': '/compliance/enforcement/waivers',
+  '/compliance/arrangements/breaches': '/compliance/enforcement/breaches',
+  '/compliance/payment-arrangements': '/compliance/arrangements',
+  '/compliance/monitoring': '/compliance/workbench/monitoring',
+  '/compliance/operations/queues': '/compliance/workbench/queues',
+  '/compliance/operations/reassignment': '/compliance/workbench/reassignment',
+  '/compliance/operations/review-queue': '/compliance/workbench/review-queue',
+  '/compliance/my-work': '/compliance/my-work-queue',
+  '/compliance/work-queue': '/compliance/my-work-queue',
+  '/compliance/reports/case-analytics': '/compliance/reports/violations/summary',
+  '/compliance/reports/violations-analytics': '/compliance/reports/violations/summary',
+  '/compliance/reports/employer-status': '/compliance/reports/arrears',
+};
+
+export function canonicalizeCompliancePath(pathname: string): string {
+  const path = normalizeCompliancePath(pathname);
+  const aliases = Object.keys(COMPLIANCE_ROUTE_ALIASES).sort((a, b) => b.length - a.length);
+  for (const alias of aliases) {
+    if (path === alias) return normalizeCompliancePath(COMPLIANCE_ROUTE_ALIASES[alias]);
+    if (path.startsWith(`${alias}/`)) {
+      return normalizeCompliancePath(COMPLIANCE_ROUTE_ALIASES[alias] + path.slice(alias.length));
+    }
+  }
+  return path;
+}
+
 export function resolveComplianceAccess(input: {
   pathname: string;
   modules: ComplianceModuleRow[];
@@ -110,12 +182,13 @@ export function resolveComplianceAccess(input: {
   accessibleModuleNames?: Set<string>;
   isAdmin: boolean;
 }): ComplianceAccessResolution {
-  const pathname = normalizeCompliancePath(input.pathname);
+  const pathname = canonicalizeCompliancePath(input.pathname);
   const grantedViewModules = new Set(
     input.permissions
       .filter((p) => p.action_name === 'view' && p.is_granted !== false)
       .map((p) => p.module_name),
   );
+
 
   const rawCandidates = input.modules
     .filter((m) => m.is_enabled !== false && m.routes_enabled !== false)
