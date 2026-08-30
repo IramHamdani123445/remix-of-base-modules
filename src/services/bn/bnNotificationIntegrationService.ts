@@ -3,7 +3,7 @@
  * 
  * Bridges Benefits module lifecycle events to the existing enterprise
  * notification system (notification_templates, notification_logs,
- * in_app_notifications, send-notification edge function).
+ * in_app_notifications, legacy platform notification function).
  * 
  * Does NOT create a separate notification subsystem — reuses platform infrastructure.
  */
@@ -532,7 +532,14 @@ async function logAuditEvent(params: {
 }
 
 /**
- * Dispatch external notification (email/SMS) via the platform's send-notification edge function.
+ * QUARANTINED (Wave 5) — Benefits must not contact a provider directly.
+ *
+ * This path used the platform `send-notification` function. Its only caller
+ * chain starts at `dispatchBnNotification`, which was quarantined in Wave 3
+ * and refuses, so no live behaviour depends on it. The provider call body was
+ * removed; the function now refuses so a future caller cannot resurrect the
+ * bypass. Benefits communications go through the governed Omni-Comms
+ * producers.
  */
 async function dispatchExternal(params: {
   channel: 'email' | 'sms';
@@ -545,85 +552,17 @@ async function dispatchExternal(params: {
   entityType: string;
   entityId: string;
 }): Promise<{ success: boolean; logId?: string; error?: string }> {
-  const logId = await logNotification({
-    templateId: params.templateId,
-    channel: params.channel,
-    recipientEmail: params.recipientEmail,
-    recipientPhone: params.recipientPhone,
-    status: 'queued',
-    entityType: params.entityType,
-    entityId: params.entityId,
-  });
-
-  try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${supabaseKey}`,
-        apikey: supabaseKey,
-      },
-      body: JSON.stringify({
-        to: params.channel === 'email' ? params.recipientEmail : params.recipientPhone,
-        channel: params.channel,
-        subject: params.subject,
-        body: params.body,
-        template_id: params.templateId,
-        recipient_name: params.recipientName,
-        module: 'benefit_management',
-        entity_type: params.entityType,
-        entity_id: params.entityId,
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      // Update log status to failed
-      if (logId) {
-        await db.from('notification_logs').update({ status: 'failed' }).eq('id', logId);
-      }
-      return { success: false, logId: logId ?? undefined, error: errText };
-    }
-
-    // Update log status to sent
-    if (logId) {
-      await db.from('notification_logs').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', logId);
-    }
-
-    return { success: true, logId: logId ?? undefined };
-  } catch (err: any) {
-    if (logId) {
-      await db.from('notification_logs').update({ status: 'failed' }).eq('id', logId);
-    }
-    return { success: false, logId: logId ?? undefined, error: err.message };
-  }
+  console.error(
+    '[BN-Notif] Direct provider dispatch is quarantined. Use the governed Omni-Comms producer.',
+    { channel: params.channel, entityType: params.entityType },
+  );
+  return {
+    success: false,
+    error: 'bn_direct_provider_dispatch_quarantined',
+  };
 }
 
-// ─── Main Dispatch Function ────────────────────────────────────────
-
-/**
- * Dispatch a BN notification event through the existing enterprise notification system.
- * 
- * 1. Checks workflow governance (delegates if governed)
- * 2. Resolves templates by trigger_event
- * 3. Resolves recipient contacts
- * 4. Sends via appropriate channels
- * 5. Logs to notification_logs + audit_logs
- */
-/**
- * QUARANTINED LEGACY PATH — Omni-Comms convergence.
- *
- * This dispatcher wrote Benefits notifications directly to
- * `in_app_notifications` / `notification_logs`, bypassing the governed
- * Omni-Comms spine. It has no remaining callers. It is retained for
- * historical reference and reading of legacy records only, and refuses to
- * dispatch. Benefits business communications go through
- * `triggerClaimCommunicationViaOmniComms()` → `sendCommunication`.
- */
-export async function dispatchBnNotification(
+async function dispatchBnNotification(
   request: BnNotificationDispatchRequest
 ): Promise<BnNotificationResult> {
   throw new Error(
