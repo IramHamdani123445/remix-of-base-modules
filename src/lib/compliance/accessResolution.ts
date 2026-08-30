@@ -223,24 +223,39 @@ export function resolveComplianceAccess(input: {
   const selectedModule = selectedCandidates.find((c) => c.hasViewPermission)?.module ?? selectedCandidates[0]?.module ?? null;
 
   if (!selectedModule) {
+    // Hub / index paths (e.g. /compliance/reports, /compliance/arrangements) have
+    // no own registry row. Grant them when the user can view at least one
+    // registered descendant screen; otherwise stay fail-closed.
+    const grantedDescendant = input.modules.find(
+      (m) =>
+        m.is_enabled !== false &&
+        m.routes_enabled !== false &&
+        m.route &&
+        normalizeCompliancePath(m.route).startsWith(`${pathname}/`) &&
+        grantedViewModules.has(m.name),
+    );
+    const hubAllowed = input.isAdmin || Boolean(grantedDescendant);
     return {
       pathname,
       requiredAction: 'view',
       candidates,
       selectedCandidates,
-      selectedModule: null,
-      hasPermission: input.isAdmin,
+      selectedModule: grantedDescendant ?? null,
+      hasPermission: hubAllowed,
       permissionSkippedByAdmin: input.isAdmin,
       matchedFeatureRule: null,
       featureFlagLoaded: hasComplianceDbFlagsLoaded(),
       featureFlagValue: undefined,
       featureGateEvaluated: false,
-      finalDecision: input.isAdmin ? 'render' : 'fail-closed',
+      finalDecision: hubAllowed ? 'render' : 'fail-closed',
       reason: input.isAdmin
         ? 'No app_modules route row matched; admin bypass renders the page.'
-        : 'No app_modules route row matched; non-admin compliance access is fail-closed.',
+        : grantedDescendant
+          ? `No own app_modules row; hub access granted via viewable descendant module ${grantedDescendant.name}.`
+          : 'No app_modules route row matched; non-admin compliance access is fail-closed.',
     };
   }
+
 
   const hasPermission = input.isAdmin || selectedCandidates.some((candidate) => candidate.hasViewPermission);
   const matchedFeatureRule = findComplianceFeatureRule(pathname, selectedModule.route);
