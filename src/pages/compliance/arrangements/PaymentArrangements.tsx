@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ArrangementDetailPanel } from '@/components/compliance/ArrangementDetailPanel';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ComplianceHelpButton } from '@/components/help/ComplianceHelpButton';
