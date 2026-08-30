@@ -613,9 +613,25 @@ async function dispatchExternal(params: {
  * 4. Sends via appropriate channels
  * 5. Logs to notification_logs + audit_logs
  */
+/**
+ * QUARANTINED LEGACY PATH — Omni-Comms convergence.
+ *
+ * This dispatcher wrote Benefits notifications directly to
+ * `in_app_notifications` / `notification_logs`, bypassing the governed
+ * Omni-Comms spine. It has no remaining callers. It is retained for
+ * historical reference and reading of legacy records only, and refuses to
+ * dispatch. Benefits business communications go through
+ * `triggerClaimCommunicationViaOmniComms()` → `sendCommunication`.
+ */
 export async function dispatchBnNotification(
   request: BnNotificationDispatchRequest
 ): Promise<BnNotificationResult> {
+  throw new Error(
+    'dispatchBnNotification is quarantined. Raise Benefits communications through Omni-Comms ' +
+      '(triggerClaimCommunicationViaOmniComms / sendCommunication).',
+  );
+  // eslint-disable-next-line no-unreachable
+
   const config = EVENT_CONFIGS[request.eventCode];
   if (!config) {
     console.warn(`[BN-Notif] No config for event: ${request.eventCode}`);
