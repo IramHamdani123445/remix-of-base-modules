@@ -1801,7 +1801,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                 employerId: v.employer_id,
                 employerName: emp.name,
                 violationTypeId: v.violation_type_id,
-                violationTypeCode: v.violation_type_code ?? "UNKNOWN",
+                violationTypeCode: v.violation_type_code ?? vtMap[v.violation_type_id] ?? "UNKNOWN",
                 occurredOn: (v.discovered_date ?? v.created_at ?? asOfDate).slice(0, 10),
                 periodKey: v.period_from ? String(v.period_from).slice(0, 7) : undefined,
                 resolved: !["OPEN", "IN_PROGRESS", "ESCALATED", "UNDER_REVIEW"].includes(v.status),
