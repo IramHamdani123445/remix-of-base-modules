@@ -447,8 +447,27 @@ function buildSuggestedFix(channel: string, recipientType: string, missing: stri
   return 'Review communication mapping, template and recipient configuration.';
 }
 
-// ─── Top-level event dispatcher ────────────────────────────────────
-export async function triggerClaimCommunication(eventCode: string, claimId: string, ctx?: BnCommContext): Promise<BnCommDispatchResult> {
+// ─── Top-level event dispatcher (QUARANTINED LEGACY PATH) ─────────
+//
+// Omni-Comms convergence: this dispatcher is NOT a permitted producer path.
+// New Benefits business communications must be raised through
+// `triggerClaimCommunicationViaOmniComms()` → the single `sendCommunication`
+// façade. It survives only so that a pre-existing `bn_communication_log`
+// entry can still be serviced (retry) by an operator, and it refuses any
+// other caller.
+export async function triggerClaimCommunication(
+  eventCode: string,
+  claimId: string,
+  ctx?: BnCommContext,
+  servicing?: { legacyLogId: string },
+): Promise<BnCommDispatchResult> {
+  if (!servicing?.legacyLogId) {
+    throw new Error(
+      'Benefits communications must be raised through Omni-Comms (triggerClaimCommunicationViaOmniComms). ' +
+        'The legacy dispatcher is quarantined and only services historical bn_communication_log entries.',
+    );
+  }
+
   const result: BnCommDispatchResult = { eventCode, dispatched: 0, skipped: 0, failed: 0, blocked: 0, letters: [], logIds: [], warnings: [] };
 
   // 1. Resolve event metadata
