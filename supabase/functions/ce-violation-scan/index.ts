@@ -689,12 +689,12 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     const iso = (d: Date | string | null | undefined): string | null =>
       !d ? null : (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
 
-    // Load violation type codes for mapping
-    const vtIds = (rules || []).map((r: any) => r.violation_type_id).filter(Boolean);
+    // Load violation type codes for mapping. Every type is loaded (not only the
+    // ones owned by the active rules) because DR-005 must resolve the code of
+    // any pre-existing violation it counts as a repeat occurrence.
     const { data: vtypes } = await supabase
       .from("ce_violation_types")
-      .select("id, code")
-      .in("id", vtIds);
+      .select("id, code");
 
     const vtMap: Record<string, string> = {};
     (vtypes || []).forEach((vt: any) => {
