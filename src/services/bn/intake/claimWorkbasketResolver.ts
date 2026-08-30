@@ -162,15 +162,20 @@ export async function resolveClaimWorkbasket(params: {
   /** Restricts the basket search to a product category when the product sets one. */
   productCategory?: string | null;
   assignedAt?: string;
+  /**
+   * Workflow step that owns the claim now (from its status). Omitted at intake,
+   * where the template's first step is the answer.
+   */
+  targetStep?: string | null;
 }): Promise<ResolvedClaimWorkbasket> {
-  const { productVersionId, channelCode } = params;
+  const { productVersionId, channelCode, targetStep } = params;
   if (!productVersionId) return NONE('claim has no product version');
 
   const resolved = await resolveProductWorkflow(productVersionId, channelCode);
   if (!resolved.workflowTemplateId) {
     return NONE(
       'no workflow template is mapped to this product version and channel, ' +
-      'so the product does not say which queue a new claim belongs in',
+      'so the product does not say which queue this claim belongs in',
     );
   }
 
@@ -182,7 +187,14 @@ export async function resolveClaimWorkbasket(params: {
   if (templateError) return NONE(`could not read workflow template — ${templateError.message}`);
   if (!template) return NONE('the mapped workflow template no longer exists');
 
-  const step = firstStep((template as any).steps_config);
+  // A named target step is honoured even when the template omits it: the step
+  // still has a known owning role, and routing a claim by the stage it has
+  // actually reached beats leaving it in the intake basket for its whole life.
+  const declaredStep = targetStep
+    ? stepByName((template as any).steps_config, targetStep)
+    : firstStep((template as any).steps_config);
+
+  const step = declaredStep ?? (targetStep ? { step: targetStep } : null);
   if (!step) {
     return NONE(
       `workflow template ${(template as any).template_code} has no steps configured, ` +
@@ -190,14 +202,18 @@ export async function resolveClaimWorkbasket(params: {
     );
   }
 
-  const stepName = step.step ?? null;
+  const stepName = step.step ?? targetStep ?? null;
   const stepRole = step.role ?? null;
-  const basketRole = basketRoleForStepRole(stepRole);
+  const basketRole =
+    basketRoleForStepRole(stepRole) ??
+    STEP_NAME_TO_BASKET_ROLE[String(stepName ?? '').trim().toUpperCase()] ??
+    null;
   if (!basketRole) {
     return {
       ...NONE(
-        `the first workflow step (${stepName ?? 'unnamed'}) is assigned to role ` +
+        `workflow step "${stepName ?? 'unnamed'}" is assigned to role ` +
         `"${stepRole ?? 'none'}", which has no matching workbasket role`,
+
       ),
       stepName,
       stepRole,
