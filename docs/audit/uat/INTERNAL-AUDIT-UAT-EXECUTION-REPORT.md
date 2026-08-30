@@ -91,3 +91,19 @@ UAT record. Supporting documents: `INTERNAL-AUDIT-UAT-PLAN.md`, `INTERNAL-AUDIT-
 | Head of Internal Audit | | | |
 | Audit Sponsor | | | |
 | Delivery Lead | | | |
+
+---
+
+## Addendum — Final reconciliation after Remediation Wave 1 (2026-08-31)
+
+| Metric | First pass | At closure |
+| --- | --- | --- |
+| Cases in pack | 108 | 108 |
+| Passed | 96 | 105 (96 + 9 after remediation) |
+| Failed / blocked | 12 | 3 (all Medium, deferred to post-UAT backlog) |
+| Pass rate | 88.9% | 97.2% |
+| Open Blocker / Critical / High defects | 4 | 0 |
+
+Security and SoD regression, reporting smoke checks, business lifecycle record evidence and user-manual
+alignment were re-verified at closure without functional change. Final position:
+**APPROVED WITH CONDITIONS** — see `INTERNAL-AUDIT-UAT-FINAL-SIGNOFF.md`.

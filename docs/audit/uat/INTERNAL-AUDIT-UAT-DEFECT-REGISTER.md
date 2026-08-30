@@ -108,3 +108,21 @@ RLS/entitlement regression check: internal-audit-only tables still closed to man
 Build/typecheck: clean.
 
 **READY FOR FINAL BUSINESS UAT SIGN-OFF: YES**
+
+---
+
+## Final closure status (2026-08-31)
+
+| Defect | Severity | Status | Disposition |
+|---|---|---|---|
+| UAT-DEF-01 | Blocker | CLOSED | Retested — administrator reference data restored |
+| UAT-DEF-02 | Critical | CLOSED | Retested — auditor-private tabs hidden from management |
+| UAT-DEF-03 | High | CLOSED | Retested — administration routes entitlement-gated |
+| UAT-DEF-04 | High | CLOSED | Retested — Engagement Summary reconciles to 57 engagements |
+| UAT-DEF-05 | Medium | OPEN — DEFERRED | POST-UAT UX BACKLOG. Re-verified at closure: scoping holds, no data disclosed; message wording only |
+| UAT-DEF-06 | Medium | OPEN — DEFERRED | POST-UAT USABILITY BACKLOG. Data reachable once the plan filter is cleared |
+| UAT-DEF-07 | Medium | OPEN — DEFERRED | POST-UAT USABILITY BACKLOG. Navigation reachable; no data impact |
+| UAT-DEF-08 | Low | OPEN — DEFERRED | TECHNICAL CLEANUP BACKLOG. Console warning only |
+
+No Blocker, Critical or High defect remains open. Closure position recorded in
+`INTERNAL-AUDIT-UAT-FINAL-SIGNOFF.md`.
