@@ -131846,6 +131846,14 @@ export type Database = {
         Args: { p_new_fingerprint: string; p_request_id: string }
         Returns: undefined
       }
+      omni_comms_priv_reevaluate_held_jobs: {
+        Args: {
+          p_batch_limit?: number
+          p_deployed_revision?: string
+          p_worker?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_reference_seed_assert_safe: {
         Args: { p_organization_id: string }
         Returns: undefined

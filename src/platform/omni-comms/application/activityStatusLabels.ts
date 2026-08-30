@@ -41,9 +41,10 @@ export function activityStatusLabel(row: {
   if (row.status === 'accepted') return 'Event queued';
   if (row.status === 'processing') return 'Preparing';
   if (row.mode === 'dry_run' || row.mode === 'shadow') return 'Test only';
-  if (row.held_job_count > 0) return 'Waiting to send';
+  if (row.held_job_count > 0) return 'Held — awaiting authorisation';
   if (row.message_count > 0) return 'Sending';
   return 'Preparing';
+
 }
 
 /** Does this row belong to the chosen normal filter? */
@@ -56,7 +57,7 @@ export function matchesActivityFilter(
     case 'all':
       return true;
     case 'waiting':
-      return label === 'Event queued' || label === 'Preparing' || label === 'Waiting to send';
+      return label === 'Event queued' || label === 'Preparing' || label === 'Held — awaiting authorisation';
     case 'accepted':
       return label === 'Sending' || label === 'Provider accepted';
     case 'delivered':
