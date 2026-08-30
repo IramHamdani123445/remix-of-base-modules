@@ -1838,6 +1838,10 @@ export const AppRoutes = () => {
       {/* Omni-Comms user inbox */}
       <Route path="/my-communications" element={<MyCommunications />} />
 
+      {/* Personal task surface (read-only projection) */}
+      <Route path="/my-tasks" element={<MyTasks />} />
+
+
       {/* User Profile & Permissions Routes */}
       <Route path="/profile" element={<MyProfile />} />
 
