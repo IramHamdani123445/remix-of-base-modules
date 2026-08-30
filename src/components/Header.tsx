@@ -81,11 +81,15 @@ export const Header = () => {
         {/* Theme Switcher */}
         <ThemeSwitcher />
 
-        {/* Omnichannel Communications (operations attention indicator) */}
+        {/* My Communications (messages addressed to the signed-in user) */}
+        <MyCommunicationsHeaderButton />
+
+        {/* Omni-Comms operations attention indicator (administrators) */}
         <OmniCommsHeaderShortcut />
 
-        {/* Notifications */}
+        {/* Notifications & workflow approvals (legacy bell) */}
         <InAppNotificationBell />
+
 
 
         {/* User Menu */}
