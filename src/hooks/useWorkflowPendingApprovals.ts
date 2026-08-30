@@ -57,8 +57,14 @@ export function formatWaitingTime(createdAt: string): string {
 }
 
 /**
- * Hook to fetch pending workflow approvals for the current user.
- * Filters tasks based on user's role, designation, or direct assignment.
+ * Pending workflow approvals for the signed-in user.
+ *
+ * SECURITY: scoping is decided entirely by the governed server-side projection
+ * `workflow_my_pending_tasks()`, which derives the user from the session and
+ * applies assignment, role, designation, step-approver configuration and
+ * approved delegation itself. The browser never retrieves a wider task
+ * population and narrows it locally, so removing any UI filter cannot expose
+ * another user's work, and no caller-supplied identity is accepted.
  */
 export function useMyPendingApprovals() {
   const { user } = useAuth();
@@ -66,163 +72,39 @@ export function useMyPendingApprovals() {
   return useQuery({
     queryKey: ['my-pending-approvals', user?.id],
     queryFn: async (): Promise<PendingApproval[]> => {
-      if (!user?.id) return [];
+      const { data, error } = await supabase.rpc('workflow_my_pending_tasks');
 
-      // Get user's roles from database
-      const { data: userRolesData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-
-      const userRoleNames = userRolesData?.map(r => r.role as string).filter(Boolean) || [];
-      const userRoleIds: string[] = [];
-      
-      // Also include mock role if set
-      if (user.role && !userRoleNames.includes(user.role)) {
-        userRoleNames.push(user.role);
+      if (error) {
+        console.error('Error fetching my workflow tasks:', error);
+        throw error;
       }
 
-      // Get user's designation
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('designation_id')
-        .eq('id', user.id)
-        .single();
-
-      const userDesignationId = profile?.designation_id;
-
-      // Fetch all pending/in-progress tasks
-      const { data: tasks, error: tasksError } = await supabase
-        .from('workflow_tasks')
-        .select(`
-          id,
-          instance_id,
-          step_id,
-          step_name,
-          status,
-          created_at,
-          due_at,
-          assigned_role,
-          assigned_designation,
-          assigned_to,
-          workflow_instance:workflow_instances!workflow_tasks_instance_id_fkey (
-            id,
-            workflow_name,
-            source_module,
-            source_record_id,
-            source_record_name,
-            started_by_name
-          )
-        `)
-        .in('status', ['Pending', 'InProgress'])
-        .order('created_at', { ascending: false });
-
-      if (tasksError) {
-        console.error('Error fetching workflow tasks:', tasksError);
-        throw tasksError;
-      }
-
-      if (!tasks || tasks.length === 0) return [];
-
-      // Batch-fetch all step configurations in a single query (fixes N+1)
-      const uniqueStepIds = Array.from(new Set(tasks.map(t => t.step_id).filter(Boolean))) as string[];
-      let stepMap = new Map<string, any>();
-      if (uniqueStepIds.length > 0) {
-        const { data: stepsData } = await supabase
-          .from('workflow_steps')
-          .select('id, approver_type, approver_role_ids, approver_designation_ids, approver_user_ids')
-          .in('id', uniqueStepIds);
-        if (stepsData) {
-          stepMap = new Map(stepsData.map(s => [s.id, s]));
-        }
-      }
-
-      // Filter tasks that the current user can act on
-      const userTasks: PendingApproval[] = [];
-
-      for (const task of tasks) {
-        const instance = task.workflow_instance as any;
-        if (!instance) continue;
-
-        let canAct = false;
-
-        // Check direct assignment
-        if (task.assigned_to === user.id) {
-          canAct = true;
-        }
-
-        // Check role assignment
-        if (!canAct && task.assigned_role) {
-          const normalizedAssignedRole = task.assigned_role.toLowerCase().replace(/_/g, ' ').trim();
-          canAct = userRoleNames.some(roleName => {
-            const normalizedUserRole = roleName.toLowerCase().replace(/_/g, ' ').trim();
-            return normalizedUserRole === normalizedAssignedRole ||
-                   roleName.toLowerCase() === task.assigned_role?.toLowerCase();
-          });
-        }
-
-        // Check designation assignment
-        if (!canAct && task.assigned_designation && userDesignationId) {
-          canAct = task.assigned_designation === userDesignationId;
-        }
-
-        // Check step-level approver configuration (using pre-fetched batch data)
-        if (!canAct) {
-          const step = stepMap.get(task.step_id);
-
-          if (step) {
-            const approverType = step.approver_type || 'role';
-
-            if ((approverType === 'user' || approverType === 'specific_users') && step.approver_user_ids?.includes(user.id)) {
-              canAct = true;
-            } else if (approverType === 'role' && step.approver_role_ids) {
-              canAct = userRoleIds.some(roleId => step.approver_role_ids?.includes(roleId));
-            } else if (approverType === 'designation' && step.approver_designation_ids && userDesignationId) {
-              canAct = step.approver_designation_ids.includes(userDesignationId);
-            } else if (approverType === 'reporting_manager' && task.assigned_to === user.id) {
-              canAct = true;
-            }
-          }
-        }
-
-        // Admin override
-        if (!canAct && (user.role?.toLowerCase() === 'admin' || userRoleNames.some(r => r?.toLowerCase() === 'admin'))) {
-          canAct = true;
-        }
-
-        if (canAct) {
-          const now = new Date();
-          const dueAt = task.due_at ? new Date(task.due_at) : null;
-          const isOverdue = dueAt ? now > dueAt : false;
-
-          userTasks.push({
-            id: task.id,
-            instance_id: task.instance_id,
-            workflow_name: instance.workflow_name || 'Unknown Workflow',
-            step_name: task.step_name,
-            source_record_id: instance.source_record_id,
-            source_record_name: instance.source_record_name || 'Unknown',
-            source_module: instance.source_module,
-            status: task.status,
-            created_at: task.created_at,
-            due_at: task.due_at,
-            is_overdue: isOverdue,
-            priority: calculatePriority(task.due_at, task.created_at),
-            assigned_role: task.assigned_role,
-            assigned_designation: task.assigned_designation,
-            assigned_to: task.assigned_to,
-            submitter_name: instance.started_by_name,
-          });
-        }
-      }
-
-      return userTasks;
+      return (data ?? []).map((row: any) => ({
+        id: row.id,
+        instance_id: row.instance_id,
+        workflow_name: row.workflow_name,
+        step_name: row.step_name,
+        source_record_id: row.source_record_id,
+        source_record_name: row.source_record_name,
+        source_module: row.source_module,
+        status: row.status,
+        created_at: row.created_at,
+        due_at: row.due_at,
+        is_overdue: !!row.is_overdue,
+        priority: calculatePriority(row.due_at, row.created_at),
+        assigned_role: row.assigned_role,
+        assigned_designation: row.assigned_designation,
+        assigned_to: row.assigned_to,
+        submitter_name: row.submitter_name,
+        eligibility_basis: row.eligibility_basis,
+      }));
     },
     enabled: !!user?.id,
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Refetch every minute
   });
 }
+
 
 /**
  * Hook to get count of pending approvals for badge display
