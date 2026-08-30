@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Gavel, Eye, Search, Loader2, Inbox } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -14,8 +15,31 @@ const stageColor = (stage: string): 'destructive' | 'default' | 'secondary' | 'o
   return 'outline';
 };
 
+type Proceeding = {
+  id: string;
+  case_number: string | null;
+  employer_name: string | null;
+  reg_no: string | null;
+  stage: string;
+  arrears: number | null;
+  filed_date: string | null;
+  next_hearing: string | null;
+  court: string | null;
+  solicitor: string | null;
+  outcome: string | null;
+};
+
+const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="space-y-1">
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p className="text-sm font-medium text-foreground break-words">{value ?? '—'}</p>
+  </div>
+);
+
 const LegalProceedingsPage = () => {
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Proceeding | null>(null);
+
 
   const { data: proceedings = [], isLoading } = useQuery({
     queryKey: ['ce_legal_proceedings'],
