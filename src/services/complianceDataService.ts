@@ -395,7 +395,9 @@ export async function fetchViolationSummaryCounts(filters: ViolationFilters = {}
   let query = supabase
     .from("ce_violations")
     .select("status", { count: "exact" })
-    .eq("is_deleted", false);
+    .eq("is_deleted", false)
+    .limit(1);
+
 
   // Apply filters but skip status filter for summary (we want counts per status across all)
   const filtersWithoutStatus = { ...filters, status: 'ALL' };
