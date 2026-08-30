@@ -51,6 +51,8 @@ const ExternalTaskLanding = lazy(() => import('@/portals/ExternalTaskLanding'));
 const PublicLayout = lazy(() => import('@/pages/public/PublicLayout'));
 const PublicHome = lazy(() => import('@/pages/public/Home'));
 const UatDownloadsPublic = lazy(() => import('@/pages/public/UatDownloadsPublic'));
+const AuditUserManuals = lazy(() => import('@/pages/audit/manuals/AuditUserManuals'));
+
 const RegisterWizard = lazy(() => import('@/pages/public/register/RegisterWizard'));
 const ExternalPortalApprovals = lazy(() => import('@/pages/admin/ExternalPortalApprovals'));
 const PublicCatalogValidation = lazy(() => import('@/pages/admin/PublicCatalogValidation'));
