@@ -125,6 +125,11 @@ export const BN_FIELD_OWNERSHIP: Record<string, Record<string, FieldOwnershipDef
     is_work_related: { ownership: 'STAFF_REVIEW', aliases: ['work_related', 'work_related_confirmed'] },
     work_related_confirmed: { ownership: 'STAFF_REVIEW', aliases: ['work_related', 'is_work_related'] },
 
+    // Employment-injury death products filed under the INJURY category
+    deceased_ssn: { ownership: 'CITIZEN_SUBMITTED' },
+    cause_of_death: { ownership: 'CITIZEN_SUBMITTED' },
+    work_related_death_confirmed: { ownership: 'STAFF_REVIEW' },
+
     // Medical expense
     treatment_provider: { ownership: 'CITIZEN_SUBMITTED' },
     treatment_start: { ownership: 'CITIZEN_SUBMITTED' },
