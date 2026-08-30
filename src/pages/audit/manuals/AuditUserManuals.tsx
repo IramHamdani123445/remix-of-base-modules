@@ -21,6 +21,30 @@ type Manual = {
 
 const manuals = manifest as Manual[];
 
+/**
+ * Downloads inside the Lovable preview iframe are blocked, so fetch the file
+ * and hand the browser a blob URL (with a window.open fallback).
+ */
+async function downloadFile(path: string) {
+  const url = new URL(path, window.location.origin).toString();
+  const fileName = path.split('/').pop() ?? 'download';
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+  } catch {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
 export default function AuditUserManuals() {
   useEffect(() => {
     document.title = 'Internal Audit User Manuals | Downloads';
