@@ -103,6 +103,8 @@ export const auditRouteConfig: AuditRouteEntry[] = [
 
   // ===== Reference Data =====
   { moduleKey: 'communication-templates', label: 'Communication Templates', path: '/audit/templates', permission: 'configure_audit_system', enabled: AUDIT_FEATURE_FLAGS.FEATURE_AUDIT_SYSTEM_CONFIG, category: 'reference', component: 'TemplatesManagement' },
+  { moduleKey: 'user-manuals', label: 'User Manuals', path: '/audit/user-manuals', permission: 'view_audit_assignments', enabled: true, category: 'reference', component: 'AuditUserManuals' },
+
 ];
 
 export function getAuditRouteByPath(path: string): AuditRouteEntry | undefined {
