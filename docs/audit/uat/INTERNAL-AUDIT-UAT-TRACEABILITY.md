@@ -48,3 +48,12 @@ result and any defect raised. Case-level detail is in `INTERNAL-AUDIT-UAT-CASES.
 
 Coverage: 36 requirements, 108 executed cases, 30 functional areas. Six requirements failed or were
 blocked; all are recorded in the defect register with a named severity.
+
+---
+
+## Closure status (2026-08-31)
+
+All requirement rows previously marked conditional on UAT-DEF-01 / 02 / 03 / 04 are now satisfied and
+retested. Requirements traced to UAT-DEF-05 / 06 / 07 remain satisfied functionally with deferred
+usability observations. Final position: **APPROVED WITH CONDITIONS** —
+`INTERNAL-AUDIT-UAT-FINAL-SIGNOFF.md`.
