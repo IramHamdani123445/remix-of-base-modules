@@ -136,14 +136,42 @@ const OWNERSHIP_BADGE: Record<FieldOwnership, { label: string; className: string
   },
 };
 
+const FIELD_TYPE_MAP: Record<string, FieldDef['type']> = {
+  DATE: 'date',
+  TEXT: 'text',
+  NUMBER: 'number',
+  CHECKBOX: 'checkbox',
+};
+
 export const BenefitDetailSection: React.FC<BenefitDetailSectionProps> = ({
   category,
   detailJson,
   claimStatus,
   roles,
+  productCode,
   onDetailChange,
 }) => {
-  const fields = CATEGORY_FIELDS[category] || CATEGORY_FIELDS.SHORT_TERM || [];
+  const fields = React.useMemo<FieldDef[]>(() => {
+    const base = CATEGORY_FIELDS[category] || CATEGORY_FIELDS.SHORT_TERM || [];
+    const benefitKey = normalizeBenefitKey(productCode);
+    const productFields = benefitKey ? BENEFIT_FIELDS[benefitKey] ?? [] : [];
+    if (productFields.length === 0) return base;
+
+    const seen = new Set(base.map((f) => f.key));
+    const overlay: FieldDef[] = [];
+    for (const f of productFields) {
+      if (seen.has(f.field_code)) continue;
+      seen.add(f.field_code);
+      overlay.push({
+        key: f.field_code,
+        label: f.field_label,
+        type: FIELD_TYPE_MAP[String(f.field_type).toUpperCase()] ?? 'text',
+        required: false,
+      });
+    }
+    return [...base, ...overlay];
+  }, [category, productCode]);
+
   const data = detailJson || {};
 
   return (
