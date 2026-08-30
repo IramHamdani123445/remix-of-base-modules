@@ -599,50 +599,36 @@ function ChannelProviderTab({ channel }: { channel: ChannelType }) {
     onError: (err: any) => toast.error(err.message || "Failed to delete provider"),
   });
 
+  /**
+   * Provider test sends are NOT performed here.
+   *
+   * Omni-Comms governance: every real dispatch must pass the certified test
+   * delivery boundary (`omni-comms-test-delivery`), which enforces sender
+   * authorisation, recipient allowlists and the evidence ledger. Invoking a
+   * campaign or notification function straight from this admin screen was an
+   * ungoverned bypass, so it has been removed rather than re-pointed.
+   */
   const testMutation = useMutation({
     mutationFn: async ({ provider, recipient }: { provider: ProviderRecord; recipient: string }) => {
       setTestingId(provider.id);
-
-      if (channel === "email") {
-        const { data, error } = await supabase.functions.invoke("send-email-campaign", {
-          body: {
-            name: `[TEST] ${provider.provider_name}`,
-            subject: "Test Email from Provider Configuration",
-            html_body: `<h2>Test Email</h2><p>This is a test email sent from provider <strong>${provider.display_name || provider.provider_name}</strong>.</p>`,
-            plain_body: `Test email from provider: ${provider.provider_name}`,
-            from_name: provider.config?.from_name || "Notifications",
-            from_email: provider.config?.from_email,
-            recipient_filter: "custom",
-            recipient_emails: [recipient],
-            force_provider_id: provider.id,
-          },
-        });
-        if (error) throw error;
-        await supabase.from("email_provider_test_logs").insert({
-          provider_id: provider.id, test_to: recipient,
-          status: data?.success ? "sent" : "failed",
-          response_data: data, error_message: data?.error || null,
-        });
-        return data;
-      }
-      // For SMS/Push just log intent — no actual sending infrastructure yet
-      toast.info(`Test ${channel.toUpperCase()} would be sent to: ${recipient}. Sending infrastructure not yet connected.`);
-      return { success: true, message: "Test logged (no sending infrastructure)" };
+      return {
+        success: false,
+        error:
+          `Test sends are governed by Omni-Comms. Open Omni-Comms → Channels → ${channel.toUpperCase()} ` +
+          `Test Delivery to send to ${recipient} with sender authorisation, allowlist checks and an evidence record.`,
+      };
     },
     onSuccess: (data) => {
       setTestingId(null);
       setShowTestDialog(false);
-      if (data?.success) {
-        if (channel === "email") toast.success("Test email sent successfully! Check your inbox.");
-      } else {
-        toast.error(`Test failed: ${data?.error || "Unknown error"}`);
-      }
+      toast.info("Send test deliveries from Omni-Comms", { description: data?.error });
     },
     onError: (err: any) => {
       setTestingId(null);
       toast.error(err.message || "Test failed");
     },
   });
+
 
   const handleOpenAdd = () => {
     setEditingProvider(null);
