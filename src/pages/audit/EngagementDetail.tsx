@@ -210,20 +210,22 @@ export default function EngagementDetail() {
   // where the closure gate is evaluated and the disposition is captured.
   const handleCloseAudit = () => setActiveTab('closure');
 
-  // Workspace counts for overview quick-jump
+  // Workspace counts for overview quick-jump. Auditor-private volumes are suppressed
+  // for management respondents (UAT-DEF-02).
   const workspaceCounts = useMemo(() => ({
-    activities: auditActivities.length,
-    evidence: auditEvidence.length,
-    workingPapers: auditWorkingPapers.length,
-    controlTests: auditControlTests.length,
+    activities: canSeeAuditorWorkspace ? auditActivities.length : 0,
+    evidence: canSeeAuditorWorkspace ? auditEvidence.length : 0,
+    workingPapers: canSeeAuditorWorkspace ? auditWorkingPapers.length : 0,
+    controlTests: canSeeAuditorWorkspace ? auditControlTests.length : 0,
     findings: auditFindings.length,
     openFindings: openFindings.length,
     responses: auditResponses.length,
     pendingResponses: pendingResponsesCount,
     actions: auditActions.length,
     overdueActions: overdueActionsCount,
-    followUps: auditFollowUps.length,
-  }), [auditActivities, auditEvidence, auditWorkingPapers, auditControlTests, auditFindings, openFindings, auditResponses, pendingResponsesCount, auditActions, overdueActionsCount, auditFollowUps]);
+    followUps: canSeeAuditorWorkspace ? auditFollowUps.length : 0,
+  }), [canSeeAuditorWorkspace, auditActivities, auditEvidence, auditWorkingPapers, auditControlTests, auditFindings, openFindings, auditResponses, pendingResponsesCount, auditActions, overdueActionsCount, auditFollowUps]);
+
 
   if (!audit && !isLoading) {
     return (
