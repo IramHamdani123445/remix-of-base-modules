@@ -160,10 +160,12 @@ export const OmniCommsOperationsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [summary, setSummary] = useState<OpsSummary | null>(null);
+  const [holdBreakdown, setHoldBreakdown] = useState<OmniCommsAttentionSummary | null>(null);
   const [page, setPage] = useState<OpsRequestPage | null>(null);
   const [events, setEvents] = useState<BusinessEventActivityPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   const automation = useAutomationStatus(organizationId, true);
 
