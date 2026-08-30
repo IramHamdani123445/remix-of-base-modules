@@ -18,6 +18,8 @@ import { useTransitionExecutionStatus, type ExecutionStatus } from '@/hooks/useE
 import { AuditWorkspaceShell } from '@/components/audit/workspace/AuditWorkspaceShell';
 import { AuditEmptyState } from '@/components/audit/workspace/AuditEmptyState';
 import { formatDepartmentLabel } from '@/lib/audit/departmentLabel';
+import { useInternalAuditPersona } from '@/hooks/audit/useInternalAuditPersona';
+
 
 import {
   AuditOverviewTab,
