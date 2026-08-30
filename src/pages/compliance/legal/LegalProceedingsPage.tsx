@@ -115,7 +115,7 @@ const LegalProceedingsPage = () => {
                       <td className="py-2 px-3 text-foreground">{p.next_hearing || '—'}</td>
                       <td className="py-2 px-3 text-foreground">{p.solicitor}</td>
                       <td className="py-2 px-3 text-center"><Badge variant={p.outcome === 'Judgment Granted' ? 'default' : 'outline'} className="text-[10px]">{p.outcome}</Badge></td>
-                      <td className="py-2 px-3 text-right"><Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button></td>
+                      <td className="py-2 px-3 text-right"><Button variant="ghost" size="sm" aria-label={`View ${p.case_number ?? 'proceeding'}`} onClick={() => setSelected(p as Proceeding)}><Eye className="h-4 w-4" /></Button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -124,7 +124,31 @@ const LegalProceedingsPage = () => {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Legal Proceeding {selected?.case_number}</DialogTitle>
+            <DialogDescription>Case details and current enforcement status</DialogDescription>
+          </DialogHeader>
+          {selected && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <Field label="Case Number" value={selected.case_number} />
+              <Field label="Employer" value={selected.employer_name} />
+              <Field label="Registration No" value={selected.reg_no} />
+              <Field label="Stage" value={<Badge variant={stageColor(selected.stage)}>{selected.stage}</Badge>} />
+              <Field label="Arrears" value={`$${Number(selected.arrears || 0).toLocaleString()}`} />
+              <Field label="Court" value={selected.court} />
+              <Field label="Filed Date" value={selected.filed_date} />
+              <Field label="Next Hearing" value={selected.next_hearing} />
+              <Field label="Solicitor" value={selected.solicitor} />
+              <Field label="Outcome" value={selected.outcome} />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
