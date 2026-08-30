@@ -57,7 +57,7 @@ export function matchesActivityFilter(
     case 'all':
       return true;
     case 'waiting':
-      return label === 'Event queued' || label === 'Preparing' || label === 'Waiting to send';
+      return label === 'Event queued' || label === 'Preparing' || label === 'Held — awaiting authorisation';
     case 'accepted':
       return label === 'Sending' || label === 'Provider accepted';
     case 'delivered':
