@@ -173,6 +173,20 @@ export default function EngagementDetail() {
 
   const [activeTab, setActiveTab] = useState('overview');
 
+  // UAT-DEF-02 — the audited department (management respondent) must never see the
+  // auditor-private workspace (preparation, programme/RCM, activities, control tests,
+  // evidence, working papers, follow-ups, quality review, closure).
+  const { isManagementOnly, isLoading: personaLoading } = useInternalAuditPersona();
+  const canSeeAuditorWorkspace = !personaLoading && !isManagementOnly;
+
+  const MANAGEMENT_TABS = ['overview', 'findings', 'responses', 'actions', 'timeline'];
+  React.useEffect(() => {
+    if (!canSeeAuditorWorkspace && !MANAGEMENT_TABS.includes(activeTab)) {
+      setActiveTab('overview');
+    }
+  }, [canSeeAuditorWorkspace, activeTab]);
+
+
   const engagementContext = useMemo(() => {
     if (!audit) return undefined;
     const dept = getDeptObj(audit.department_id);
