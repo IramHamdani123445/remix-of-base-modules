@@ -105,11 +105,7 @@ export async function routeClaimToWorkbasket(
       if (active) {
         await db
           .from('bn_claim_queue_assignment')
-          .update({
-            is_active: false,
-            completed_at: new Date().toISOString(),
-            completed_by: actorCode,
-          })
+          .update({ is_active: false, completed_at: new Date().toISOString() })
           .eq('claim_id', claimId)
           .eq('is_active', true);
       }
@@ -168,20 +164,8 @@ export async function routeClaimToWorkbasket(
       });
     }
 
-    // Close the stale assignment before opening the new one, so a claim is
-    // never counted in two baskets at once.
-    if (active) {
-      await db
-        .from('bn_claim_queue_assignment')
-        .update({
-          is_active: false,
-          completed_at: new Date().toISOString(),
-          completed_by: actorCode,
-        })
-        .eq('claim_id', claimId)
-        .eq('is_active', true);
-    }
-
+    // assignClaimToWorkbasket closes the stale assignment before inserting the
+    // new one, so a claim is never counted in two baskets at once.
     const { assignClaimToWorkbasket } = await import('@/services/bn/approvalLevelService');
     await assignClaimToWorkbasket(
       claimId,
