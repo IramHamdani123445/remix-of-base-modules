@@ -85,10 +85,9 @@ generic error.
 **Document owner:** Head of Internal Audit  **Classification:** Internal  
 **Review cycle:** Annually, or on any change to the Internal Audit module.
 
-| Version | Date | Author | Summary of change | Reviewed by | Approved by | Approval date |
-|---------|------|--------|-------------------|-------------|-------------|---------------|
-| 1.0 | 2026-08-30 | Internal Audit / Platform Team | First issued manual, generated from the live TEST environment (routes, tabs, governed commands and screenshots). | Lead Auditor | Head of Internal Audit | _Pending_ |
-| | | | | | | |
+| Version | Date | Author | Summary of change | Approval |
+|---------|------|--------|-------------------|----------|
+| 1.0 | 2026-08-30 | Internal Audit / Platform Team | First issued manual, generated from the live TEST environment (routes, tabs, governed commands and screenshots). | Reviewed: Lead Auditor. Approved by Head of Internal Audit on: _Pending_ |
 
 ### How to record an update
 1. Add a new row at the top of the table for every content change — never edit a released row.
