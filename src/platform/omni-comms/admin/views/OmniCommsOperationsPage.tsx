@@ -410,6 +410,32 @@ export const OmniCommsOperationsPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {historicalHolds > 0 ? (
+        <Card data-testid="omni-comms-historical-holds">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Historical records — never sent
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">{historicalHolds}</p>
+              <p className="text-xs text-muted-foreground max-w-xl">
+                Recorded before delivery was switched on. These are kept as audit
+                evidence, are not waiting for anything, and require no action.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActivityFilter("historical")}
+              data-testid="omni-comms-historical-holds-filter"
+            >
+              Show historical records
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Business activity</CardTitle>
