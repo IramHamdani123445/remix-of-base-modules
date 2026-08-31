@@ -1,6 +1,8 @@
 import { useComplianceRole } from '@/hooks/useComplianceRole';
 import RoleWorkbench from '@/components/compliance/workbench/RoleWorkbench';
+import HeadWorkbench from '@/components/compliance/workbench/executive/HeadWorkbench';
 import { Navigate } from 'react-router-dom';
+
 
 const COPY: Record<string, { title: string; subtitle: string }> = {
   inspector: {
@@ -30,5 +32,11 @@ export default function WorkbenchLanding() {
   }
 
   const copy = COPY[role];
+
+  if (role === 'head') {
+    return <HeadWorkbench title={copy.title} subtitle={copy.subtitle} />;
+  }
+
   return <RoleWorkbench role={role} title={copy.title} subtitle={copy.subtitle} />;
 }
+
