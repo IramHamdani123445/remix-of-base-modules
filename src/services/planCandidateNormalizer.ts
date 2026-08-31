@@ -204,7 +204,8 @@ export function normalisePlanCandidateV3(row: unknown): NormalisedCandidate {
     zone_id: str(r.zone_id),
     audit_program: str(r.audit_program),
     candidate_source: str(r.candidate_source) ?? 'UNKNOWN',
-    candidate_reason: str(r.candidate_reason) ?? 'OPEN_VIOLATION',
+    candidate_reason: (str(r.candidate_reason) ??
+      'OPEN_VIOLATION') as PlanCandidateV3['candidate_reason'],
     derived_priority: priority,
     risk_band: riskBand,
     risk_score: num(r.risk_score),
