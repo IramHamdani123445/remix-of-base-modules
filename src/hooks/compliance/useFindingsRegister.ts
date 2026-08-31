@@ -209,6 +209,31 @@ export interface FindingDetail {
   }[];
 }
 
+export interface ViolationTypeOption {
+  id: string;
+  code: string;
+  name: string;
+  severity_default?: string | null;
+  conversion_policy?: string | null;
+}
+
+/** Active violation types used for candidate classification and conversion. */
+export function useActiveViolationTypes() {
+  return useQuery({
+    queryKey: ["ce-violation-types-active"],
+    queryFn: async (): Promise<ViolationTypeOption[]> => {
+      const { data, error } = await supabase
+        .from("ce_violation_types")
+        .select("id, code, name, severity_default, conversion_policy")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as ViolationTypeOption[];
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useFindingDetail(findingId: string | null) {
   return useQuery({
     queryKey: ["ce-finding-detail", findingId],
