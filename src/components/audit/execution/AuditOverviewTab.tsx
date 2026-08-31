@@ -6,6 +6,7 @@ import { formatDateForDisplay } from '@/lib/format-config';
 import { LaunchReadinessPanel } from '@/components/audit/LaunchReadinessPanel';
 import { AuditNextActionsPanel, deriveNextActions } from '@/components/audit/workspace/AuditNextActionsPanel';
 import type { NextActionKey } from '@/components/audit/workspace/AuditNextActionsPanel';
+import { resolveRecommendedActionTab } from '@/components/audit/execution/recommendedActionDispatch';
 import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
 import { AuditProgressPanel } from '@/components/audit/execution/AuditProgressPanel';
 
