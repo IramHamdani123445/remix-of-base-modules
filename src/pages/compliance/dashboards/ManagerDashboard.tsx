@@ -399,7 +399,7 @@ const ManagerDashboard = () => {
                       />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                  <div className="mt-2 space-y-1">
                     {caseStatusSlices.map(s => (
                       <div key={s.code} className="flex items-center gap-2 text-[11px]">
                         <span className="h-2 w-2 rounded-full shrink-0" style={{ background: s.color }} />
