@@ -124355,6 +124355,17 @@ export type Database = {
         Args: { p_operation: string }
         Returns: string
       }
+      ce_audit_report_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_b2_audit: {
         Args: {
           p_action: string
