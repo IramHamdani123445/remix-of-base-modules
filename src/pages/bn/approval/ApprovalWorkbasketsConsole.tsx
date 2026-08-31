@@ -139,17 +139,30 @@ export default function ApprovalWorkbasketsConsole() {
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [minAmount, setMinAmount] = useState('');
 
-  const { data: workbaskets = [], isLoading: wbLoading } = useQuery({
+  const { data: workbaskets = [], isLoading: wbLoading, error: wbError } = useQuery({
     queryKey: ['bn', 'workbaskets-active'],
     queryFn: fetchWorkbaskets,
     staleTime: 60_000,
   });
 
-  const { data: assignments = [], isLoading: asgLoading } = useQuery({
+  const { data: assignments = [], isLoading: asgLoading, error: asgError } = useQuery({
     queryKey: ['bn', 'approval-workbasket-assignments'],
     queryFn: fetchAssignments,
     refetchInterval: 30_000,
   });
+
+  const assigneeIds = useMemo(
+    () => Array.from(new Set(assignments.map((a) => a.assigned_to).filter(Boolean) as string[])).sort(),
+    [assignments],
+  );
+  const { data: assigneeNames = {} } = useQuery({
+    queryKey: ['bn', 'approval-workbasket-assignees', assigneeIds],
+    queryFn: () => fetchAssigneeNames(assigneeIds),
+    enabled: assigneeIds.length > 0,
+    staleTime: 300_000,
+  });
+
+  const loadError = (asgError ?? wbError) as { message?: string } | null;
 
   const roleOptions = useMemo(
     () => Array.from(new Set(workbaskets.map((w) => w.assigned_role).filter(Boolean))).sort(),
@@ -184,12 +197,15 @@ export default function ApprovalWorkbasketsConsole() {
       if (overdueOnly && !sla.overdue) continue;
       const cat = a.bn_claim?.bn_product?.category ?? null;
       if (category !== 'ALL' && cat !== category) continue;
-      const amt = Number(a.bn_claim?.total_amount ?? 0);
-      if (minAmt > 0 && amt < minAmt) continue;
+      if (minAmt > 0) {
+        const amt = claimAmount(a);
+        if (amt == null || amt < minAmt) continue;
+      }
       map.get(a.workbasket_id)!.push(a);
     }
     return map;
   }, [filteredWorkbaskets, assignments, workbasketId, pMax, overdueOnly, category, minAmt]);
+
 
   const totalPending = useMemo(
     () => Array.from(grouped.values()).reduce((n, list) => n + list.length, 0),
