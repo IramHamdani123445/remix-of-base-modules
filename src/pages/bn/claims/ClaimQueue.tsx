@@ -192,7 +192,7 @@ export default function ClaimQueue() {
   const selected = baskets.find((b) => b.id === selectedBasket);
 
   return (
-    <PermissionWrapper moduleName="benefits_management">
+    <PermissionWrapper moduleName="bn_claim_queue">
       <div className="space-y-6 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
