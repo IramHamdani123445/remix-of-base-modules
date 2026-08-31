@@ -461,8 +461,11 @@ export default function EmployerStatements() {
                           {(r.funds_in_arrears ?? []).map((f) => (
                             <Tooltip key={f}>
                               <TooltipTrigger asChild>
-                                <Badge variant="secondary" className="px-1.5 text-[10px] font-medium">{f}</Badge>
+                                <span>
+                                  <Badge variant="secondary" className="px-1.5 text-[10px] font-medium">{f}</Badge>
+                                </span>
                               </TooltipTrigger>
+
                               <TooltipContent>{FUND_LABELS[f] ?? f}</TooltipContent>
                             </Tooltip>
                           ))}
