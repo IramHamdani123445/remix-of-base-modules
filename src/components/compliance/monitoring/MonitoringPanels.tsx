@@ -287,12 +287,14 @@ export function ExceptionsQueue({
 /* --------------------------------------------------------------- SLA panel */
 
 export function SlaMonitorPanel({
-  sla, urgent, loading, onOpen,
+  sla, urgent, loading, onOpen, state,
 }: {
   sla: MonitoringPayload['sla_summary'];
   urgent: MonitoringPayload['sla_urgent'];
   loading?: boolean;
   onOpen: (route: string | null) => void;
+  /** Severity state from the subsystem roll-up; falls back to read status. */
+  state?: string;
 }) {
   const total = sla
     ? sla.breached + sla.due_24h + sla.due_1_3 + sla.due_4_7 + sla.healthy
