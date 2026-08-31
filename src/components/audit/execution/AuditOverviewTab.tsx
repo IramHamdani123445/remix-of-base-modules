@@ -66,33 +66,14 @@ export function AuditOverviewTab({
 
   /**
    * IA-POST-UAT-01 — single dispatcher for Recommended Actions.
-   * Each key resolves to the canonical governed workspace/command surface.
-   * No business mutation is performed here.
+   * Keys resolve through an exhaustive Record (see recommendedActionDispatch),
+   * so a new key without a dispatcher fails typecheck. No mutation happens here.
    */
   const dispatchRecommendedAction = (key: NextActionKey) => {
-    switch (key) {
-      // Governed launch/readiness flow lives on the Preparation surface
-      // (LaunchReadinessPanel → ia_launch_engagement).
-      case 'LAUNCH_AUDIT':
-        return goTo('preparation');
-      // Canonical execution lifecycle transition surface.
-      case 'BEGIN_FIELDWORK':
-        return goTo('activities');
-      case 'DOCUMENT_FINDINGS':
-        return goTo('findings');
-      // Finding release / response-request workflow.
-      case 'REQUEST_MANAGEMENT_RESPONSES':
-        return goTo('responses');
-      // Corrective-action tracking for this engagement.
-      case 'FOLLOW_UP_OVERDUE_ACTIONS':
-        return goTo('actions');
-      // Canonical closure workspace (governed close command + disposition).
-      case 'CLOSE_AUDIT':
-        return goTo('closure');
-      default:
-        return undefined;
-    }
+    const tab = resolveRecommendedActionTab(key);
+    if (tab) goTo(tab);
   };
+
 
 
   return (
