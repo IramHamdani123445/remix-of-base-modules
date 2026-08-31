@@ -90,6 +90,8 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
   });
   const [reason, setReason] = useState('');
   const [rawAccount, setRawAccount] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
 
   useEffect(() => {
     let alive = true;
