@@ -1,0 +1,1 @@
+ALTER FUNCTION public.ce_work_queue_v1(text, jsonb, text, text, int, int) VOLATILE;
