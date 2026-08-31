@@ -207,7 +207,22 @@ export default function ClaimRegistration() {
   );
 
   // ─── Step 1 — SSN lookup ─────────────────────────────────────────
+  function handleContactChange(field: 'contactPhone' | 'contactEmail', value: string) {
+    if (field === 'contactPhone') setContactPhone(value); else setContactEmail(value);
+    const result = validateField(
+      field === 'contactPhone' ? 'ip.contact_phone' : 'ip.contact_email',
+      value,
+    );
+    setErrors(prev => {
+      const next = { ...prev };
+      if (result.valid) delete next[field];
+      else next[field] = result.error!;
+      return next;
+    });
+  }
+
   async function handleSsnLookup() {
+
     const v = ssn.trim();
     if (!v) {
       setErrors(e => ({ ...e, ssn: 'SSN is required' }));
