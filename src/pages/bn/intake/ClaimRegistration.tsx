@@ -699,7 +699,11 @@ export default function ClaimRegistration() {
                   <Input
                     placeholder="Enter SSN…"
                     value={ssn}
-                    onChange={e => setSsn(e.target.value)}
+                    className={errors.ssn ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                    onChange={e => {
+                      setSsn(e.target.value);
+                      setErrors(prev => { const n = { ...prev }; delete n.ssn; return n; });
+                    }}
                     onKeyDown={e => e.key === 'Enter' && handleSsnLookup()}
                   />
                   <Button onClick={handleSsnLookup} disabled={personLoading}>
@@ -707,6 +711,8 @@ export default function ClaimRegistration() {
                     <span className="ml-1">Search</span>
                   </Button>
                 </div>
+                {errors.ssn && <p className="text-xs text-destructive mt-1">{errors.ssn}</p>}
+
                 {personError && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
