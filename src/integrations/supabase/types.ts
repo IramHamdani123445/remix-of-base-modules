@@ -125304,6 +125304,17 @@ export type Database = {
         Returns: undefined
       }
       ce_waiver_role_capability: { Args: { p_role: string }; Returns: string }
+      ce_work_queue_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_mode?: string
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       cease_voluntary_contributor: {
         Args: { p_reason?: string; p_ssn: string }
         Returns: Json
