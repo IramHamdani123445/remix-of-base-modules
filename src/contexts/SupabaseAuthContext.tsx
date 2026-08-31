@@ -652,9 +652,53 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        if (currentSession?.refresh_token) {
+          lastRefreshTokenRef.current = currentSession.refresh_token;
+          signOutRecoveryInFlightRef.current = false;
+        }
+
         if (isLoggingOutRef.current && event === 'SIGNED_OUT') {
           return;
         }
+
+        // A SIGNED_OUT the user did not ask for is usually the auth client
+        // discarding the session after a transient failure (slow backend, a
+        // momentarily expired access token). Try to restore it once from the
+        // last known refresh token before throwing the user out mid-task; a
+        // successful refresh re-emits SIGNED_IN/TOKEN_REFRESHED and this
+        // sign-out is never surfaced to the UI.
+        if (
+          event === 'SIGNED_OUT' &&
+          lastRefreshTokenRef.current &&
+          !signOutRecoveryInFlightRef.current
+        ) {
+          const refreshToken = lastRefreshTokenRef.current;
+          signOutRecoveryInFlightRef.current = true;
+          void (async () => {
+            try {
+              const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+              if (!error && data?.session) {
+                console.warn('[Auth] Recovered a spurious sign-out by refreshing the session');
+                return;
+              }
+            } catch {
+              // fall through to a real sign-out
+            }
+            lastRefreshTokenRef.current = null;
+            if (!mountedRef.current) return;
+            dispatchAuth({ type: 'AUTH_EVENT', event: 'SIGNED_OUT' as SbAuthEvent, session: null });
+            setProfile(null);
+            setRoles([]);
+            setProfileStatus('pending');
+            setRolesStatus('pending');
+          })();
+          return;
+        }
+
+        if (event === 'SIGNED_OUT') {
+          lastRefreshTokenRef.current = null;
+        }
+
 
         // Dispatch through the state machine — this is the single source of truth
         // for user/session (see BN-MORT-UI-RECOVERY-2D).
