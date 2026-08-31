@@ -29,6 +29,7 @@ import {
 } from '@/services/plannerCandidateActionsService';
 import { plannerApprovalService } from '@/services/plannerApprovalService';
 import { CandidateCardV3 } from '@/components/compliance/weekly-plan/v3/CandidateCardV3';
+import { CandidateCardBoundary } from '@/components/compliance/weekly-plan/v3/CandidateCardBoundary';
 import {
   PlannerExceptionDialog,
   type PlannerExceptionPayload,
