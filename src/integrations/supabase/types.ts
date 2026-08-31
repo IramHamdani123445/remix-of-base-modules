@@ -124454,6 +124454,20 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_case_request_claim_v1: {
+        Args: {
+          p_actor: string
+          p_approve: boolean
+          p_id: string
+          p_notes: string
+        }
+        Returns: Json
+      }
+      ce_case_request_precheck_v1: { Args: { p_id: string }; Returns: Json }
+      ce_case_request_revert_v1: {
+        Args: { p_actor: string; p_error: string; p_id: string }
+        Returns: undefined
+      }
       ce_case_requests_v1: {
         Args: {
           p_dir?: string
