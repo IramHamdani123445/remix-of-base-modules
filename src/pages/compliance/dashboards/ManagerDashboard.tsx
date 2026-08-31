@@ -366,18 +366,52 @@ const ManagerDashboard = () => {
         </Card>
 
         {/* Cases by Status */}
-        {caseStatusData.length > 0 ? (
+        {caseStatusSlices.length > 0 || caseStatusError ? (
           <Card>
             <CardHeader><CardTitle className="text-lg">Cases by Status</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie data={caseStatusData} cx="50%" cy="50%" innerRadius={50} outerRadius={85} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                    {caseStatusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--popover-foreground))' }} />
-                </PieChart>
-              </ResponsiveContainer>
+              {caseStatusError ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Case status data is unavailable — the query failed. Retry shortly.
+                </p>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={caseStatusSlices.filter(s => s.value > 0)}
+                        cx="50%" cy="50%"
+                        innerRadius={50} outerRadius={85}
+                        dataKey="value"
+                        nameKey="name"
+                        paddingAngle={2}
+                      >
+                        {caseStatusSlices.filter(s => s.value > 0).map(entry => (
+                          <Cell key={entry.code} fill={entry.color} stroke="hsl(var(--background))" strokeWidth={2} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--popover-foreground))' }}
+                        formatter={(value: number, name: string) => [
+                          `${value} (${caseStatusPct(value).toFixed(1)}%)`,
+                          name,
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                    {caseStatusSlices.map(s => (
+                      <div key={s.code} className="flex items-center gap-2 text-[11px]">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: s.color }} />
+                        <span className="truncate text-muted-foreground">{s.name}</span>
+                        <span className="ml-auto font-medium tabular-nums">
+                          {s.value} ({caseStatusPct(s.value).toFixed(1)}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -400,7 +434,8 @@ const ManagerDashboard = () => {
         )}
       </div>
 
-      {caseStatusData.length === 0 && riskData.distribution.every(r => r.count === 0) && (
+      {caseStatusTotal === 0 && riskData.distribution.every(r => r.count === 0) && (
+
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">No compliance data yet. Cases, violations, and risk profiles will appear here once created.</p>
