@@ -371,13 +371,13 @@ export default function FieldOperations() {
                         </TableCell>
                         <TableCell className="align-top">
                           <div className="flex flex-wrap gap-1 justify-end">
-                            <Button size="sm" variant="ghost" onClick={() => setDetailId(r.id)}><Eye className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" aria-label="View visit record" onClick={() => setDetailId(r.id)}><Eye className="h-4 w-4" /></Button>
                             {r.employer_id && (
-                              <Button size="sm" variant="ghost" onClick={() => navigate(`/compliance/field/visit/${r.employer_id}`)}>
+                              <Button size="sm" variant="ghost" aria-label="Open visit workspace" onClick={() => navigate(`/compliance/field/visit/${r.employer_id}`)}>
                                 <Building2 className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => { setEvidenceRow(r); setEvidenceFiles([]); }}>
+                            <Button size="sm" variant="ghost" aria-label="Record evidence" onClick={() => { setEvidenceRow(r); setEvidenceFiles([]); }}>
                               <Upload className="h-4 w-4" />
                             </Button>
                             {isActive ? (
