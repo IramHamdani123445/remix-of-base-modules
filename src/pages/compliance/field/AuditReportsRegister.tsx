@@ -420,12 +420,12 @@ export default function AuditReportsRegister() {
                             <Badge className={stage.className} variant="secondary">{stage.label}</Badge>
                             {r.draft_ageing && (
                               <Tooltip><TooltipTrigger asChild>
-                                <Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">Ageing</Badge>
+                                <span><Badge variant="outline" className="border-amber-500/50 text-amber-700 dark:text-amber-400">Ageing</Badge></span>
                               </TooltipTrigger><TooltipContent>Draft open for more than 7 days</TooltipContent></Tooltip>
                             )}
                             {r.missing_pdf && (
                               <Tooltip><TooltipTrigger asChild>
-                                <Badge variant="outline" className="border-destructive/50 text-destructive">No PDF</Badge>
+                                <span><Badge variant="outline" className="border-destructive/50 text-destructive">No PDF</Badge></span>
                               </TooltipTrigger><TooltipContent>Finalised without a generated document</TooltipContent></Tooltip>
                             )}
                           </div>
