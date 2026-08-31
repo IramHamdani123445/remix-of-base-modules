@@ -109,7 +109,7 @@ const CaseIntake = () => {
   };
 
   const openEmployer = (employerId: string | null) => {
-    if (employerId) navigate(`/compliance/employers/${employerId}`);
+    if (employerId) navigate(`/compliance/field/employer-360/${employerId}`);
   };
 
   const amountValue = q.filters.amount_min || q.filters.amount_max
