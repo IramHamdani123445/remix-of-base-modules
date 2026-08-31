@@ -21,6 +21,7 @@ import {
   RefreshCw,
   GitMerge,
   Sparkles,
+  AlertTriangle,
   MoreHorizontal,
   CalendarPlus,
   ScrollText,
