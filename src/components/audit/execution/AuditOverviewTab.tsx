@@ -5,6 +5,7 @@ import { Briefcase, User, Shield, Calendar, Target, TrendingUp, AlertTriangle, C
 import { formatDateForDisplay } from '@/lib/format-config';
 import { LaunchReadinessPanel } from '@/components/audit/LaunchReadinessPanel';
 import { AuditNextActionsPanel, deriveNextActions } from '@/components/audit/workspace/AuditNextActionsPanel';
+import type { NextActionKey } from '@/components/audit/workspace/AuditNextActionsPanel';
 import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
 import { AuditProgressPanel } from '@/components/audit/execution/AuditProgressPanel';
 
@@ -62,6 +63,37 @@ export function AuditOverviewTab({
     audit?.annual_plan_id ? 'Annual Plan' : 'Ad Hoc Audit';
 
   const goTo = (tab: string) => onNavigateTab?.(tab);
+
+  /**
+   * IA-POST-UAT-01 — single dispatcher for Recommended Actions.
+   * Each key resolves to the canonical governed workspace/command surface.
+   * No business mutation is performed here.
+   */
+  const dispatchRecommendedAction = (key: NextActionKey) => {
+    switch (key) {
+      // Governed launch/readiness flow lives on the Preparation surface
+      // (LaunchReadinessPanel → ia_launch_engagement).
+      case 'LAUNCH_AUDIT':
+        return goTo('preparation');
+      // Canonical execution lifecycle transition surface.
+      case 'BEGIN_FIELDWORK':
+        return goTo('activities');
+      case 'DOCUMENT_FINDINGS':
+        return goTo('findings');
+      // Finding release / response-request workflow.
+      case 'REQUEST_MANAGEMENT_RESPONSES':
+        return goTo('responses');
+      // Corrective-action tracking for this engagement.
+      case 'FOLLOW_UP_OVERDUE_ACTIONS':
+        return goTo('actions');
+      // Canonical closure workspace (governed close command + disposition).
+      case 'CLOSE_AUDIT':
+        return goTo('closure');
+      default:
+        return undefined;
+    }
+  };
+
 
   return (
     <div className="grid gap-5 md:grid-cols-3">
@@ -170,8 +202,12 @@ export function AuditOverviewTab({
           }, {
             canLaunch: auditPermissions.can('launch_department_audit'),
             canClose: auditPermissions.can('close_department_audit'),
+            canExecuteAudit: auditPermissions.can('execute_audit_activities'),
+            canManageActions: auditPermissions.can('progress_audit_actions') || auditPermissions.can('manage_audit_followups'),
           })}
+          onDispatch={dispatchRecommendedAction}
         />
+
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Execution Summary</CardTitle></CardHeader>
           <CardContent className="space-y-1">

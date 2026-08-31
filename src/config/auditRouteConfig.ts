@@ -19,6 +19,7 @@ export const AUDIT_FEATURE_FLAGS = {
   FEATURE_AUDIT_DEPARTMENT_MASTER: true,
   FEATURE_AUDIT_FUNCTION_MASTER: true,
   FEATURE_AUDIT_RISK_ASSESSMENT: true,
+  FEATURE_AUDIT_RISK_REGISTER: true,
   FEATURE_AUDIT_RISK_MATRIX: true,
   FEATURE_AUDIT_PLANS: true,
   FEATURE_AUDIT_ENGAGEMENTS: true, // "Audits"
@@ -77,6 +78,7 @@ export const auditRouteConfig: AuditRouteEntry[] = [
   { moduleKey: 'function-master', label: 'Business Functions', path: '/audit/functions', permission: 'configure_audit_system', enabled: AUDIT_FEATURE_FLAGS.FEATURE_AUDIT_FUNCTION_MASTER, category: 'reference', component: 'FunctionMaster' },
 
   // ===== Risk =====
+  { moduleKey: 'risk-register', label: 'Risk Register', path: '/audit/risk-register', permission: 'configure_audit_system', enabled: AUDIT_FEATURE_FLAGS.FEATURE_AUDIT_RISK_REGISTER, category: 'risk', component: 'RiskRegister' },
   { moduleKey: 'risk-assessment', label: 'Risk Assessment', path: '/audit/risk-assessment', permission: 'configure_audit_system', enabled: AUDIT_FEATURE_FLAGS.FEATURE_AUDIT_RISK_ASSESSMENT, category: 'risk', component: 'RiskAssessment' },
   { moduleKey: 'risk-matrix', label: 'Risk Matrix', path: '/audit/risk-matrix', permission: 'view_audit_assignments', enabled: AUDIT_FEATURE_FLAGS.FEATURE_AUDIT_RISK_MATRIX, category: 'risk', component: 'RiskMatrix' },
 
