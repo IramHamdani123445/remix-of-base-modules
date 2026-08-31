@@ -90,6 +90,12 @@ import {
 } from '@/services/bn/forms/sectionCatalogue';
 import type { PersonSummary, Dependant } from '@/services/bn/integration';
 import PaymentDetailsSection from '@/components/bn/payment/PaymentDetailsSection';
+import { validateField } from '@/lib/fieldValidationRegistry';
+import { IP_MASTER_FIELDS } from '@/lib/fieldLengths';
+
+const CONTACT_PHONE_MAX = IP_MASTER_FIELDS.contact_phone.maxLength;
+const CONTACT_EMAIL_MAX = IP_MASTER_FIELDS.contact_email.maxLength;
+
 
 
 type DocStatus = 'PROVIDED' | 'PENDING' | 'WAIVED';
