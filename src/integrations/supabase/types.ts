@@ -124812,6 +124812,27 @@ export type Database = {
           warning_message: string
         }[]
       }
+      ce_inspection_detail_v1: {
+        Args: { p_inspection_id: string }
+        Returns: Json
+      }
+      ce_inspection_identity_tokens: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
+      ce_inspection_lifecycle: { Args: { _status: string }; Returns: string }
+      ce_inspection_register_facets_v1: { Args: never; Returns: Json }
+      ce_inspection_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_inspector_workboard_analytics: {
         Args: { p_from: string; p_identities: string[]; p_to: string }
         Returns: Json
