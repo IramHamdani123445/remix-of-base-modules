@@ -57,7 +57,7 @@ export default function ClaimQueue() {
     () => Array.from(new Set(myRoles.map((r) => r.role_name))).sort(),
     [myRoles],
   );
-  const canSeeAll = roleNames.some((r) => OVERSIGHT_ROLES.includes(r));
+  const canSeeAll = roleNames.some(isOversightRole);
 
   // Deduplicate: the same basket can be reachable through several roles.
   const mineBaskets: QueueBasket[] = useMemo(() => {
