@@ -26,6 +26,71 @@ export interface CaseRequestRow {
 
 const TABLE = 'ce_case_requests' as never;
 
+/** Enterprise row shape returned by `ce_case_requests_v1`. */
+export interface CaseRequestQueueRow {
+  rn: number;
+  id: string;
+  case_id: string;
+  request_type: CaseRequestType;
+  target_case_id: string | null;
+  reason: string;
+  status: CaseRequestStatus;
+  requested_by: string;
+  requested_by_name: string | null;
+  requested_at: string;
+  reviewed_by: string | null;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  metadata: Record<string, unknown> | null;
+  case_number: string;
+  employer_id: string | null;
+  employer_name: string | null;
+  case_status: string;
+  case_priority: string;
+  case_risk_band: string;
+  case_total_amount: number;
+  closed_date: string | null;
+  closure_reason: string | null;
+  reopened_count: number;
+  legal_case_id: string | null;
+  assigned_officer_name: string | null;
+  open_violations: number;
+  arrangement_state: string | null;
+  target_case_number: string | null;
+  target_employer_id: string | null;
+  target_employer_name: string | null;
+  target_case_status: string | null;
+  waiting_hours: number;
+  waiting_days: number;
+  waiting_bucket: string;
+  sla_breached: boolean;
+  same_employer: boolean | null;
+}
+
+export interface CaseRequestPrecheck {
+  found: boolean;
+  eligible: boolean;
+  status?: CaseRequestStatus;
+  request_type?: CaseRequestType;
+  blockers: string[];
+  warnings: string[];
+  is_self_request?: boolean;
+  can_approve?: boolean;
+  can_approve_own?: boolean;
+  case?: {
+    id: string; case_number: string; status: string; employer_name: string | null;
+    employer_id: string | null; total_amount: number; open_violations: number;
+    arrangement_state: string; legal_case_id: string | null; closed_date: string | null;
+    closure_reason: string | null; reopened_count: number;
+  } | null;
+  target?: {
+    id: string; case_number: string; status: string; employer_name: string | null;
+    employer_id: string | null; total_amount: number;
+  } | null;
+}
+
+/** Legacy simple reader — retained for callers outside the approval queues. */
 export async function listCaseRequests(
   type: CaseRequestType,
   status: CaseRequestStatus = 'PENDING'
@@ -38,7 +103,7 @@ export async function listCaseRequests(
     .eq('request_type', type)
     .eq('status', status)
     .order('requested_at', { ascending: false })
-    .limit(500);
+    .limit(200);
   if (error) throw error;
   return (data || []).map((r: any) => ({
     ...r,
@@ -48,6 +113,12 @@ export async function listCaseRequests(
   }));
 }
 
+/** Re-validates a pending request at decision time. */
+export async function precheckCaseRequest(id: string): Promise<CaseRequestPrecheck> {
+  const { data, error } = await (supabase as any).rpc('ce_case_request_precheck_v1', { p_id: id });
+  if (error) throw error;
+  return data as CaseRequestPrecheck;
+}
 
 export async function createCaseRequest(input: {
   caseId: string;
@@ -65,8 +136,18 @@ export async function createCaseRequest(input: {
     requested_by: input.requestedBy,
     metadata: input.metadata ?? null,
   });
-  if (error) throw error;
+  if (error) {
+    // One open governance request per case per type (ux_ce_case_requests_one_pending).
+    if ((error as any).code === '23505') {
+      throw new Error(
+        `A pending ${input.type.toLowerCase()} request already exists for this case. ` +
+        'It must be decided or cancelled before a new one can be submitted.',
+      );
+    }
+    throw error;
+  }
 }
+
 
 export async function reviewCaseRequest(input: {
   id: string;
