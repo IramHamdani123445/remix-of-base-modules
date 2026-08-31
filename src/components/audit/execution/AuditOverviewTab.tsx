@@ -58,6 +58,7 @@ export function AuditOverviewTab({
   workspaceCounts, onNavigateTab,
 }: AuditOverviewTabProps) {
   const auditPermissions = useInternalAuditPermissions();
+  const navigate = useNavigate();
 
   const sourceLabel = audit?.engagement_type === 'Ad Hoc' ? 'Ad Hoc Audit' :
     audit?.engagement_type === 'Supplementary' ? 'Supplementary Plan' :
