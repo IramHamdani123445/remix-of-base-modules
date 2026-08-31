@@ -533,10 +533,27 @@ export default function ClaimRegistration() {
 
   // ─── Submit ──────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!selectedProduct) { toast.error('Select a benefit.'); return; }
-    if (!resolvedVersion) { toast.error('No active product version resolved.'); return; }
     const effectiveSsn = (person?.ssn ?? ssn).trim();
-    if (!effectiveSsn) { toast.error('SSN is required.'); return; }
+
+    // Field problems are shown inline and summarised in a single toast, rather
+    // than raised as one terse error toast per problem.
+    const fieldErrors: Record<string, string> = {};
+    if (!effectiveSsn) fieldErrors.ssn = 'SSN is required';
+    const phoneCheck = validateField('ip.contact_phone', contactPhone);
+    if (!phoneCheck.valid) fieldErrors.contactPhone = phoneCheck.error!;
+    const emailCheck = validateField('ip.contact_email', contactEmail);
+    if (!emailCheck.valid) fieldErrors.contactEmail = emailCheck.error!;
+    if (!selectedProduct) fieldErrors.product = 'Select a benefit';
+    if (!resolvedVersion) fieldErrors.version = 'No active product version resolved';
+
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      toast.error('Please check the form for valid information!', {
+        description: Object.values(fieldErrors).join(' · '),
+      });
+      return;
+    }
+
 
     const pendingDocs = Object.entries(docState)
       .filter(([, v]) => v.status === 'PENDING')
