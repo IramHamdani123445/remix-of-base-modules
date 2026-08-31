@@ -124435,6 +124435,7 @@ export type Database = {
         }
         Returns: string
       }
+      ce_cron_interval: { Args: { p_cron: string }; Returns: string }
       ce_detect_arrangement_breaches: {
         Args: { p_actor?: string }
         Returns: Json
@@ -124711,6 +124712,10 @@ export type Database = {
       }
       ce_mobile_get_officer_context: {
         Args: { p_user_id: string }
+        Returns: Json
+      }
+      ce_monitoring_v1: {
+        Args: { p_filters?: Json; p_window?: string }
         Returns: Json
       }
       ce_override_sector_benchmark_v1: {

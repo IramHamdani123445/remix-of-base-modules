@@ -1,0 +1,1 @@
+ALTER FUNCTION public.ce_monitoring_v1(text, jsonb) VOLATILE;
