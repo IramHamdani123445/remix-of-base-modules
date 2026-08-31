@@ -40925,48 +40925,6 @@ export type Database = {
             referencedColumns: ["inspection_id"]
           },
           {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_violation_financials"
-            referencedColumns: ["violation_id"]
-          },
-          {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_violation_ownership"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_violation_routing_eligibility"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_violations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ce_inspection_findings_inspection"
-            columns: ["inspection_id"]
-            isOneToOne: false
-            referencedRelation: "ce_inspections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ce_inspection_findings_inspection"
-            columns: ["inspection_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_visit_execution_metrics"
-            referencedColumns: ["inspection_id"]
-          },
-          {
             foreignKeyName: "fk_ce_inspection_findings_violation"
             columns: ["violation_id"]
             isOneToOne: false
@@ -124504,6 +124462,18 @@ export type Database = {
         Returns: Json
       }
       ce_compliance_role: { Args: { _user_id: string }; Returns: string }
+      ce_convert_finding_to_violation_v1: {
+        Args: {
+          p_duplicate_justification?: string
+          p_duplicate_of_id?: string
+          p_finding_id: string
+          p_principal_amount?: number
+          p_severity: string
+          p_summary: string
+          p_violation_type_id: string
+        }
+        Returns: Json
+      }
       ce_create_employer_snapshot: {
         Args: {
           p_employer_id: string
@@ -124517,6 +124487,10 @@ export type Database = {
       ce_cron_interval: { Args: { p_cron: string }; Returns: string }
       ce_detect_arrangement_breaches: {
         Args: { p_actor?: string }
+        Returns: Json
+      }
+      ce_dispose_finding_v1: {
+        Args: { p_disposition: string; p_finding_id: string; p_reason: string }
         Returns: Json
       }
       ce_e2e__activate: {
@@ -124674,6 +124648,18 @@ export type Database = {
           reference_type: string
         }[]
       }
+      ce_finding_triage_facets_v1: { Args: never; Returns: Json }
+      ce_finding_triage_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_generate_audit_report_number: { Args: never; Returns: string }
       ce_generate_employer_statement: {
         Args: {
@@ -124818,6 +124804,7 @@ export type Database = {
         Args: { p_filters?: Json; p_window?: string }
         Returns: Json
       }
+      ce_next_number_v1: { Args: { p_applies_to: string }; Returns: string }
       ce_officer_identities: { Args: { _user_id: string }; Returns: string[] }
       ce_override_sector_benchmark_v1: {
         Args: {
