@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,13 +37,20 @@ const entryTypeLabel = (t: string) => t.replace(/_/g, ' ');
 
 export default function EmployerStatementDetail() {
   const { employerId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<'detailed' | 'summary'>('detailed');
   const [fundFilter, setFundFilter] = useState('all');
   const [fromPeriod, setFromPeriod] = useState('');
-  const [toPeriod, setToPeriod] = useState('');
+  // Honour ?as_of=YYYY-MM-DD from the Statement Register so a back-dated
+  // register view opens the matching back-dated full statement.
+  const [toPeriod, setToPeriod] = useState(() => {
+    const asOf = searchParams.get('as_of');
+    return asOf && /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf.slice(0, 7) : '';
+  });
   const [typeFilter, setTypeFilter] = useState('all');
+
 
   const { data: master } = useQuery({
     queryKey: ['stmt_master', employerId],
