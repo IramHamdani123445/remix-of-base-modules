@@ -291,6 +291,7 @@ export default function ComplianceMonitoring() {
             sla={data?.sla_summary ?? null}
             urgent={data?.sla_urgent ?? []}
             loading={isLoading}
+            state={sub.sla}
             onOpen={open}
           />
         </div>
