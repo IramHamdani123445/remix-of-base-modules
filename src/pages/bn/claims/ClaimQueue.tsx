@@ -283,9 +283,11 @@ export default function ClaimQueue() {
             {baskets.length === 0 && !myBasketsLoading && (
               <p className="text-sm text-muted-foreground">
                 {scope === 'mine'
-                  ? roleNames.length > 0
-                    ? `No workbasket is configured for your role${roleNames.length > 1 ? 's' : ''} (${roleNames.join(', ')}).`
-                    : 'You hold no benefits role, so no workbasket is assigned to you.'
+                  ? canSeeAll
+                    ? 'You have no personal workbasket — switch to All baskets to work on behalf of any role.'
+                    : roleNames.length > 0
+                      ? `No workbasket is configured for your role${roleNames.length > 1 ? 's' : ''} (${roleNames.join(', ')}).`
+                      : 'You hold no benefits role, so no workbasket is assigned to you.'
                   : 'No workbaskets configured'}
               </p>
             )}
