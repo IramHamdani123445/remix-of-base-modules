@@ -124449,6 +124449,15 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_classify_finding_v1: {
+        Args: {
+          p_candidate_violation_type_id?: string
+          p_disposition: string
+          p_finding_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       ce_compliance_analytics_v1: {
         Args: {
           p_from?: string
@@ -124648,8 +124657,21 @@ export type Database = {
           reference_type: string
         }[]
       }
+      ce_finding_detail_v1: { Args: { p_finding_id: string }; Returns: Json }
       ce_finding_triage_facets_v1: { Args: never; Returns: Json }
       ce_finding_triage_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_findings_register_facets_v1: { Args: never; Returns: Json }
+      ce_findings_register_v1: {
         Args: {
           p_dir?: string
           p_export?: boolean
