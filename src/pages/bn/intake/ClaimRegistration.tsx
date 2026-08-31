@@ -526,7 +526,16 @@ export default function ClaimRegistration() {
         ) {
           return 'This product requires payment details before continuing.';
         }
+        // Account number is mandatory whenever an EFT profile is being used.
+        if (
+          paymentPolicy.payment_details_visibility !== 'HIDE' &&
+          paymentProfile?.payment_method === 'EFT' &&
+          !paymentProfile?.account_number_masked
+        ) {
+          return 'Account number is required — complete and save the payment details before continuing.';
+        }
         return null;
+
       case 'internal':
         return null;
       case 'review': return null;
