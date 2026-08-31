@@ -85,9 +85,9 @@ export function AuditOverviewTab({
       // Finding release / response-request workflow.
       case 'REQUEST_MANAGEMENT_RESPONSES':
         return goTo('responses');
-      // Action Centre filtered to this engagement.
+      // Corrective-action tracking for this engagement.
       case 'FOLLOW_UP_OVERDUE_ACTIONS':
-        return navigate(`/audit/action-centre?engagement=${auditId}&overdue=1`);
+        return goTo('actions');
       // Canonical closure workspace (governed close command + disposition).
       case 'CLOSE_AUDIT':
         return goTo('closure');
