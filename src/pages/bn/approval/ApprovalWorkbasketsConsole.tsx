@@ -296,11 +296,23 @@ export default function ApprovalWorkbasketsConsole() {
         </CardContent>
       </Card>
 
+      {loadError && (
+        <Card className="border-destructive">
+          <CardContent className="flex items-start gap-2 py-4 text-sm text-destructive">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Could not load pending approvals: {loadError.message ?? 'unknown error'}
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
       {(wbLoading || asgLoading) && (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading queues…
         </div>
       )}
+
 
       {!wbLoading && !asgLoading && filteredWorkbaskets.map((wb) => {
         const items = grouped.get(wb.id) ?? [];
