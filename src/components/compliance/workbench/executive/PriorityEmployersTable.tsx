@@ -1,5 +1,5 @@
 /**
- * Top priority employers — ranked by risk score and open exposure.
+ * Top priority employers — ranked by exposure and open violations.
  */
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,50 +46,58 @@ export function PriorityEmployersTable({ filters }: { filters: ExecFilters }) {
             No employers match the current filters.
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employer</TableHead>
-                <TableHead>Risk band</TableHead>
-                <TableHead className="text-right">Score</TableHead>
-                <TableHead className="text-right">Open violations</TableHead>
-                <TableHead className="text-right">Outstanding</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.employer_id}>
-                  <TableCell className="max-w-[220px] truncate font-medium">
-                    {r.employer_name || r.employer_id}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        ['CRITICAL', 'HIGH'].includes((r.risk_band || '').toUpperCase())
-                          ? 'destructive'
-                          : 'outline'
-                      }
-                    >
-                      {r.risk_band || 'UNRATED'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{r.risk_score ?? '—'}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {Number(r.open_violations ?? 0).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(Number(r.outstanding_amount ?? 0))}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild size="sm" variant="outline" className="h-7">
-                      <Link to={`/compliance/employers/${r.employer_id}`}>Open</Link>
-                    </Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employer</TableHead>
+                  <TableHead>Risk band</TableHead>
+                  <TableHead className="text-right">Open violations</TableHead>
+                  <TableHead className="text-right">Exposure</TableHead>
+                  <TableHead>Officer</TableHead>
+                  <TableHead>Arrangement</TableHead>
+                  <TableHead>Legal</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.employer_id}>
+                    <TableCell className="max-w-[220px] truncate font-medium">
+                      {r.employer_name || r.employer_id}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          ['CRITICAL', 'HIGH'].includes((r.risk_band || '').toUpperCase())
+                            ? 'destructive'
+                            : 'outline'
+                        }
+                      >
+                        {r.risk_band || 'UNRATED'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {Number(r.open_violations ?? 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrency(Number(r.outstanding_exposure ?? 0))}
+                    </TableCell>
+                    <TableCell className="max-w-[150px] truncate text-xs">
+                      {r.assigned_officer || 'Unassigned'}
+                    </TableCell>
+                    <TableCell className="text-xs">{r.arrangement_status || '—'}</TableCell>
+                    <TableCell className="text-xs">{r.legal_status || '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild size="sm" variant="outline" className="h-7">
+                        <Link to={`/compliance/employers/${r.employer_id}`}>Open</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
