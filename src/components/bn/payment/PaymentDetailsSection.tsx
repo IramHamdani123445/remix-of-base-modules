@@ -133,9 +133,19 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
     [policy.allowed_payment_methods],
   );
 
+  function clearError(key: string) {
+    setErrors((p) => {
+      if (!p[key]) return p;
+      const next = { ...p };
+      delete next[key];
+      return next;
+    });
+  }
+
   function update<K extends keyof BnPaymentProfileDraft>(k: K, v: BnPaymentProfileDraft[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
   }
+
   function updateAddr(k: keyof NonNullable<BnPaymentProfileDraft['postal_address_snapshot']>, v: string) {
     setDraft((d) => ({ ...d, postal_address_snapshot: { ...(d.postal_address_snapshot ?? {}), [k]: v } }));
   }
