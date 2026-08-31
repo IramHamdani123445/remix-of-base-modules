@@ -184,23 +184,33 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
   }
 
   async function handleSubmit() {
+    const fieldErrors: Record<string, string> = {};
     if (draft.payment_method === 'EFT') {
-      if (!draft.bank_code || !draft.branch_code || (!rawAccount && !draft.account_number_masked) || !draft.account_holder_name) {
-        toast.error('Please select bank, branch and complete account number and holder name');
-        return;
+      if (!draft.bank_code) fieldErrors.bank = 'Bank is required';
+      if (!draft.branch_code) fieldErrors.branch = 'Branch is required';
+      if (!rawAccount.trim() && !draft.account_number_masked) {
+        fieldErrors.account_number = 'Account number is required';
+      } else if (rawAccount.trim() && !/^[0-9]{4,20}$/.test(rawAccount.trim())) {
+        fieldErrors.account_number = 'Account number must be 4–20 digits';
       }
+      if (!draft.account_holder_name?.trim()) fieldErrors.account_holder_name = 'Account holder name is required';
     }
     if (draft.payment_method === 'CHEQUE' && policy.cheque_address_required) {
       const a = draft.postal_address_snapshot;
-      if (!a?.line1 || !a?.city) {
-        toast.error('Postal address (line 1 and city) is required for cheque payments');
-        return;
-      }
+      if (!a?.line1) fieldErrors.line1 = 'Postal address line 1 is required for cheque payments';
+      if (!a?.city) fieldErrors.city = 'City is required for cheque payments';
     }
-    if (policy.require_proof_for_change && !reason) {
-      toast.error('Please provide a reason for this change');
+    if (policy.require_proof_for_change && !reason.trim()) {
+      fieldErrors.reason = 'Please provide a reason for this change';
+    }
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      toast.error('Please check the payment details for valid information!', {
+        description: Object.values(fieldErrors).join(' • '),
+      });
       return;
     }
+
 
     const masked = rawAccount ? maskAccount(rawAccount) : draft.account_number_masked ?? null;
 
