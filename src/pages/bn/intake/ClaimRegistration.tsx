@@ -1339,6 +1339,19 @@ export default function ClaimRegistration() {
 
             {step === 'review' && (
               <StepCard title="10. Review & Submit" desc="Submitting creates the claim, captures snapshots, and starts the workflow.">
+                {Object.keys(errors).length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Cannot submit yet</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {Object.values(errors).map((msg, i) => (
+                          <li key={i}>{msg}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <ReviewLine k="Claimant" v={person ? `${person.fullName} (${person.ssn})` : pendingVerification ? `${pendingPerson.firstName} ${pendingPerson.lastName} (pending verification)` : '—'} />
                 <ReviewLine k="Benefit" v={selectedProduct ? `${(selectedProduct as any).benefit_name} (${(selectedProduct as any).benefit_code})` : '—'} />
                 <ReviewLine k="Claim Date" v={formatDateForDisplay(claimDate)} />
