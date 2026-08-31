@@ -174,6 +174,7 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
       account_type: null,
     }));
     setRawAccount('');
+    setErrors({});
 
     const prof = await getActiveProfile(personSsn, {
       payeeId, method: newMethod, currency: draft.payment_currency ?? 'XCD',
@@ -262,6 +263,7 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
       }).catch((e) => console.warn('[PaymentDetails] audit failed', e));
 
       setRawAccount('');
+      setErrors({});
       onSaved?.(result);
       const [prof, pend] = await Promise.all([
         getActiveProfile(personSsn, { payeeId, currency: 'XCD' }),
