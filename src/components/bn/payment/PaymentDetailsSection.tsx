@@ -341,7 +341,7 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
             {draft.payment_method === 'EFT' && (
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <Label>Bank</Label>
+                  <Label>Bank <span className="text-destructive">*</span></Label>
                   <BankSelector
                     value={draft.bank_code ?? ''}
                     countryCode={countryCode}
@@ -354,11 +354,14 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                         branch_code: null,
                         branch_name: null,
                       }));
+                      clearError('bank');
                     }}
+                    className={errors.bank ? 'border-destructive' : undefined}
                   />
+                  {errors.bank && <p className="text-xs text-destructive mt-1">{errors.bank}</p>}
                 </div>
                 <div>
-                  <Label>Branch</Label>
+                  <Label>Branch <span className="text-destructive">*</span></Label>
                   <BranchSelector
                     bankCode={draft.bank_code ?? null}
                     value={draft.branch_code ?? ''}
@@ -368,17 +371,37 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                         branch_code: br?.branch_code ?? null,
                         branch_name: br?.branch_name ?? null,
                       }));
+                      clearError('branch');
                     }}
+                    className={errors.branch ? 'border-destructive' : undefined}
                   />
+                  {errors.branch && <p className="text-xs text-destructive mt-1">{errors.branch}</p>}
                 </div>
                 <div>
-                  <Label>Account number</Label>
+                  <Label>Account number <span className="text-destructive">*</span></Label>
                   <Input
+                    inputMode="numeric"
+                    maxLength={20}
+                    aria-invalid={!!errors.account_number}
                     placeholder={draft.account_number_masked ?? '••••1234'}
                     value={rawAccount}
-                    onChange={(e) => setRawAccount(e.target.value)}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 20);
+                      setRawAccount(digits);
+                      clearError('account_number');
+                    }}
+                    onBlur={() => {
+                      if (!rawAccount.trim() && !draft.account_number_masked) {
+                        setErrors((p) => ({ ...p, account_number: 'Account number is required' }));
+                      } else if (rawAccount.trim() && rawAccount.trim().length < 4) {
+                        setErrors((p) => ({ ...p, account_number: 'Account number must be 4–20 digits' }));
+                      }
+                    }}
+                    className={errors.account_number ? 'border-destructive focus-visible:ring-destructive' : undefined}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Stored masked; raw digits never displayed back.</p>
+                  {errors.account_number
+                    ? <p className="text-xs text-destructive mt-1">{errors.account_number}</p>
+                    : <p className="text-xs text-muted-foreground mt-1">Stored masked; raw digits never displayed back.</p>}
                 </div>
                 <div>
                   <Label>Account type</Label>
@@ -395,9 +418,16 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                   </Select>
                 </div>
                 <div>
-                  <Label>Account holder name</Label>
-                  <Input value={draft.account_holder_name ?? ''} onChange={(e) => update('account_holder_name', e.target.value)} />
+                  <Label>Account holder name <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={draft.account_holder_name ?? ''}
+                    aria-invalid={!!errors.account_holder_name}
+                    onChange={(e) => { update('account_holder_name', e.target.value); clearError('account_holder_name'); }}
+                    className={errors.account_holder_name ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                  />
+                  {errors.account_holder_name && <p className="text-xs text-destructive mt-1">{errors.account_holder_name}</p>}
                 </div>
+
                 {(policy.allow_third_party_payee || policy.allow_guardian_payee) && (
                   <div>
                     <Label>Holder relationship</Label>
