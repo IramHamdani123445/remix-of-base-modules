@@ -711,7 +711,7 @@ export default function ClaimRegistration() {
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
-    <PermissionWrapper moduleName="bn_claims">
+    <PermissionWrapper moduleName="bn_register_claim">
       <div className="p-6 space-y-4">
         <header className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/bn/claims')}>
