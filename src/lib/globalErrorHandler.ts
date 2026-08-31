@@ -46,8 +46,10 @@ export async function logApplicationError(
     let userId = context.user_id;
     if (!userId) {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        userId = user?.id;
+        // Local session only — a failing auth-server call during error
+        // logging must never clear the user's session.
+        const { data: { session } } = await supabase.auth.getSession();
+        userId = session?.user?.id;
       } catch {
         // Ignore auth errors during error logging
       }
