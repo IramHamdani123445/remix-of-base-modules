@@ -264,7 +264,7 @@ export default function ComplianceMonitoring() {
                   onClick={() => setFilters(prev => ({
                     ...prev,
                     ...Object.fromEntries(Object.entries(c.patch).map(([kk, vv]) =>
-                      [kk, (prev as Record<string, string | null>)[kk] === vv ? null : vv])),
+                      [kk, (prev as unknown as Record<string, string | null>)[kk] === vv ? null : vv])),
                   }))}
                 >
                   {c.label}
