@@ -124454,6 +124454,18 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_case_requests_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+          p_status?: string
+          p_type: string
+        }
+        Returns: Json
+      }
       ce_compliance_analytics_v1: {
         Args: {
           p_from?: string
