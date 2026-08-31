@@ -255,7 +255,7 @@ export default function ComplianceMonitoring() {
           <div className="w-full flex flex-wrap gap-1.5 pt-1">
             {QUICK_CHIPS.map(c => {
               const active = Object.entries(c.patch)
-                .every(([kk, vv]) => (filters as Record<string, string | null>)[kk] === vv);
+                .every(([kk, vv]) => (filters as unknown as Record<string, string | null>)[kk] === vv);
               return (
                 <Badge
                   key={c.label}
