@@ -90,6 +90,12 @@ import {
 } from '@/services/bn/forms/sectionCatalogue';
 import type { PersonSummary, Dependant } from '@/services/bn/integration';
 import PaymentDetailsSection from '@/components/bn/payment/PaymentDetailsSection';
+import { validateField } from '@/lib/fieldValidationRegistry';
+import { IP_MASTER_FIELDS } from '@/lib/fieldLengths';
+
+const CONTACT_PHONE_MAX = IP_MASTER_FIELDS.contact_phone.maxLength;
+const CONTACT_EMAIL_MAX = IP_MASTER_FIELDS.contact_email.maxLength;
+
 
 
 type DocStatus = 'PROVIDED' | 'PENDING' | 'WAIVED';
@@ -201,7 +207,22 @@ export default function ClaimRegistration() {
   );
 
   // ─── Step 1 — SSN lookup ─────────────────────────────────────────
+  function handleContactChange(field: 'contactPhone' | 'contactEmail', value: string) {
+    if (field === 'contactPhone') setContactPhone(value); else setContactEmail(value);
+    const result = validateField(
+      field === 'contactPhone' ? 'ip.contact_phone' : 'ip.contact_email',
+      value,
+    );
+    setErrors(prev => {
+      const next = { ...prev };
+      if (result.valid) delete next[field];
+      else next[field] = result.error!;
+      return next;
+    });
+  }
+
   async function handleSsnLookup() {
+
     const v = ssn.trim();
     if (!v) {
       setErrors(e => ({ ...e, ssn: 'SSN is required' }));
@@ -533,10 +554,27 @@ export default function ClaimRegistration() {
 
   // ─── Submit ──────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!selectedProduct) { toast.error('Select a benefit.'); return; }
-    if (!resolvedVersion) { toast.error('No active product version resolved.'); return; }
     const effectiveSsn = (person?.ssn ?? ssn).trim();
-    if (!effectiveSsn) { toast.error('SSN is required.'); return; }
+
+    // Field problems are shown inline and summarised in a single toast, rather
+    // than raised as one terse error toast per problem.
+    const fieldErrors: Record<string, string> = {};
+    if (!effectiveSsn) fieldErrors.ssn = 'SSN is required';
+    const phoneCheck = validateField('ip.contact_phone', contactPhone);
+    if (!phoneCheck.valid) fieldErrors.contactPhone = phoneCheck.error!;
+    const emailCheck = validateField('ip.contact_email', contactEmail);
+    if (!emailCheck.valid) fieldErrors.contactEmail = emailCheck.error!;
+    if (!selectedProduct) fieldErrors.product = 'Select a benefit';
+    if (!resolvedVersion) fieldErrors.version = 'No active product version resolved';
+
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      toast.error('Please check the form for valid information!', {
+        description: Object.values(fieldErrors).join(' · '),
+      });
+      return;
+    }
+
 
     const pendingDocs = Object.entries(docState)
       .filter(([, v]) => v.status === 'PENDING')
@@ -699,7 +737,11 @@ export default function ClaimRegistration() {
                   <Input
                     placeholder="Enter SSN…"
                     value={ssn}
-                    onChange={e => setSsn(e.target.value)}
+                    className={errors.ssn ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                    onChange={e => {
+                      setSsn(e.target.value);
+                      setErrors(prev => { const n = { ...prev }; delete n.ssn; return n; });
+                    }}
                     onKeyDown={e => e.key === 'Enter' && handleSsnLookup()}
                   />
                   <Button onClick={handleSsnLookup} disabled={personLoading}>
@@ -707,6 +749,8 @@ export default function ClaimRegistration() {
                     <span className="ml-1">Search</span>
                   </Button>
                 </div>
+                {errors.ssn && <p className="text-xs text-destructive mt-1">{errors.ssn}</p>}
+
                 {personError && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -1226,8 +1270,24 @@ export default function ClaimRegistration() {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Contact Phone"><Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} /></Field>
-                  <Field label="Contact Email"><Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} /></Field>
+                  <Field label="Contact Phone" error={errors.contactPhone}>
+                    <Input
+                      value={contactPhone}
+                      maxLength={CONTACT_PHONE_MAX}
+                      className={errors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                      onChange={e => handleContactChange('contactPhone', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Contact Email" error={errors.contactEmail}>
+                    <Input
+                      type="email"
+                      value={contactEmail}
+                      maxLength={CONTACT_EMAIL_MAX}
+                      className={errors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                      onChange={e => handleContactChange('contactEmail', e.target.value)}
+                    />
+                  </Field>
+
                 </div>
                 <Field label="Internal Notes">
                   <Textarea value={internalNotes} onChange={e => setInternalNotes(e.target.value)} rows={3} maxLength={500} />
@@ -1344,14 +1404,16 @@ function StepCard({ title, desc, children }: { title: string; desc?: string; chi
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       {children}
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   );
 }
+
 
 function Detail({ k, v }: { k: string; v: any }) {
   return (
