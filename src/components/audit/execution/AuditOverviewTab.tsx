@@ -205,7 +205,7 @@ export function AuditOverviewTab({
             canLaunch: auditPermissions.can('launch_department_audit'),
             canClose: auditPermissions.can('close_department_audit'),
             canExecuteAudit: auditPermissions.can('execute_audit_activities'),
-            canManageActions: auditPermissions.can('manage_audit_actions'),
+            canManageActions: auditPermissions.can('progress_audit_actions') || auditPermissions.can('manage_audit_followups'),
           })}
           onDispatch={dispatchRecommendedAction}
         />
