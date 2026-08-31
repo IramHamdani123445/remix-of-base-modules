@@ -10,6 +10,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { PlanCandidate, PlanCandidateV2, PlanCandidateV3, RecommendationReason } from '@/types/weeklyPlan';
+import { normalisePlanCandidatesV3 } from '@/services/planCandidateNormalizer';
 
 // ── Candidate Reason labels for UI ─────────────────────────
 
@@ -233,43 +234,18 @@ export const planCandidateService = {
     );
     if (error) throw error;
 
-    return ((data as any[]) ?? []).map((row: any) => ({
-      employer_id: row.employer_id ?? '',
-      employer_name: row.employer_name,
-      territory: row.territory,
-      zone_id: row.zone_id ?? null,
-      audit_program: row.audit_program ?? null,
-      candidate_source: row.candidate_source ?? '',
-      candidate_reason: row.candidate_reason ?? 'OPEN_VIOLATION',
-      derived_priority: row.derived_priority ?? 'MEDIUM',
-      risk_band: row.risk_band,
-      risk_score: Number(row.risk_score ?? 0),
-      inherent_risk_score: Number(row.inherent_risk_score ?? row.risk_score ?? 0),
-      audit_priority_score: Number(row.audit_priority_score ?? row.recommendation_score ?? 0),
-      days_since_last_inspection: row.days_since_last_inspection,
-      last_audit_date: row.last_audit_date ?? null,
-      next_due_date: row.next_due_date ?? null,
-      overdue_days: Number(row.overdue_days ?? 0),
-      open_violation_count: Number(row.open_violation_count ?? 0),
-      escalated_violation_count: Number(row.escalated_violation_count ?? 0),
-      overdue_followup_count: Number(row.overdue_followup_count ?? 0),
-      violation_count: Number(row.violation_count ?? row.open_violation_count ?? 0),
-      case_count: Number(row.case_count ?? 0),
-      financial_exposure: Number(row.financial_exposure ?? 0),
-      notice_days_remaining: row.notice_days_remaining,
-      any_breach_detected: Boolean(row.any_breach_detected),
-      carry_forward_count: Number(row.carry_forward_count ?? 0),
-      audit_cycle_due_date: row.audit_cycle_due_date ?? null,
-      cycle_overdue_days: Number(row.cycle_overdue_days ?? 0),
-      is_cycle_overdue: Boolean(row.is_cycle_overdue),
-      recommendation_score: Number(row.recommendation_score ?? row.audit_priority_score ?? 0),
-      recommendation_reasons: (row.recommendation_reasons ?? []) as RecommendationReason[],
-      why_selected: row.why_selected ?? null,
-      mandatory_class: (row.mandatory_class ?? 'WATCHLIST') as PlanCandidateV3['mandatory_class'],
-      bucket: (row.bucket ?? 'CAMPAIGN_INTEL') as PlanCandidateV3['bucket'],
-      estimated_effort: Number(row.estimated_effort ?? 0),
-    }));
+    // Normalise at the service boundary: a single malformed engine row must
+    // never be able to crash or silently distort the planning workspace.
+    const batch = normalisePlanCandidatesV3((data as unknown[]) ?? []);
+    if (batch.rejected.length > 0 || batch.degradedCount > 0) {
+      console.warn(
+        `[planCandidateService] candidate data quality: ${batch.rejected.length} rejected, ${batch.degradedCount} degraded`,
+        batch.rejected.slice(0, 5),
+      );
+    }
+    return batch.candidates;
   },
+
 
   /** Phase 3: Read the configurable bucket allocation policy. */
   async getBucketPolicy() {
