@@ -78,7 +78,7 @@ export default function ClaimQueue() {
     return Array.from(map.values()).sort((a, b) => a.basket_name.localeCompare(b.basket_name));
   }, [myBaskets]);
 
-  // Oversight users with no basket of their own start on the全 "All baskets" scope.
+  // Oversight users with no basket of their own start on the "All baskets" scope.
   const autoSwitched = useRef(false);
   useEffect(() => {
     if (autoSwitched.current || myBasketsLoading) return;
