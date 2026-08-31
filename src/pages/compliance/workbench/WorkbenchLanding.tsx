@@ -32,5 +32,11 @@ export default function WorkbenchLanding() {
   }
 
   const copy = COPY[role];
+
+  if (role === 'head') {
+    return <HeadWorkbench title={copy.title} subtitle={copy.subtitle} />;
+  }
+
   return <RoleWorkbench role={role} title={copy.title} subtitle={copy.subtitle} />;
 }
+
