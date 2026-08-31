@@ -39,6 +39,13 @@ interface Workbasket {
   is_active: boolean;
 }
 
+interface ClaimCalculation {
+  calc_date: string | null;
+  monthly_rate: number | null;
+  weekly_rate: number | null;
+  lump_sum: number | null;
+}
+
 interface Assignment {
   id: string;
   claim_id: string;
@@ -51,9 +58,20 @@ interface Assignment {
     id: string;
     claim_number?: string | null;
     status?: string | null;
-    total_amount?: number | null;
     bn_product?: { benefit_code?: string; benefit_name?: string; category?: string } | null;
+    bn_claim_calculation?: ClaimCalculation[] | null;
   } | null;
+}
+
+/** Latest calculation amount for a claim: monthly → weekly → lump sum. */
+function claimAmount(a: Assignment): number | null {
+  const calcs = a.bn_claim?.bn_claim_calculation ?? [];
+  if (!calcs.length) return null;
+  const latest = [...calcs].sort(
+    (x, y) => new Date(y.calc_date ?? 0).getTime() - new Date(x.calc_date ?? 0).getTime(),
+  )[0];
+  const v = latest.monthly_rate ?? latest.weekly_rate ?? latest.lump_sum;
+  return v == null ? null : Number(v);
 }
 
 function priorityLabel(p: number): { label: string; tone: 'default' | 'secondary' | 'destructive' } {
@@ -86,8 +104,9 @@ async function fetchAssignments(): Promise<Assignment[]> {
     .select(
       `id, claim_id, workbasket_id, priority, assigned_at, due_at, assigned_to,
        bn_claim:claim_id (
-         id, claim_number, status, total_amount,
-         bn_product:product_id ( benefit_code, benefit_name, category )
+         id, claim_number, status,
+         bn_product:product_id ( benefit_code, benefit_name, category ),
+         bn_claim_calculation ( calc_date, monthly_rate, weekly_rate, lump_sum )
        )`
     )
     .eq('is_active', true)
@@ -98,6 +117,19 @@ async function fetchAssignments(): Promise<Assignment[]> {
   if (error) throw error;
   return (data ?? []) as Assignment[];
 }
+
+async function fetchAssigneeNames(ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const { data, error } = await (supabase as any)
+    .from('profiles')
+    .select('id, full_name, email')
+    .in('id', ids);
+  if (error) return {};
+  const map: Record<string, string> = {};
+  for (const p of data ?? []) map[p.id] = p.full_name || p.email || p.id;
+  return map;
+}
+
 
 export default function ApprovalWorkbasketsConsole() {
   const [workbasketId, setWorkbasketId] = useState<string>('ALL');
