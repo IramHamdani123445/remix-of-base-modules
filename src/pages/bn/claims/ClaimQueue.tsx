@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,13 @@ import { UnroutedClaimsPanel } from '@/components/bn/claims/UnroutedClaimsPanel'
 
 /** Roles allowed to look beyond their own baskets. */
 const OVERSIGHT_ROLES = ['BN_SUPERVISOR', 'BN_MANAGER', 'BN_DIRECTOR', 'BN_CONFIG_ADMIN'];
+/** Generic oversight markers so tenant role names (Admin, LEGAL_ADMIN, FinanceManager…) count too. */
+const OVERSIGHT_MARKERS = ['ADMIN', 'SUPERVISOR', 'MANAGER', 'DIRECTOR'];
+
+const isOversightRole = (role: string) => {
+  const upper = (role || '').toUpperCase();
+  return OVERSIGHT_ROLES.includes(upper) || OVERSIGHT_MARKERS.some((m) => upper.includes(m));
+};
 
 interface QueueBasket {
   id: string;
@@ -50,7 +57,7 @@ export default function ClaimQueue() {
     () => Array.from(new Set(myRoles.map((r) => r.role_name))).sort(),
     [myRoles],
   );
-  const canSeeAll = roleNames.some((r) => OVERSIGHT_ROLES.includes(r));
+  const canSeeAll = roleNames.some(isOversightRole);
 
   // Deduplicate: the same basket can be reachable through several roles.
   const mineBaskets: QueueBasket[] = useMemo(() => {
@@ -70,6 +77,17 @@ export default function ClaimQueue() {
     }
     return Array.from(map.values()).sort((a, b) => a.basket_name.localeCompare(b.basket_name));
   }, [myBaskets]);
+
+  // Oversight users with no basket of their own start on the "All baskets" scope.
+  const autoSwitched = useRef(false);
+  useEffect(() => {
+    if (autoSwitched.current || myBasketsLoading) return;
+    if (canSeeAll && mineBaskets.length === 0) {
+      autoSwitched.current = true;
+      setScope('all');
+    }
+  }, [canSeeAll, mineBaskets.length, myBasketsLoading]);
+
 
   const baskets: QueueBasket[] =
     scope === 'all'
@@ -265,9 +283,11 @@ export default function ClaimQueue() {
             {baskets.length === 0 && !myBasketsLoading && (
               <p className="text-sm text-muted-foreground">
                 {scope === 'mine'
-                  ? roleNames.length > 0
-                    ? `No workbasket is configured for your role${roleNames.length > 1 ? 's' : ''} (${roleNames.join(', ')}).`
-                    : 'You hold no benefits role, so no workbasket is assigned to you.'
+                  ? canSeeAll
+                    ? 'You have no personal workbasket — switch to All baskets to work on behalf of any role.'
+                    : roleNames.length > 0
+                      ? `No workbasket is configured for your role${roleNames.length > 1 ? 's' : ''} (${roleNames.join(', ')}).`
+                      : 'You hold no benefits role, so no workbasket is assigned to you.'
                   : 'No workbaskets configured'}
               </p>
             )}
