@@ -1344,14 +1344,16 @@ function StepCard({ title, desc, children }: { title: string; desc?: string; chi
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       {children}
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   );
 }
+
 
 function Detail({ k, v }: { k: string; v: any }) {
   return (
