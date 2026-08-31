@@ -40737,7 +40737,7 @@ export type Database = {
           gps_lat: number | null
           gps_lng: number | null
           id: string
-          inspection_id: string
+          inspection_id: string | null
           plan_item_id: string | null
           updated_at: string
           updated_by: string | null
@@ -40757,7 +40757,7 @@ export type Database = {
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
-          inspection_id: string
+          inspection_id?: string | null
           plan_item_id?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -40777,7 +40777,7 @@ export type Database = {
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
-          inspection_id?: string
+          inspection_id?: string | null
           plan_item_id?: string | null
           updated_at?: string
           updated_by?: string | null
