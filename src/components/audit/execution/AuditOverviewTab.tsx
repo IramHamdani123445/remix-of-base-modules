@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/common';
 import { Briefcase, User, Shield, Calendar, Target, TrendingUp, AlertTriangle, CheckCircle, Clock, MessageSquare, Paperclip, FolderOpen, ClipboardCheck, Search, BarChart3, ArrowRight } from 'lucide-react';
@@ -58,7 +57,6 @@ export function AuditOverviewTab({
   workspaceCounts, onNavigateTab,
 }: AuditOverviewTabProps) {
   const auditPermissions = useInternalAuditPermissions();
-  const navigate = useNavigate();
 
   const sourceLabel = audit?.engagement_type === 'Ad Hoc' ? 'Ad Hoc Audit' :
     audit?.engagement_type === 'Supplementary' ? 'Supplementary Plan' :
