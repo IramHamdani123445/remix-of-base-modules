@@ -25,6 +25,13 @@ import { UnroutedClaimsPanel } from '@/components/bn/claims/UnroutedClaimsPanel'
 
 /** Roles allowed to look beyond their own baskets. */
 const OVERSIGHT_ROLES = ['BN_SUPERVISOR', 'BN_MANAGER', 'BN_DIRECTOR', 'BN_CONFIG_ADMIN'];
+/** Generic oversight markers so tenant role names (Admin, LEGAL_ADMIN, FinanceManager…) count too. */
+const OVERSIGHT_MARKERS = ['ADMIN', 'SUPERVISOR', 'MANAGER', 'DIRECTOR'];
+
+const isOversightRole = (role: string) => {
+  const upper = (role || '').toUpperCase();
+  return OVERSIGHT_ROLES.includes(upper) || OVERSIGHT_MARKERS.some((m) => upper.includes(m));
+};
 
 interface QueueBasket {
   id: string;
