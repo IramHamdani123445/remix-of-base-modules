@@ -124412,6 +124412,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      ce_case_queue_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_case_register_v1: {
         Args: {
           p_dir?: string
