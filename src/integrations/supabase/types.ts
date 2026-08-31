@@ -117507,6 +117507,29 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_priority_employers: {
+        Row: {
+          arrangement_status: string | null
+          assigned_officer: string | null
+          employer_id: string | null
+          employer_name: string | null
+          legal_status: string | null
+          oldest_issue: string | null
+          open_violations: number | null
+          outstanding_exposure: number | null
+          risk_band: string | null
+          risk_score: number | null
+        }
+        Relationships: []
+      }
+      ce_v_risk_band_summary: {
+        Row: {
+          avg_score: number | null
+          employer_count: number | null
+          risk_band: string | null
+        }
+        Relationships: []
+      }
       ce_v_unobserved_payment_entries: {
         Row: {
           credit_amount: number | null
@@ -117522,6 +117545,14 @@ export type Database = {
           posted_by: string | null
           reference_id: string | null
           reference_type: string | null
+        }
+        Relationships: []
+      }
+      ce_v_violation_ageing: {
+        Row: {
+          bucket: string | null
+          bucket_order: number | null
+          open_count: number | null
         }
         Relationships: []
       }
@@ -117615,6 +117646,23 @@ export type Database = {
           resolved_count: number | null
         }
         Relationships: []
+      }
+      ce_v_violation_type_mix: {
+        Row: {
+          open_count: number | null
+          type_code: string | null
+          type_name: string | null
+          violation_type_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_violations_violation_type_id_fkey"
+            columns: ["violation_type_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violation_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_v_visit_execution_metrics: {
         Row: {
