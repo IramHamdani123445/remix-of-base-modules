@@ -81,7 +81,8 @@ function dispositionTone(code: string) {
   }
 }
 
-function ageTone(days: number, pending: boolean) {
+function ageTone(rawDays: number, pending: boolean) {
+  const days = Math.round(Number(rawDays) || 0);
   if (!pending) return 'text-muted-foreground';
   if (days >= 15) return 'text-destructive font-medium';
   if (days >= 8) return 'text-orange-600 dark:text-orange-400';
@@ -146,7 +147,7 @@ export default function EmployerFindings() {
           outcome: clean(r.violation_outcome),
           violation_number: r.violation_number || '',
           evidence_count: r.evidence_count,
-          age_days: r.age_days,
+          age_days: Math.max(0, Math.round(Number(r.age_days) || 0)),
           inspector: r.inspector_name || 'Unassigned',
           territory: clean(r.territory),
           reviewed_by: r.reviewed_by || '',
@@ -500,7 +501,7 @@ export default function EmployerFindings() {
                             )}
                           </TableCell>
                           <TableCell className={`text-xs whitespace-nowrap ${ageTone(r.age_days, pending)}`}>
-                            {r.age_days}d
+                            {Math.max(0, Math.round(Number(r.age_days) || 0))}d
                           </TableCell>
                           <TableCell className="text-right whitespace-nowrap">
                             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openDetail(r); }}>
