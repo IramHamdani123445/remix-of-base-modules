@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Users, RefreshCw, Plus, Pencil, Power } from "lucide-react";
+import {
+  Loader2, Users, RefreshCw, Plus, Pencil, Power, Search, X,
+  ArrowUpDown, ArrowUp, ArrowDown, Inbox,
+} from "lucide-react";
 import { toast } from "sonner";
+import { useComplianceWorkQueue } from "@/hooks/compliance/useComplianceWorkQueue";
+import { WorkQueueToolbar, WorkQueuePagination } from "@/components/compliance/workbench/WorkQueueToolbar";
 
 interface QueueRow {
   id: string;
@@ -33,6 +39,10 @@ const QUEUE_TYPES = [
   { value: "FLB", label: "Fallback", color: "bg-gray-100 text-gray-800" },
 ];
 
+type DefSortKey = "queue_code" | "queue_name" | "queue_type" | "zone_name" | "member_count" | "priority" | "is_active";
+
+const ANY = "__ANY__";
+
 export default function AssignmentQueues() {
   const [queues, setQueues] = useState<QueueRow[]>([]);
   const [zones, setZones] = useState<ZoneOption[]>([]);
@@ -43,6 +53,14 @@ export default function AssignmentQueues() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  // Enterprise filters for the queue-definition table
+  const [defSearch, setDefSearch] = useState("");
+  const [defType, setDefType] = useState<string>(ANY);
+  const [defZone, setDefZone] = useState<string>(ANY);
+  const [defStatus, setDefStatus] = useState<string>(ANY);
+  const [defSort, setDefSort] = useState<DefSortKey>("queue_type");
+  const [defDir, setDefDir] = useState<"asc" | "desc">("asc");
+
   const fetchQueues = useCallback(async () => {
     setLoading(true);
     const [{ data }, { data: zoneData }] = await Promise.all([
@@ -51,7 +69,6 @@ export default function AssignmentQueues() {
     ]);
     setZones(zoneData || []);
 
-    const zoneIds = [...new Set((data || []).map((q: any) => q.zone_id).filter(Boolean))];
     const zoneMap = Object.fromEntries((zoneData || []).map(z => [z.id, z.zone_name]));
 
     const { data: members } = await supabase.from("ce_queue_members").select("queue_id");
@@ -69,6 +86,43 @@ export default function AssignmentQueues() {
   useEffect(() => { fetchQueues(); }, [fetchQueues]);
 
   const typeColor = (t: string) => QUEUE_TYPES.find(qt => qt.value === t)?.color || "bg-muted text-muted-foreground";
+
+  const visibleQueues = useMemo(() => {
+    const term = defSearch.trim().toLowerCase();
+    let rows = queues.filter((q) => {
+      if (term && !(`${q.queue_code} ${q.queue_name} ${q.zone_name ?? ""}`.toLowerCase().includes(term))) return false;
+      if (defType !== ANY && q.queue_type !== defType) return false;
+      if (defZone !== ANY && q.zone_id !== defZone) return false;
+      if (defStatus === "active" && !q.is_active) return false;
+      if (defStatus === "inactive" && q.is_active) return false;
+      return true;
+    });
+    const mul = defDir === "asc" ? 1 : -1;
+    rows = [...rows].sort((a, b) => {
+      const av = a[defSort] as any;
+      const bv = b[defSort] as any;
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * mul;
+      return String(av).localeCompare(String(bv)) * mul;
+    });
+    return rows;
+  }, [queues, defSearch, defType, defZone, defStatus, defSort, defDir]);
+
+  const defFilterCount = (defSearch.trim() ? 1 : 0) + (defType !== ANY ? 1 : 0) + (defZone !== ANY ? 1 : 0) + (defStatus !== ANY ? 1 : 0);
+
+  const toggleDefSort = (key: DefSortKey) => {
+    if (defSort === key) setDefDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setDefSort(key); setDefDir("asc"); }
+  };
+
+  const sortIcon = (key: DefSortKey) => {
+    if (defSort !== key) return <ArrowUpDown className="ml-1 inline h-3 w-3 text-muted-foreground" />;
+    return defDir === "asc"
+      ? <ArrowUp className="ml-1 inline h-3 w-3" />
+      : <ArrowDown className="ml-1 inline h-3 w-3" />;
+  };
 
   const openCreate = () => { setEditing(null); setForm({ queue_code: "", queue_name: "", queue_type: "OPS", zone_id: "", is_default: false, priority: 10, is_active: true }); setErrors({}); setDialogOpen(true); };
   const openEdit = (q: QueueRow) => { setEditing(q); setForm({ queue_code: q.queue_code, queue_name: q.queue_name, queue_type: q.queue_type, zone_id: q.zone_id, is_default: q.is_default, priority: q.priority || 10, is_active: q.is_active }); setErrors({}); setDialogOpen(true); };
@@ -133,27 +187,92 @@ export default function AssignmentQueues() {
         </div>
       </div>
 
+      <AssignableWorkPanel />
+
       <Card>
-        <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Users className="h-5 w-5" /> All Queues ({queues.length})</CardTitle></CardHeader>
-        <CardContent>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Users className="h-5 w-5" /> All Queues ({visibleQueues.length}
+            {defFilterCount > 0 && visibleQueues.length !== queues.length ? ` of ${queues.length}` : ""})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1 max-w-sm">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={defSearch}
+                onChange={(e) => setDefSearch(e.target.value)}
+                placeholder="Search code, name or zone"
+                className="pl-8"
+              />
+              {defSearch && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => setDefSearch("")}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Select value={defType} onValueChange={setDefType}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>All types</SelectItem>
+                {QUEUE_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.value} – {t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={defZone} onValueChange={setDefZone}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Zone" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>All zones</SelectItem>
+                {zones.map((z) => <SelectItem key={z.id} value={z.id}>{z.zone_code} – {z.zone_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={defStatus} onValueChange={setDefStatus}>
+              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            {defFilterCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setDefSearch(""); setDefType(ANY); setDefZone(ANY); setDefStatus(ANY); }}
+              >
+                Reset filters
+              </Button>
+            )}
+          </div>
+
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : visibleQueues.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+              <Inbox className="h-8 w-8" />
+              <p className="text-sm">No queues match the current filters.</p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Queue Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Zone</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleDefSort("queue_code")}>Code{sortIcon("queue_code")}</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleDefSort("queue_name")}>Queue Name{sortIcon("queue_name")}</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleDefSort("queue_type")}>Type{sortIcon("queue_type")}</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleDefSort("zone_name")}>Zone{sortIcon("zone_name")}</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleDefSort("member_count")}>Members{sortIcon("member_count")}</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleDefSort("priority")}>Priority{sortIcon("priority")}</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => toggleDefSort("is_active")}>Status{sortIcon("is_active")}</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {queues.map((q) => (
+                {visibleQueues.map((q) => (
                   <TableRow key={q.id}>
                     <TableCell className="font-mono text-sm">{q.queue_code}</TableCell>
                     <TableCell className="font-medium">{q.queue_name}</TableCell>
@@ -228,5 +347,101 @@ export default function AssignmentQueues() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * Enterprise assignable-work panel: the same server-side filtered, sorted and
+ * paginated work queue used on Review Queue and Reassignment, scoped to
+ * assignment mode (violations, cases, inspections and follow-up actions).
+ */
+function AssignableWorkPanel() {
+  const wq = useComplianceWorkQueue("assignment");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Assignable Work</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <WorkQueueToolbar
+          filters={wq.filters}
+          options={wq.options}
+          sort={wq.sort}
+          dir={wq.dir}
+          activeFilterCount={wq.activeFilterCount}
+          total={wq.total}
+          grandTotal={wq.grandTotal}
+          scope={wq.scope}
+          onPatch={wq.patchFilters}
+          onReset={wq.resetFilters}
+          onSort={(s) => wq.changeSort(s)}
+          onToggleDir={wq.toggleDir}
+        />
+
+        {wq.error ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            Work queue unavailable — {wq.error.message}
+          </div>
+        ) : wq.isLoading ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        ) : wq.rows.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+            <Inbox className="h-8 w-8" />
+            <p className="text-sm">No work items match the current filters.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reference</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Employer</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Queue</TableHead>
+                <TableHead>Due</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {wq.rows.map((r) => (
+                <TableRow key={`${r.work_type}-${r.record_id}`}>
+                  <TableCell>
+                    <Link to={r.route} className="font-mono text-sm text-primary hover:underline">
+                      {r.record_ref ?? r.record_id.slice(0, 8)}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-sm">{r.work_type}{r.item_type ? ` · ${r.item_type}` : ""}</TableCell>
+                  <TableCell className="max-w-[220px] truncate text-sm">{r.employer_name ?? "—"}</TableCell>
+                  <TableCell><Badge variant="outline">{r.status ?? "—"}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant={r.priority === "CRITICAL" || r.priority === "HIGH" ? "destructive" : "secondary"}>
+                      {r.priority ?? "—"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">{r.owner_name ?? <span className="text-muted-foreground">Unassigned</span>}</TableCell>
+                  <TableCell className="text-sm">{r.queue_name ?? "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    {r.due_date ?? "—"}
+                    {r.overdue && <Badge variant="destructive" className="ml-1 text-[10px]">Overdue</Badge>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        <WorkQueuePagination
+          page={wq.page}
+          totalPages={wq.totalPages}
+          pageSize={wq.pageSize}
+          total={wq.total}
+          onPage={wq.setPage}
+          onPageSize={(n) => { wq.setPageSize(n); wq.setPage(1); }}
+          isFetching={wq.isFetching}
+        />
+      </CardContent>
+    </Card>
   );
 }
