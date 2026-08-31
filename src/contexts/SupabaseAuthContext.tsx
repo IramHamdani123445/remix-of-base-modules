@@ -222,6 +222,13 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const lastActivityUpdateRef = useRef<number>(0);
   const activityChannelRef = useRef<BroadcastChannel | null>(null);
 
+  // Last known good refresh token + a one-shot guard, used to recover from a
+  // spurious SIGNED_OUT caused by a transient auth-server failure rather than
+  // by the user actually signing out.
+  const lastRefreshTokenRef = useRef<string | null>(null);
+  const signOutRecoveryInFlightRef = useRef(false);
+
+
   // Fetch user profile
   const fetchProfile = useCallback(async (userId: string) => {
     try {
