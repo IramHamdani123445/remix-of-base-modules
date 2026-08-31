@@ -149,83 +149,96 @@ export async function createCaseRequest(input: {
 }
 
 
+/**
+ * Records an approval / rejection decision.
+ *
+ * Ordering is deliberate and governance-safe:
+ *   1. `ce_case_request_precheck_v1` re-validates the request, the case and the
+ *      merge target at decision time (nothing is trusted from the list page).
+ *   2. `ce_case_request_claim_v1` atomically claims the decision — it enforces
+ *      approval capability, segregation of duties, and only transitions a row
+ *      that is still PENDING, so two reviewers can never both decide it.
+ *   3. Only then is the case transition / merge applied.
+ *   4. If step 3 fails the claim is reverted to PENDING with the failure
+ *      recorded on the request metadata, so a request can never remain
+ *      APPROVED while the case was never changed.
+ */
 export async function reviewCaseRequest(input: {
   id: string;
   approve: boolean;
   reviewedBy: string;
   notes: string;
 }): Promise<void> {
-  const { data: req, error: fetchErr } = await (supabase.from(TABLE) as any)
-    .select('*').eq('id', input.id).maybeSingle();
-  if (fetchErr) throw fetchErr;
-  if (!req) throw new Error('Request not found');
+  const pre = await precheckCaseRequest(input.id);
+  if (!pre.found) throw new Error('Request not found');
+  if (pre.status !== 'PENDING') {
+    throw new Error(`This request has already been ${String(pre.status).toLowerCase()}.`);
+  }
+  if (input.approve && !pre.eligible) {
+    throw new Error(pre.blockers?.[0] || 'This request is no longer eligible for approval.');
+  }
 
-  const { error } = await (supabase.from(TABLE) as any)
-    .update({
-      status: input.approve ? 'APPROVED' : 'REJECTED',
-      reviewed_by: input.reviewedBy,
-      reviewed_at: new Date().toISOString(),
-      review_notes: input.notes,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', input.id);
-  if (error) throw error;
+  const { data: claim, error: claimErr } = await (supabase as any).rpc('ce_case_request_claim_v1', {
+    p_id: input.id,
+    p_approve: input.approve,
+    p_actor: input.reviewedBy,
+    p_notes: input.notes,
+  });
+  if (claimErr) throw new Error(claimErr.message || 'Unable to record the decision');
+  if (!claim?.claimed) throw new Error(claim?.message || 'This request was already decided.');
 
   if (!input.approve) return;
 
-  // Apply side-effect on approval — status changes flow through the central
-  // CE workflow engine (ce_apply_status_transition). Metadata columns
-  // (closed_date, closure_reason, merge bookkeeping) are written separately.
-  const { requestTransition } = await import('@/services/ceWorkflowStatusService');
-  const now = new Date().toISOString();
-  const today = now.slice(0, 10);
+  const caseId: string = claim.case_id;
+  const targetCaseId: string | null = claim.target_case_id;
+  const reason: string = claim.reason;
+  const requestType: CaseRequestType = claim.request_type;
 
-  if (req.request_type === 'CLOSURE') {
-    const r = await requestTransition({
-      entityType: 'case',
-      recordId: req.case_id,
-      actionCode: 'CLOSE',
-      userCode: input.reviewedBy,
-      notes: req.reason,
+  try {
+    const { requestTransition } = await import('@/services/ceWorkflowStatusService');
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (requestType === 'CLOSURE') {
+      const r = await requestTransition({
+        entityType: 'case', recordId: caseId, actionCode: 'CLOSE',
+        userCode: input.reviewedBy, notes: reason,
+      });
+      if (!r.success) throw new Error(r.error || 'Failed to close case');
+      await supabase.from('ce_cases').update({
+        closed_date: today, closure_reason: reason,
+      } as any).eq('id', caseId);
+    } else if (requestType === 'REOPEN') {
+      const { data: existing } = await supabase.from('ce_cases')
+        .select('reopened_count').eq('id', caseId).maybeSingle();
+      const r = await requestTransition({
+        entityType: 'case', recordId: caseId, actionCode: 'REOPEN',
+        userCode: input.reviewedBy, notes: reason,
+      });
+      if (!r.success) throw new Error(r.error || 'Failed to reopen case');
+      await supabase.from('ce_cases').update({
+        closed_date: null, closure_reason: null,
+        reopened_count: ((existing as any)?.reopened_count || 0) + 1,
+      } as any).eq('id', caseId);
+    } else if (requestType === 'MERGE' && targetCaseId) {
+      const r = await requestTransition({
+        entityType: 'case', recordId: caseId, actionCode: 'CLOSE',
+        userCode: input.reviewedBy, notes: `Merged: ${reason}`,
+      });
+      if (!r.success) throw new Error(r.error || 'Failed to merge case');
+      // Moves violations / notices / actions onto the surviving case, recomputes
+      // financial roll-ups on both sides and writes the permanent merge history
+      // entry — all inside one server-side transaction.
+      const { error: mergeErr } = await (supabase as any).rpc('ce_apply_case_merge', {
+        p_request_id: input.id, p_actor: input.reviewedBy,
+      });
+      if (mergeErr) throw new Error(mergeErr.message || 'Failed to apply case merge');
+    }
+  } catch (e: any) {
+    await (supabase as any).rpc('ce_case_request_revert_v1', {
+      p_id: input.id, p_actor: input.reviewedBy, p_error: e?.message || String(e),
     });
-    if (!r.success) throw new Error(r.error || 'Failed to close case');
-    await supabase.from('ce_cases').update({
-      closed_date: today,
-      closure_reason: req.reason,
-    } as any).eq('id', req.case_id);
-  } else if (req.request_type === 'REOPEN') {
-    const { data: existing } = await supabase.from('ce_cases')
-      .select('reopened_count').eq('id', req.case_id).maybeSingle();
-    const r = await requestTransition({
-      entityType: 'case',
-      recordId: req.case_id,
-      actionCode: 'REOPEN',
-      userCode: input.reviewedBy,
-      notes: req.reason,
-    });
-    if (!r.success) throw new Error(r.error || 'Failed to reopen case');
-    await supabase.from('ce_cases').update({
-      closed_date: null,
-      closure_reason: null,
-      reopened_count: ((existing as any)?.reopened_count || 0) + 1,
-    } as any).eq('id', req.case_id);
-  } else if (req.request_type === 'MERGE' && req.target_case_id) {
-    const r = await requestTransition({
-      entityType: 'case',
-      recordId: req.case_id,
-      actionCode: 'CLOSE',
-      userCode: input.reviewedBy,
-      notes: `Merged: ${req.reason}`,
-    });
-    if (!r.success) throw new Error(r.error || 'Failed to merge case');
-    // Move violations / notices / actions onto the surviving case, recompute
-    // financial roll-ups on both sides and write the permanent merge history
-    // entry — all inside one server-side transaction.
-    const { error: mergeErr } = await (supabase as any).rpc('ce_apply_case_merge', {
-      p_request_id: req.id,
-      p_actor: input.reviewedBy,
-    });
-    if (mergeErr) throw new Error(mergeErr.message || 'Failed to apply case merge');
+    throw new Error(
+      `${e?.message || 'The case action failed'} — the request was returned to Pending and no case change was recorded.`,
+    );
   }
-
 }
