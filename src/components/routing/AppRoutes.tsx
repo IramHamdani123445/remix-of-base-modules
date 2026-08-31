@@ -204,6 +204,7 @@ const RevisionsPending = lazy(() => import('@/pages/compliance/audit-planning/Re
 const PlanRevisionReview = lazy(() => import('@/pages/compliance/audit-planning/PlanRevisionReview'));
 const MyPlans = lazy(() => import('@/pages/compliance/audit-planning/MyPlans'));
 const AllWeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/AllWeeklyReports'));
+const AuditReportsRegister = lazy(() => import('@/pages/compliance/field/AuditReportsRegister'));
 const FieldExecution = lazy(() => import('@/pages/compliance/audit-planning/FieldExecution'));
 const WeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/WeeklyReports'));
 const CompliancePendingReview = lazy(() => import('@/pages/compliance/audit-planning/PendingReview'));
