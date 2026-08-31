@@ -124650,6 +124650,15 @@ export type Database = {
       }
       ce_is_trusted_session: { Args: never; Returns: boolean }
       ce_ledger_settlement_order: { Args: never; Returns: string[] }
+      ce_legal_workbench_analytics: {
+        Args: {
+          p_from: string
+          p_identities?: string[]
+          p_scope_mine?: boolean
+          p_to: string
+        }
+        Returns: Json
+      }
       ce_list_case_documents: {
         Args: { p_case_id: string }
         Returns: {
