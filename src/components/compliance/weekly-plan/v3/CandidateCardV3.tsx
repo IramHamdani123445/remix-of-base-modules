@@ -97,6 +97,15 @@ export function CandidateCardV3(props: CandidateCardV3Props) {
   const isDemoted = actions.some(a => a.action_type === 'demote_watchlist');
   const isException = actions.some(a => a.action_type === 'convert_exception');
 
+  // Defensive rendering: never trust the engine payload shape.
+  const safeReasons = Array.isArray(c.recommendation_reasons)
+    ? c.recommendation_reasons.filter(
+        (r): r is NonNullable<typeof r> =>
+          !!r && typeof r === 'object' && typeof r.label === 'string' && r.label.length > 0,
+      )
+    : [];
+  const dataIssues = Array.isArray(c.data_issues) ? c.data_issues : [];
+
   const overdueDays = c.overdue_days ?? 0;
   const dueLabel =
     overdueDays > 0
@@ -104,6 +113,8 @@ export function CandidateCardV3(props: CandidateCardV3Props) {
       : c.next_due_date
       ? `Due ${formatDateForDisplay(c.next_due_date)}`
       : 'No cycle date';
+
+
 
   return (
     <Card
