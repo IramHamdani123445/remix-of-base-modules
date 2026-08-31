@@ -124339,6 +124339,17 @@ export type Database = {
         }
       }
       ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
+      ce_assigned_cases_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_scope?: string
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_assignment_command_active: { Args: never; Returns: boolean }
       ce_assignment_require_authz: {
         Args: { p_operation: string }
@@ -124749,6 +124760,7 @@ export type Database = {
         Args: { p_filters?: Json; p_window?: string }
         Returns: Json
       }
+      ce_officer_identities: { Args: { _user_id: string }; Returns: string[] }
       ce_override_sector_benchmark_v1: {
         Args: {
           p_benchmark_id: string
@@ -125222,6 +125234,10 @@ export type Database = {
           p_triggered_by?: string
         }
         Returns: Json
+      }
+      ce_team_officer_identities: {
+        Args: { _user_id: string }
+        Returns: string[]
       }
       ce_upsert_contribution_exemption_v1: {
         Args: {
