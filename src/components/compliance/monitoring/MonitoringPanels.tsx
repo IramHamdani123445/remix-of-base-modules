@@ -311,7 +311,7 @@ export function SlaMonitorPanel({
     <MonitorPanel
       title="SLA & Deadline Monitor"
       subtitle="Configured deadlines across violations, cases, notices, installments, follow-ups and inspections"
-      state={sla?.status ?? 'unavailable'}
+      state={state ?? sla?.status ?? 'unavailable'}
       loading={loading}
       empty={!loading && total === 0}
       emptyLabel="No monitored deadlines in the operational horizon"
