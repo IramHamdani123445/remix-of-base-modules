@@ -1,28 +1,36 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, Eye, Edit, RefreshCw, X } from 'lucide-react';
+import { Plus, Loader2, Eye, CalendarCheck, X, ShieldCheck } from 'lucide-react';
 import { StatusBadge, DataTable } from '@/components/common';
 import type { DataTableColumn } from '@/components/common';
-import { useEngagementFollowUps } from '@/hooks/useEngagementData';
-import { useIAFollowUpMutations } from '@/hooks/useAuditData';
+import { useEngagementFollowUps, useEngagementActions } from '@/hooks/useEngagementData';
+import { useIaFollowUpSchedule, useIaFollowUpRecordOutcome } from '@/hooks/useAuditActionCentre';
 import { AuditEmptyState } from '@/components/audit/workspace/AuditEmptyState';
 import { formatDateForDisplay } from '@/lib/format-config';
-import { useUserCode } from '@/hooks/useUserCode';
 
-const FOLLOW_UP_STATUSES = ['Open', 'In Progress', 'Resolved', 'Overdue', 'Closed'];
+/**
+ * IA-POST-UAT-02 — Follow-Up UI convergence.
+ *
+ * The generic `useIAFollowUpMutations()` create/update path (with an arbitrary
+ * Status dropdown) bypassed the governed commands. This surface now speaks only
+ * to the canonical corrective-action commands:
+ *   ia_followup_schedule       (Engagement → Finding → Action → Follow-Up)
+ *   ia_followup_record_outcome (canonical outcome vocabulary only)
+ * Derived states (Resolved / Closed / Overdue) are never set from the UI.
+ */
+
 const FOLLOW_UP_TYPES = ['Action Verification', 'Implementation Check', 'Evidence Collection', 'Re-Test', 'Management Meeting', 'Other'];
-const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
 
-const emptyForm = {
-  action_required: '', description: '', follow_up_type: '', priority: 'Medium',
-  responsible_party: '', responsible_name: '', due_date: '', status: 'Open',
-  scheduled_follow_up_date: '', resolution: '', resolved_date: '', finding_id: '',
-};
+/** Canonical outcome vocabulary enforced by ia_followup_record_outcome. */
+const OUTCOMES = ['In Verification', 'Implemented', 'Partially Implemented', 'Not Implemented', 'Reopened'] as const;
+const OUTCOMES_REQUIRING_NOTES = ['Partially Implemented', 'Not Implemented'];
+
+const TERMINAL_ACTION_STATUSES = ['Cancelled', 'Closed', 'Superseded'];
 
 interface AuditFollowUpsTabProps {
   auditId: string;
@@ -30,160 +38,216 @@ interface AuditFollowUpsTabProps {
   departmentId?: string;
 }
 
-export function AuditFollowUpsTab({ auditId, auditFindings = [], departmentId }: AuditFollowUpsTabProps) {
+export function AuditFollowUpsTab({ auditId, auditFindings = [] }: AuditFollowUpsTabProps) {
   const { data: followUps = [], isLoading } = useEngagementFollowUps(auditId);
-  const { create, update } = useIAFollowUpMutations();
-  const { userCode } = useUserCode();
-  const [formMode, setFormMode] = useState<'create' | 'edit' | 'view' | null>(null);
-  const [editRecord, setEditRecord] = useState<any>(null);
-  const [form, setForm] = useState(emptyForm);
+  const { data: actions = [] } = useEngagementActions(auditId);
+  const schedule = useIaFollowUpSchedule();
+  const recordOutcome = useIaFollowUpRecordOutcome();
 
-  const closeForm = () => { setFormMode(null); setEditRecord(null); };
+  const [mode, setMode] = useState<'schedule' | 'outcome' | 'view' | null>(null);
+  const [active, setActive] = useState<any>(null);
+  const [scheduleForm, setScheduleForm] = useState({ action_id: '', scheduled_date: '', follow_up_type: 'Action Verification', notes: '', fiscal_year: '' });
+  const [outcomeForm, setOutcomeForm] = useState({ outcome: '', notes: '' });
 
-  const openCreate = () => { setForm({ ...emptyForm }); setFormMode('create'); setEditRecord(null); };
-  const openEdit = (r: any) => {
-    setForm({
-      action_required: r.action_required || '', description: r.description || '',
-      follow_up_type: r.follow_up_type || '', priority: r.priority || 'Medium',
-      responsible_party: r.responsible_party || '', responsible_name: r.responsible_name || '',
-      due_date: r.due_date || '', status: r.status || 'Open',
-      scheduled_follow_up_date: r.scheduled_follow_up_date || '',
-      resolution: r.resolution || '', resolved_date: r.resolved_date || '', finding_id: r.finding_id || '',
-    });
-    setFormMode('edit'); setEditRecord(r);
-  };
-  const openView = (r: any) => { openEdit(r); setFormMode('view'); };
+  const findingTitle = (id?: string | null) =>
+    (auditFindings as any[]).find(f => f.id === id)?.title || (id ? id.slice(0, 8) : '—');
 
-  const handleSave = () => {
-    if (!form.action_required || !form.due_date) return;
-    const payload = {
-      action_required: form.action_required, description: form.description || null,
-      follow_up_type: form.follow_up_type || null, priority: form.priority || null,
-      responsible_party: form.responsible_party || null, responsible_name: form.responsible_name || null,
-      due_date: form.due_date, status: form.status, scheduled_follow_up_date: form.scheduled_follow_up_date || null,
-      resolution: form.resolution || null, resolved_date: form.resolved_date || null,
-      finding_id: form.finding_id || null, engagement_id: auditId, department_id: departmentId || null,
-    };
-    if (formMode === 'create') {
-      create.mutate({ ...payload, created_by: userCode || null } as any, { onSuccess: closeForm });
-    } else if (formMode === 'edit' && editRecord) {
-      update.mutate({ id: editRecord.id, ...payload, updated_by: userCode || null } as any, { onSuccess: closeForm });
-    }
+  /** Only actions belonging to THIS engagement and not in a terminal state are eligible. */
+  const eligibleActions = useMemo(
+    () => (actions as any[]).filter(a => a.engagement_id === auditId && !TERMINAL_ACTION_STATUSES.includes(a.status || '')),
+    [actions, auditId],
+  );
+
+  const selectedAction = eligibleActions.find(a => a.id === scheduleForm.action_id);
+
+  const close = () => { setMode(null); setActive(null); };
+
+  const openSchedule = () => {
+    setScheduleForm({ action_id: '', scheduled_date: '', follow_up_type: 'Action Verification', notes: '', fiscal_year: '' });
+    setActive(null);
+    setMode('schedule');
   };
 
-  const isOverdue = (r: any) => r.due_date && !['Resolved', 'Closed'].includes(r.status || '') && new Date(r.due_date) < new Date();
+  const openOutcome = (row: any) => {
+    setOutcomeForm({ outcome: '', notes: '' });
+    setActive(row);
+    setMode('outcome');
+  };
+
+  const openView = (row: any) => { setActive(row); setMode('view'); };
+
+  const submitSchedule = () => {
+    if (!scheduleForm.action_id || !scheduleForm.scheduled_date) return;
+    schedule.mutate({
+      actionId: scheduleForm.action_id,
+      scheduledDate: scheduleForm.scheduled_date,
+      followUpType: scheduleForm.follow_up_type || null,
+      notes: scheduleForm.notes.trim() || null,
+      fiscalYear: scheduleForm.fiscal_year.trim() || null,
+    }, { onSuccess: close });
+  };
+
+  const submitOutcome = () => {
+    if (!active?.id || !outcomeForm.outcome) return;
+    if (OUTCOMES_REQUIRING_NOTES.includes(outcomeForm.outcome) && !outcomeForm.notes.trim()) return;
+    recordOutcome.mutate({
+      followUpId: active.id,
+      outcome: outcomeForm.outcome,
+      notes: outcomeForm.notes.trim() || null,
+    }, { onSuccess: close });
+  };
+
+  const isOverdue = (r: any) =>
+    r.due_date && !['Implemented', 'Closed', 'Resolved'].includes(r.lifecycle_status || r.status || '') && new Date(r.due_date) < new Date();
 
   const columns: DataTableColumn<any>[] = [
-    { key: 'action_required', header: 'Action Required', render: (r) => <span className="text-sm max-w-[200px] truncate block font-medium">{r.action_required || '—'}</span> },
+    { key: 'action_required', header: 'Verification', render: (r) => <span className="text-sm max-w-[220px] truncate block font-medium">{r.action_required || '—'}</span> },
+    { key: 'action_id', header: 'Action', render: (r) => <span className="font-mono text-xs">{r.action_id ? r.action_id.slice(0, 8) : '—'}</span> },
+    { key: 'finding_id', header: 'Finding', render: (r) => <span className="text-xs">{findingTitle(r.finding_id)}</span> },
     { key: 'follow_up_type', header: 'Type', render: (r) => <span className="text-xs">{r.follow_up_type || '—'}</span> },
-    { key: 'finding_id', header: 'Finding', render: (r) => {
-      if (!r.finding_id) return <span className="text-muted-foreground text-xs">—</span>;
-      const finding = auditFindings.find((f: any) => f.id === r.finding_id);
-      return <span className="text-xs">{finding?.title || r.finding_id.slice(0, 8)}</span>;
-    }},
-    { key: 'responsible_name', header: 'Responsible', render: (r) => <span className="text-xs">{r.responsible_name || r.responsible_party || '—'}</span> },
-    { key: 'due_date', header: 'Due Date', render: (r) => (
+    { key: 'responsible_name', header: 'Responsible', render: (r) => <span className="text-xs">{r.responsible_name || '—'}</span> },
+    { key: 'due_date', header: 'Scheduled', render: (r) => (
       <span className={`text-xs ${isOverdue(r) ? 'text-destructive font-medium' : ''}`}>
-        {r.due_date ? formatDateForDisplay(r.due_date) : '—'}
+        {r.scheduled_follow_up_date || r.due_date ? formatDateForDisplay(r.scheduled_follow_up_date || r.due_date) : '—'}
       </span>
     )},
-    { key: 'priority', header: 'Priority', render: (r) => r.priority ? <StatusBadge status={r.priority} /> : <span className="text-muted-foreground text-xs">—</span> },
-    { key: 'status', header: 'Status', render: (r) => (
+    { key: 'lifecycle_status', header: 'Lifecycle', render: (r) => (
       <div className="flex gap-1">
-        <StatusBadge status={r.status || 'Open'} />
+        <StatusBadge status={r.lifecycle_status || r.status || 'Scheduled'} />
         {isOverdue(r) && <StatusBadge status="Overdue" />}
       </div>
     )},
+    { key: 'outcome', header: 'Outcome', render: (r) => r.outcome ? <StatusBadge status={r.outcome} /> : <span className="text-muted-foreground text-xs">—</span> },
   ];
 
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+
+  const notesMissing = OUTCOMES_REQUIRING_NOTES.includes(outcomeForm.outcome) && !outcomeForm.notes.trim();
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">{followUps.length} follow-up(s)</p>
-        <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Add Follow-up</Button>
+        <Button size="sm" onClick={openSchedule}><Plus className="h-4 w-4 mr-1" />Schedule Follow-Up</Button>
       </div>
 
-      {/* Inline Form */}
-      {formMode && (
+      {mode === 'schedule' && (
         <Card className="border-primary/20">
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">
-                {formMode === 'create' ? 'New Follow-up' : formMode === 'edit' ? 'Edit Follow-up' : 'Follow-up Detail'}
-              </p>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={closeForm}><X className="h-4 w-4" /></Button>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><CalendarCheck className="h-4 w-4" />Schedule Follow-Up</p>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={close}><X className="h-4 w-4" /></Button>
             </div>
-            <div><Label>Action Required *</Label><Textarea value={form.action_required} onChange={e => setForm(f => ({ ...f, action_required: e.target.value }))} rows={3} disabled={formMode === 'view'} className="text-sm leading-relaxed" /></div>
-            <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} disabled={formMode === 'view'} className="text-sm leading-relaxed" /></div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Follow-up Type</Label>
-                <Select value={form.follow_up_type || '__none__'} onValueChange={v => setForm(f => ({ ...f, follow_up_type: v === '__none__' ? '' : v }))} disabled={formMode === 'view'}>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+            <p className="text-xs text-muted-foreground">
+              Follow-ups verify a corrective action. Finding, department and responsible owner are derived from the action.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Corrective Action *</Label>
+                <Select value={scheduleForm.action_id} onValueChange={v => setScheduleForm(f => ({ ...f, action_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select an action from this engagement" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Select type</SelectItem>
-                    {FOLLOW_UP_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {eligibleActions.length === 0 && <SelectItem value="__none__" disabled>No eligible actions</SelectItem>}
+                    {eligibleActions.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {(a.action_id || a.id.slice(0, 8))} — {(a.action_description || 'Corrective action').slice(0, 60)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Priority</Label>
-                <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v }))} disabled={formMode === 'view'}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Status</Label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))} disabled={formMode === 'view'}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{FOLLOW_UP_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+              <div><Label>Scheduled Date *</Label><Input type="date" value={scheduleForm.scheduled_date} onChange={e => setScheduleForm(f => ({ ...f, scheduled_date: e.target.value }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Linked Finding</Label>
-                <Select value={form.finding_id || '__none__'} onValueChange={v => setForm(f => ({ ...f, finding_id: v === '__none__' ? '' : v }))} disabled={formMode === 'view'}>
-                  <SelectTrigger><SelectValue placeholder="Select finding (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {auditFindings.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.title}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label>Due Date *</Label><Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} disabled={formMode === 'view'} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Responsible Person</Label><Input value={form.responsible_name} onChange={e => setForm(f => ({ ...f, responsible_name: e.target.value }))} disabled={formMode === 'view'} /></div>
-              <div><Label>Scheduled Follow-up Date</Label><Input type="date" value={form.scheduled_follow_up_date} onChange={e => setForm(f => ({ ...f, scheduled_follow_up_date: e.target.value }))} disabled={formMode === 'view'} /></div>
-            </div>
-            {(form.status === 'Resolved' || form.status === 'Closed') && (
-              <>
-                <div><Label>Resolution Notes</Label><Textarea value={form.resolution} onChange={e => setForm(f => ({ ...f, resolution: e.target.value }))} rows={3} disabled={formMode === 'view'} className="text-sm leading-relaxed" /></div>
-                <div><Label>Resolved Date</Label><Input type="date" value={form.resolved_date} onChange={e => setForm(f => ({ ...f, resolved_date: e.target.value }))} disabled={formMode === 'view'} /></div>
-              </>
-            )}
-            {formMode !== 'view' && (
-              <div className="flex gap-2 pt-2">
-                <Button onClick={handleSave} disabled={create.isPending || update.isPending}>Save</Button>
-                <Button variant="outline" onClick={closeForm}>Cancel</Button>
+
+            {selectedAction && (
+              <div className="rounded-md border border-border/60 bg-muted/30 p-3 grid grid-cols-2 gap-2 text-xs">
+                <div><span className="text-muted-foreground">Finding: </span>{findingTitle(selectedAction.finding_id)}</div>
+                <div><span className="text-muted-foreground">Owner: </span>{selectedAction.responsible_person || '—'}</div>
+                <div><span className="text-muted-foreground">Target date: </span>{selectedAction.target_date ? formatDateForDisplay(selectedAction.target_date) : '—'}</div>
+                <div><span className="text-muted-foreground">Action status: </span>{selectedAction.status || '—'}</div>
+                <div><span className="text-muted-foreground">Verification: </span>{selectedAction.verification_status || 'Not verified'}</div>
               </div>
             )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Follow-Up Type</Label>
+                <Select value={scheduleForm.follow_up_type} onValueChange={v => setScheduleForm(f => ({ ...f, follow_up_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{FOLLOW_UP_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Fiscal Year</Label><Input value={scheduleForm.fiscal_year} onChange={e => setScheduleForm(f => ({ ...f, fiscal_year: e.target.value }))} placeholder="Defaults to scheduled year" /></div>
+            </div>
+            <div><Label>Notes</Label><Textarea rows={2} value={scheduleForm.notes} onChange={e => setScheduleForm(f => ({ ...f, notes: e.target.value }))} className="text-sm" /></div>
+            <div className="flex gap-2">
+              <Button onClick={submitSchedule} disabled={!scheduleForm.action_id || !scheduleForm.scheduled_date || schedule.isPending}>
+                {schedule.isPending ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Scheduling...</> : 'Schedule Follow-Up'}
+              </Button>
+              <Button variant="outline" onClick={close}>Cancel</Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {followUps.length === 0 && !formMode ? (
-        <AuditEmptyState icon={RefreshCw} title="No follow-ups scheduled"
-          description="Follow-ups track verification of corrective action implementation and confirm that audit recommendations have been addressed."
-          actionLabel="Schedule Follow-up" onAction={openCreate} />
-      ) : followUps.length > 0 && (
+      {mode === 'outcome' && active && (
+        <Card className="border-primary/20">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" />Record Follow-Up Outcome</p>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={close}><X className="h-4 w-4" /></Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{active.action_required}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Outcome *</Label>
+                <Select value={outcomeForm.outcome} onValueChange={v => setOutcomeForm(f => ({ ...f, outcome: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select outcome" /></SelectTrigger>
+                  <SelectContent>{OUTCOMES.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Verification Notes{OUTCOMES_REQUIRING_NOTES.includes(outcomeForm.outcome) ? ' *' : ''}</Label>
+              <Textarea rows={3} value={outcomeForm.notes} onChange={e => setOutcomeForm(f => ({ ...f, notes: e.target.value }))} className="text-sm" />
+              {notesMissing && <p className="text-xs text-destructive mt-1">Notes are required when implementation is incomplete.</p>}
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={submitOutcome} disabled={!outcomeForm.outcome || notesMissing || recordOutcome.isPending}>
+                {recordOutcome.isPending ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Recording...</> : 'Record Outcome'}
+              </Button>
+              <Button variant="outline" onClick={close}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {mode === 'view' && active && (
+        <Card className="border-primary/20">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Follow-Up Detail</p>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={close}><X className="h-4 w-4" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><Label className="text-xs text-muted-foreground">Verification</Label><p>{active.action_required || '—'}</p></div>
+              <div><Label className="text-xs text-muted-foreground">Finding</Label><p>{findingTitle(active.finding_id)}</p></div>
+              <div><Label className="text-xs text-muted-foreground">Type</Label><p>{active.follow_up_type || '—'}</p></div>
+              <div><Label className="text-xs text-muted-foreground">Scheduled</Label><p>{active.scheduled_follow_up_date ? formatDateForDisplay(active.scheduled_follow_up_date) : '—'}</p></div>
+              <div><Label className="text-xs text-muted-foreground">Lifecycle</Label><p>{active.lifecycle_status || active.status || '—'}</p></div>
+              <div><Label className="text-xs text-muted-foreground">Outcome</Label><p>{active.outcome || '—'}</p></div>
+              <div className="col-span-2"><Label className="text-xs text-muted-foreground">Outcome Notes</Label><p className="whitespace-pre-wrap">{active.outcome_notes || active.description || '—'}</p></div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {followUps.length === 0 && !mode ? (
+        <AuditEmptyState icon={CalendarCheck} title="No follow-ups" description="Schedule a verification follow-up against a corrective action" actionLabel="Schedule Follow-Up" onAction={openSchedule} />
+      ) : (
         <Card><CardContent className="pt-4">
           <DataTable columns={columns} data={followUps} emptyMessage="No follow-ups."
-            rowClassName={(row) => isOverdue(row) ? 'bg-destructive/5' : ''}
             renderActions={(row) => (
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openView(row); }}><Eye className="h-3.5 w-3.5" /></Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(row); }}><Edit className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openView(row)}><Eye className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openOutcome(row)} title="Record outcome"><ShieldCheck className="h-3.5 w-3.5" /></Button>
               </div>
             )}
           />
