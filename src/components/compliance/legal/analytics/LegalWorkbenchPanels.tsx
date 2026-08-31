@@ -38,7 +38,7 @@ export const prettyCode = (s?: string | null) =>
   !s ? '—' : s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 
 export const fmtDate = (d?: string | null) =>
-  !d ? '—' : new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', yyyy: undefined as never, year: 'numeric' });
+  !d ? '—' : new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
 const CHART_COLORS = [
   'hsl(var(--primary))',
