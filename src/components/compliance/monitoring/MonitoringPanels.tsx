@@ -287,12 +287,14 @@ export function ExceptionsQueue({
 /* --------------------------------------------------------------- SLA panel */
 
 export function SlaMonitorPanel({
-  sla, urgent, loading, onOpen,
+  sla, urgent, loading, onOpen, state,
 }: {
   sla: MonitoringPayload['sla_summary'];
   urgent: MonitoringPayload['sla_urgent'];
   loading?: boolean;
   onOpen: (route: string | null) => void;
+  /** Severity state from the subsystem roll-up; falls back to read status. */
+  state?: SubsystemState;
 }) {
   const total = sla
     ? sla.breached + sla.due_24h + sla.due_1_3 + sla.due_4_7 + sla.healthy
@@ -309,7 +311,7 @@ export function SlaMonitorPanel({
     <MonitorPanel
       title="SLA & Deadline Monitor"
       subtitle="Configured deadlines across violations, cases, notices, installments, follow-ups and inspections"
-      state={sla?.status ?? 'unavailable'}
+      state={state ?? sla?.status ?? 'unavailable'}
       loading={loading}
       empty={!loading && total === 0}
       emptyLabel="No monitored deadlines in the operational horizon"
