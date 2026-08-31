@@ -544,7 +544,9 @@ export default function ConvertFindingToViolationPage() {
                               ) : (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="border-orange-500/30 text-orange-600 dark:text-orange-400">None</Badge>
+                                    <span>
+                                      <Badge variant="outline" className="border-orange-500/30 text-orange-600 dark:text-orange-400">None</Badge>
+                                    </span>
                                   </TooltipTrigger>
                                   <TooltipContent>No evidence is attached to this finding</TooltipContent>
                                 </Tooltip>
