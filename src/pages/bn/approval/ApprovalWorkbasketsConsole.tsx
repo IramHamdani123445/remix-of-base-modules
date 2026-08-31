@@ -364,11 +364,12 @@ export default function ApprovalWorkbasketsConsole() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {c?.total_amount != null ? Number(c.total_amount).toLocaleString() : '—'}
+                            {claimAmount(a) != null ? claimAmount(a)!.toLocaleString() : '—'}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {a.assigned_to ?? 'Unassigned'}
+                            {a.assigned_to ? (assigneeNames[a.assigned_to] ?? a.assigned_to) : 'Unassigned'}
                           </TableCell>
+
                           <TableCell>
                             <Button asChild variant="ghost" size="icon">
                               <Link to={`/bn/claims/${a.claim_id}`} title="Open claim">
