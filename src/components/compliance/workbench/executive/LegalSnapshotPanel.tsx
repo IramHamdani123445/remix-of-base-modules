@@ -7,10 +7,52 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Gavel } from 'lucide-react';
 import { MetricValue } from './MetricValue';
-import { useLegalSnapshot, type ExecFilters } from '@/hooks/compliance/useExecutiveWorkbench';
+import { useLegalSnapshot, type MetricResult } from '@/hooks/compliance/useExecutiveWorkbench';
 
-export function LegalSnapshotPanel({ filters }: { filters: ExecFilters }) {
-  const { tiles, isLoading } = useLegalSnapshot(filters);
+export function LegalSnapshotPanel() {
+  const { data, isLoading, isError } = useLegalSnapshot();
+
+  const asResult = (v: number | undefined): MetricResult<number> =>
+    isError || !data ? { status: 'unavailable' } : { status: 'ok', value: Number(v ?? 0) };
+
+  const tiles = [
+    {
+      key: 'pending',
+      label: 'Recommendations pending review',
+      value: data?.pendingRecommendations,
+      href: '/compliance/enforcement/legal-recommendations',
+    },
+    {
+      key: 'approved',
+      label: 'Approved for referral',
+      value: data?.approvedForReferral,
+      href: '/compliance/enforcement/legal-recommendations',
+    },
+    {
+      key: 'preparing',
+      label: 'Referrals being prepared',
+      value: data?.beingPrepared,
+      href: '/compliance/enforcement/legal-referrals',
+    },
+    {
+      key: 'with-legal',
+      label: 'With Legal',
+      value: data?.withLegal,
+      href: '/compliance/enforcement/proceedings',
+    },
+    {
+      key: 'returned',
+      label: 'Returned by Legal',
+      value: data?.returned,
+      href: '/compliance/enforcement/legal-referrals',
+    },
+    {
+      key: 'oldest',
+      label: 'Oldest pending (days)',
+      value: data?.oldestPendingDays ?? 0,
+      href: '/compliance/enforcement/legal-recommendations',
+    },
+  ];
 
   return (
     <Card className="h-full">
@@ -23,7 +65,7 @@ export function LegalSnapshotPanel({ filters }: { filters: ExecFilters }) {
           <Link to="/compliance/enforcement/proceedings">Proceedings</Link>
         </Button>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-2">
+      <CardContent className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {tiles.map((t) => (
           <Link
             key={t.key}
@@ -32,9 +74,8 @@ export function LegalSnapshotPanel({ filters }: { filters: ExecFilters }) {
           >
             <p className="text-xs text-muted-foreground">{t.label}</p>
             <MetricValue
-              result={t.result}
+              result={asResult(t.value as number | undefined)}
               isLoading={isLoading}
-              format={t.format}
               className="text-lg font-semibold"
             />
           </Link>
