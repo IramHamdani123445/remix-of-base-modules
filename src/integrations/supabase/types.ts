@@ -124657,6 +124657,53 @@ export type Database = {
           reference_type: string
         }[]
       }
+      ce_field_operations_facets_v1: { Args: never; Returns: Json }
+      ce_field_operations_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_field_ops_scope: { Args: { _user_id: string }; Returns: string }
+      ce_field_visit_add_evidence_v1: {
+        Args: {
+          p_description?: string
+          p_evidence_type: string
+          p_file_name: string
+          p_file_size?: number
+          p_file_url: string
+          p_item_id: string
+          p_lat?: number
+          p_lng?: number
+        }
+        Returns: Json
+      }
+      ce_field_visit_check_in_v1: {
+        Args: {
+          p_gps_unavailable_reason?: string
+          p_item_id: string
+          p_lat?: number
+          p_lng?: number
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      ce_field_visit_check_out_v1: {
+        Args: {
+          p_findings?: string
+          p_item_id: string
+          p_lat?: number
+          p_lng?: number
+          p_outcome_notes?: string
+        }
+        Returns: Json
+      }
+      ce_field_visit_detail_v1: { Args: { p_item_id: string }; Returns: Json }
       ce_finding_detail_v1: { Args: { p_finding_id: string }; Returns: Json }
       ce_finding_triage_facets_v1: { Args: never; Returns: Json }
       ce_finding_triage_register_v1: {
