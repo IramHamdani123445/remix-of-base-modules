@@ -125251,6 +125251,17 @@ export type Database = {
         }
         Returns: number
       }
+      ce_violation_history_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_violation_reassign_v1: {
         Args: {
           p_notes: string
