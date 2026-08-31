@@ -18,6 +18,24 @@ Set the password to `Benefits@123$` for the 10 Benefits/rule test accounts used 
 1. Update the stored credential for each account to the new password (hashed with bcrypt), and confirm each email is confirmed so sign-in is not blocked.
 2. Clear any login lockout state on the matching profile records (failed attempts, lock expiry, forced password change).
 3. Verify by signing in with each of the 10 accounts against the auth endpoint and report a pass/fail table.
+4. After completion, report the final login credentials list.
+
+## Login details after completion
+The login ID is the email address itself; the password for all 10 is `Benefits@123$`.
+
+| Login ID | Use for workbasket |
+| --- | --- |
+| benefits.officer@mishainfotech.com | Intake Review, Eligibility, Calculation, Documents |
+| benefits.supervisor@mishainfotech.com | Supervisor Approval, Senior Eligibility |
+| benefits.manager@mishainfotech.com | Manager Approval, Award Setup |
+| benefits.director@mishainfotech.com | Director / Product Approval |
+| benefits.payment@mishainfotech.com | Payment Processing |
+| finance.supervisor@mishainfotech.com | Finance Approval |
+| benefits.admin@mishainfotech.com | Config Admin / all-basket oversight |
+| rule.author@mishainfotech.com | Rule authoring |
+| rule.technical@mishainfotech.com | Rule technical review |
+| rule.legal@mishainfotech.com | Rule legal approval |
+
 
 ## Technical notes
 - Password hash written via `crypt(..., gen_salt('bf'))` on `auth.users.encrypted_password`; `email_confirmed_at` backfilled where null.
