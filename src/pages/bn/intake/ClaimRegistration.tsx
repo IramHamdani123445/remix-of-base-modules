@@ -572,6 +572,14 @@ export default function ClaimRegistration() {
       toast.error('Please check the form for valid information!', {
         description: Object.values(fieldErrors).join(' · '),
       });
+      // Take the officer back to the step that owns the first failing field,
+      // so the error is visible in context rather than only in a toast.
+      const owningStep: StepKey =
+        fieldErrors.ssn ? 'ssn'
+        : fieldErrors.product ? 'benefit'
+        : fieldErrors.version ? 'version'
+        : 'internal'; // contact phone / email
+      setStep(owningStep);
       return;
     }
 
@@ -619,7 +627,9 @@ export default function ClaimRegistration() {
           declaration_accepted: true,
         },
       });
-      toast.success(`Claim ${result.claimNumber} registered`);
+      toast.success(`Claim ${result.claimNumber} registered`, {
+        description: 'The claim has been created — routing and workflow status are shown below.',
+      });
       // Registered is not the same as payable. The officer should leave the
       // counter knowing what adjudication will have to resolve (BUG-48).
       if (eligSummary.verdict === 'FAILED') {
@@ -684,7 +694,9 @@ export default function ClaimRegistration() {
       }).catch(() => {});
       navigate(`/bn/claims/${result.claimId}`);
     } catch (e: any) {
-      toast.error('Failed to register claim', { description: e?.message });
+      // Server messages can be multi-line; split them into a readable
+      // title + body rather than one run-on toast.
+      showBlockerToast(e?.message, { fallbackTitle: 'Failed to register claim' });
     }
   }
 
@@ -1327,6 +1339,19 @@ export default function ClaimRegistration() {
 
             {step === 'review' && (
               <StepCard title="10. Review & Submit" desc="Submitting creates the claim, captures snapshots, and starts the workflow.">
+                {Object.keys(errors).length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Cannot submit yet</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {Object.values(errors).map((msg, i) => (
+                          <li key={i}>{msg}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <ReviewLine k="Claimant" v={person ? `${person.fullName} (${person.ssn})` : pendingVerification ? `${pendingPerson.firstName} ${pendingPerson.lastName} (pending verification)` : '—'} />
                 <ReviewLine k="Benefit" v={selectedProduct ? `${(selectedProduct as any).benefit_name} (${(selectedProduct as any).benefit_code})` : '—'} />
                 <ReviewLine k="Claim Date" v={formatDateForDisplay(claimDate)} />
