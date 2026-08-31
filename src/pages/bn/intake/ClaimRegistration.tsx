@@ -1226,8 +1226,24 @@ export default function ClaimRegistration() {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Contact Phone"><Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} /></Field>
-                  <Field label="Contact Email"><Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} /></Field>
+                  <Field label="Contact Phone" error={errors.contactPhone}>
+                    <Input
+                      value={contactPhone}
+                      maxLength={CONTACT_PHONE_MAX}
+                      className={errors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                      onChange={e => handleContactChange('contactPhone', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Contact Email" error={errors.contactEmail}>
+                    <Input
+                      type="email"
+                      value={contactEmail}
+                      maxLength={CONTACT_EMAIL_MAX}
+                      className={errors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                      onChange={e => handleContactChange('contactEmail', e.target.value)}
+                    />
+                  </Field>
+
                 </div>
                 <Field label="Internal Notes">
                   <Textarea value={internalNotes} onChange={e => setInternalNotes(e.target.value)} rows={3} maxLength={500} />
