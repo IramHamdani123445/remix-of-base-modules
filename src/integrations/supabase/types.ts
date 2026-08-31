@@ -124412,6 +124412,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      ce_compliance_analytics_v1: {
+        Args: {
+          p_from?: string
+          p_risk_band?: string
+          p_sector?: string
+          p_size_tier?: string
+          p_to?: string
+          p_violation_type?: string
+          p_zone?: string
+        }
+        Returns: Json
+      }
       ce_compliance_role: { Args: { _user_id: string }; Returns: string }
       ce_create_employer_snapshot: {
         Args: {
