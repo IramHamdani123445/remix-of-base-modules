@@ -34,16 +34,9 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  useFindingDetail, type FindingsRegisterRow, SEVERITY_OPTIONS,
+  useFindingDetail, SEVERITY_OPTIONS,
+  type FindingsRegisterRow, type ViolationTypeOption,
 } from '@/hooks/compliance/useFindingsRegister';
-
-export interface ViolationTypeOption {
-  id: string;
-  code: string;
-  name: string;
-  severity_default?: string | null;
-  conversion_policy?: string | null;
-}
 
 interface Props {
   row: FindingsRegisterRow | null;
