@@ -124644,6 +124644,10 @@ export type Database = {
           warning_message: string
         }[]
       }
+      ce_inspector_workboard_analytics: {
+        Args: { p_from: string; p_identities: string[]; p_to: string }
+        Returns: Json
+      }
       ce_is_trusted_session: { Args: never; Returns: boolean }
       ce_ledger_settlement_order: { Args: never; Returns: string[] }
       ce_list_case_documents: {
