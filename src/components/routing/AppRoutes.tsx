@@ -204,6 +204,7 @@ const RevisionsPending = lazy(() => import('@/pages/compliance/audit-planning/Re
 const PlanRevisionReview = lazy(() => import('@/pages/compliance/audit-planning/PlanRevisionReview'));
 const MyPlans = lazy(() => import('@/pages/compliance/audit-planning/MyPlans'));
 const AllWeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/AllWeeklyReports'));
+const AuditReportsRegister = lazy(() => import('@/pages/compliance/field/AuditReportsRegister'));
 const FieldExecution = lazy(() => import('@/pages/compliance/audit-planning/FieldExecution'));
 const WeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/WeeklyReports'));
 const CompliancePendingReview = lazy(() => import('@/pages/compliance/audit-planning/PendingReview'));
@@ -1536,7 +1537,10 @@ export const AppRoutes = () => {
       <Route path="/compliance/field/audit/:id/*" element={<AuditDetails />} />
       <Route path="/compliance/field/weekly-report" element={<WeeklyReportSubmission />} />
       <Route path="/compliance/field/weekly-reports" element={<WeeklyReports />} />
-      <Route path="/compliance/field/all-reports" element={<AllWeeklyReports />} />
+      {/* Canonical Field Audit Reports Register (employer audit reports). */}
+      <Route path="/compliance/field/all-reports" element={<AuditReportsRegister />} />
+      {/* Weekly plan reporting kept on its own manager-review route. */}
+      <Route path="/compliance/field/weekly-plan-reports" element={<AllWeeklyReports />} />
       <Route path="/compliance/field/execution-dashboard/:planId" element={<PlanExecutionDashboard />} />
       <Route path="/compliance/field/execution-dashboard/:planId/visit/:planItemId" element={<AuditVisitWorkspace />} />
       <Route path="/compliance/field/audit-visit/:planItemId" element={<AuditVisitWorkspace />} />
