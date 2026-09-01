@@ -10,6 +10,16 @@
 - [ ] Live upload proof + respondent RLS denial proof — BLOCKED: cannot mint a session as a specific auth user (workspace admin only)
 - [ ] Follow-Up runtime verification
 
+## Internal Audit — Consolidated Business Convergence Wave (Sep 1)
+- [x] Phase 0 baseline: `docs/audit/INTERNAL-AUDIT-BUSINESS-CONVERGENCE-REBASE-2026-09-01.md`
+- [x] Annual plan submission converged to one governed command (permission + server readiness + lock + approval action + event)
+- [x] Governed engagement upsert extended to all planning fields; governed removal command with change log
+- [x] Server-authoritative readiness in plan register and plan workspace
+- [x] Plan header edit no longer resets lifecycle status; active-flag handling aligned with server
+- [ ] Annual plan portfolio workspace enhancements (portfolio KPIs, coverage rollups)
+- [ ] Prior audit history visibility on engagement/auditable area
+- [ ] Enterprise access management matrix (IA roles vs capabilities)
+
 ## Compliance — Legal Review / Handover Queue Enterprise Upgrade (Sep 1)
 - [ ] Confirm canonical purpose of /compliance/enforcement/legal-queue vs Recommendation Queue / Pack Preparation / Approved Escalations
 - [ ] Server-side RPC: search, filters, sorting, pagination (25/50/100/200), scoped counts (replace .limit(100))
