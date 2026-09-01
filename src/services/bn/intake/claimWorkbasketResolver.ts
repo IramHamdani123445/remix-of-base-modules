@@ -20,6 +20,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { resolveProductWorkflow } from '@/services/bn/workflow/resolveProductWorkflow';
+import { pickBasketForStage } from '@/services/bn/workflow/stageBasketExpectation';
 
 const db = supabase as any;
 
