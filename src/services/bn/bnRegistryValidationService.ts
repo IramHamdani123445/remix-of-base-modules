@@ -305,6 +305,27 @@ export async function runRegistryValidation(): Promise<RegistryValidationReport>
     }
   }
 
+  // ---------- 5b. Queue access: active basket roles must be able to open their basket ----------
+  try {
+    const { data: gaps, error: gapErr } = await (db as any).rpc('bn_workbasket_permission_gaps');
+    if (!gapErr) {
+      for (const g of (gaps ?? []) as any[]) {
+        findings.push({
+          category: 'WORKFLOW_ROLE',
+          severity: g.role_exists ? 'ERROR' : 'ERROR',
+          entity: 'bn_workbasket',
+          message: g.role_exists
+            ? `${g.basket_code}: role "${g.assigned_role}" has no view access on ${g.missing_module} — this basket is invisible to its owner`
+            : `${g.basket_code}: assigned role "${g.assigned_role}" does not exist in the role register`,
+        });
+      }
+    }
+  } catch {
+    /* non-fatal */
+  }
+
+
+
   // ---------- 6. Orphan / inactive-library references on active product versions ----------
   const productVersions = await safeFetch('bn_product_version');
   const liveVersions = productVersions.filter(

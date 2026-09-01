@@ -26945,6 +26945,8 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           category: string | null
+          compare_fact_key: string | null
+          conditional_when: Json | null
           confidence_status: string
           created_at: string
           created_by: string | null
@@ -26952,11 +26954,15 @@ export type Database = {
           default_group_sort_order: number
           default_rule_sort_order: number
           description: string | null
+          document_type_code: string | null
           effective_date: string | null
           effective_from: string | null
           effective_to: string | null
+          end_fact_key: string | null
+          existence_check_code: string | null
           fact_key: string | null
           failure_message_text: string | null
+          fallback_end_fact_key: string | null
           governance_status: string
           governance_updated_at: string | null
           governance_updated_by: string | null
@@ -26970,24 +26976,31 @@ export type Database = {
           legal_notes: string | null
           legal_reference: string | null
           legislative_reference: string | null
+          message_template: string | null
           operator: string
           parameter: string | null
           priority: number
           product_type: string | null
+          reason_code_group: string | null
+          required_status: string | null
           rule_code: string
           rule_group_code: string | null
           rule_group_id: string | null
           rule_group_name: string | null
+          rule_kind: Database["public"]["Enums"]["bn_eligibility_rule_kind"]
           rule_name: string
           rule_status: string
           source_document: string | null
           source_name: string | null
           source_section: string | null
           source_url: string | null
+          start_fact_key: string | null
           statutory_basis: string | null
+          supersedes_rule_id: string | null
           tags: string[]
           technical_validated_at: string | null
           technical_validated_by: string | null
+          unit: Database["public"]["Enums"]["bn_eligibility_rule_unit"] | null
           updated_at: string
           updated_by: string | null
           value_from: string | null
@@ -27000,6 +27013,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           category?: string | null
+          compare_fact_key?: string | null
+          conditional_when?: Json | null
           confidence_status?: string
           created_at?: string
           created_by?: string | null
@@ -27007,11 +27022,15 @@ export type Database = {
           default_group_sort_order?: number
           default_rule_sort_order?: number
           description?: string | null
+          document_type_code?: string | null
           effective_date?: string | null
           effective_from?: string | null
           effective_to?: string | null
+          end_fact_key?: string | null
+          existence_check_code?: string | null
           fact_key?: string | null
           failure_message_text?: string | null
+          fallback_end_fact_key?: string | null
           governance_status?: string
           governance_updated_at?: string | null
           governance_updated_by?: string | null
@@ -27025,24 +27044,31 @@ export type Database = {
           legal_notes?: string | null
           legal_reference?: string | null
           legislative_reference?: string | null
+          message_template?: string | null
           operator: string
           parameter?: string | null
           priority?: number
           product_type?: string | null
+          reason_code_group?: string | null
+          required_status?: string | null
           rule_code: string
           rule_group_code?: string | null
           rule_group_id?: string | null
           rule_group_name?: string | null
+          rule_kind?: Database["public"]["Enums"]["bn_eligibility_rule_kind"]
           rule_name: string
           rule_status?: string
           source_document?: string | null
           source_name?: string | null
           source_section?: string | null
           source_url?: string | null
+          start_fact_key?: string | null
           statutory_basis?: string | null
+          supersedes_rule_id?: string | null
           tags?: string[]
           technical_validated_at?: string | null
           technical_validated_by?: string | null
+          unit?: Database["public"]["Enums"]["bn_eligibility_rule_unit"] | null
           updated_at?: string
           updated_by?: string | null
           value_from?: string | null
@@ -27055,6 +27081,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           category?: string | null
+          compare_fact_key?: string | null
+          conditional_when?: Json | null
           confidence_status?: string
           created_at?: string
           created_by?: string | null
@@ -27062,11 +27090,15 @@ export type Database = {
           default_group_sort_order?: number
           default_rule_sort_order?: number
           description?: string | null
+          document_type_code?: string | null
           effective_date?: string | null
           effective_from?: string | null
           effective_to?: string | null
+          end_fact_key?: string | null
+          existence_check_code?: string | null
           fact_key?: string | null
           failure_message_text?: string | null
+          fallback_end_fact_key?: string | null
           governance_status?: string
           governance_updated_at?: string | null
           governance_updated_by?: string | null
@@ -27080,24 +27112,31 @@ export type Database = {
           legal_notes?: string | null
           legal_reference?: string | null
           legislative_reference?: string | null
+          message_template?: string | null
           operator?: string
           parameter?: string | null
           priority?: number
           product_type?: string | null
+          reason_code_group?: string | null
+          required_status?: string | null
           rule_code?: string
           rule_group_code?: string | null
           rule_group_id?: string | null
           rule_group_name?: string | null
+          rule_kind?: Database["public"]["Enums"]["bn_eligibility_rule_kind"]
           rule_name?: string
           rule_status?: string
           source_document?: string | null
           source_name?: string | null
           source_section?: string | null
           source_url?: string | null
+          start_fact_key?: string | null
           statutory_basis?: string | null
+          supersedes_rule_id?: string | null
           tags?: string[]
           technical_validated_at?: string | null
           technical_validated_by?: string | null
+          unit?: Database["public"]["Enums"]["bn_eligibility_rule_unit"] | null
           updated_at?: string
           updated_by?: string | null
           value_from?: string | null
@@ -27111,6 +27150,13 @@ export type Database = {
             columns: ["rule_group_id"]
             isOneToOne: false
             referencedRelation: "bn_rule_group"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_rule_catalogue_supersedes_rule_id_fkey"
+            columns: ["supersedes_rule_id"]
+            isOneToOne: false
+            referencedRelation: "bn_rule_catalogue"
             referencedColumns: ["id"]
           },
         ]
@@ -75151,6 +75197,9 @@ export type Database = {
           preparation_notes: string | null
           preparation_status: string
           primary_auditee_contact_id: string | null
+          prior_history_review_note: string | null
+          prior_history_reviewed_at: string | null
+          prior_history_reviewed_by: string | null
           quarter: string | null
           reviewer_id: string | null
           schedule_version: number
@@ -75223,6 +75272,9 @@ export type Database = {
           preparation_notes?: string | null
           preparation_status?: string
           primary_auditee_contact_id?: string | null
+          prior_history_review_note?: string | null
+          prior_history_reviewed_at?: string | null
+          prior_history_reviewed_by?: string | null
           quarter?: string | null
           reviewer_id?: string | null
           schedule_version?: number
@@ -75295,6 +75347,9 @@ export type Database = {
           preparation_notes?: string | null
           preparation_status?: string
           primary_auditee_contact_id?: string | null
+          prior_history_review_note?: string | null
+          prior_history_reviewed_at?: string | null
+          prior_history_reviewed_by?: string | null
           quarter?: string | null
           reviewer_id?: string | null
           schedule_version?: number
@@ -80060,6 +80115,72 @@ export type Database = {
             columns: ["engagement_id"]
             isOneToOne: false
             referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_prior_action_reference: {
+        Row: {
+          created_at: string
+          current_engagement_id: string
+          id: string
+          is_active: boolean
+          linked_at: string
+          linked_by: string | null
+          linked_by_profile: string | null
+          prior_action_id: string
+          prior_engagement_id: string | null
+          relationship_type: string
+          relevance_reason: string | null
+          unlinked_at: string | null
+          unlinked_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_engagement_id: string
+          id?: string
+          is_active?: boolean
+          linked_at?: string
+          linked_by?: string | null
+          linked_by_profile?: string | null
+          prior_action_id: string
+          prior_engagement_id?: string | null
+          relationship_type?: string
+          relevance_reason?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_engagement_id?: string
+          id?: string
+          is_active?: boolean
+          linked_at?: string
+          linked_by?: string | null
+          linked_by_profile?: string | null
+          prior_action_id?: string
+          prior_engagement_id?: string | null
+          relationship_type?: string
+          relevance_reason?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_prior_action_reference_current_engagement_id_fkey"
+            columns: ["current_engagement_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_prior_action_reference_prior_action_id_fkey"
+            columns: ["prior_action_id"]
+            isOneToOne: false
+            referencedRelation: "ia_action_tracking"
             referencedColumns: ["id"]
           },
         ]
@@ -126238,6 +126359,14 @@ export type Database = {
           workflow_instance_id: string
         }[]
       }
+      bn_sync_workbasket_queue_permissions: {
+        Args: never
+        Returns: {
+          granted_action: string
+          granted_module: string
+          granted_role: string
+        }[]
+      }
       bn_uprating_check_actor_permission: {
         Args: {
           p_action_name: string
@@ -126433,6 +126562,16 @@ export type Database = {
           p_run_id: string
         }
         Returns: Json
+      }
+      bn_workbasket_permission_gaps: {
+        Args: never
+        Returns: {
+          assigned_role: string
+          basket_code: string
+          basket_name: string
+          missing_module: string
+          role_exists: boolean
+        }[]
       }
       bn_workbaskets_for_user: {
         Args: { p_user_id: string }
@@ -131013,6 +131152,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_access_matrix: { Args: never; Returns: Json }
+      ia_acknowledge_prior_history: {
+        Args: { p_engagement_id: string; p_note?: string }
+        Returns: Json
+      }
       ia_action_assign: {
         Args: {
           p_accountable_department_id?: string
@@ -131088,7 +131232,28 @@ export type Database = {
         Returns: boolean
       }
       ia_actor_label: { Args: never; Returns: string }
+      ia_annual_plan_coverage: { Args: { p_plan_id: string }; Returns: Json }
+      ia_annual_plan_coverage_core: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_annual_plan_portfolio_summary: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_annual_plan_portfolio_summary_core: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       ia_annual_plan_readiness: { Args: { p_plan_id: string }; Returns: Json }
+      ia_annual_plan_version_diff: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_annual_plan_version_diff_core: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       ia_apply_manual_override: {
         Args: {
           p_candidate_id?: string
@@ -131155,10 +131320,12 @@ export type Database = {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_can_view_annual_plan: { Args: { p_plan_id: string }; Returns: boolean }
       ia_cancel_engagement: {
         Args: { p_engagement_id: string; p_reason: string }
         Returns: Json
       }
+      ia_capability_modules: { Args: never; Returns: string[] }
       ia_capacity_schedule_candidates: {
         Args: { p_plan_id: string }
         Returns: Json
@@ -131502,6 +131669,15 @@ export type Database = {
         Args: { p_action_id: string; p_evidence_ids: string[] }
         Returns: Json
       }
+      ia_link_prior_action: {
+        Args: {
+          p_engagement_id: string
+          p_prior_action_id: string
+          p_relationship_type?: string
+          p_relevance_reason?: string
+        }
+        Returns: Json
+      }
       ia_log_event: {
         Args: {
           _annual_plan_id?: string
@@ -131548,6 +131724,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_permission_reconciliation: {
+        Args: { p_expected?: Json }
+        Returns: Json
+      }
       ia_persist_plan_engagements: {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
@@ -131564,6 +131744,14 @@ export type Database = {
       ia_plan_working_copy_statuses: { Args: never; Returns: string[] }
       ia_postpone_engagement: {
         Args: { p_engagement_id: string; p_reason: string }
+        Returns: Json
+      }
+      ia_prior_action_detail: {
+        Args: { p_engagement_id: string; p_same_function_only?: boolean }
+        Returns: Json
+      }
+      ia_prior_audit_history: {
+        Args: { p_engagement_id: string; p_same_function_only?: boolean }
         Returns: Json
       }
       ia_q_action_centre_counts: { Args: { p_filters?: Json }; Returns: Json }
@@ -131701,6 +131889,14 @@ export type Database = {
         Args: { p_created_by?: string }
         Returns: Json
       }
+      ia_sensitive_capability_policy: {
+        Args: never
+        Returns: {
+          action_name: string
+          intended_roles: string[]
+          module_name: string
+        }[]
+      }
       ia_start_annual_plan_approval_workflow: {
         Args: { p_plan_id: string; p_submitted_by?: string }
         Returns: Json
@@ -131746,6 +131942,10 @@ export type Database = {
           p_reason?: string
           p_target_status: string
         }
+        Returns: Json
+      }
+      ia_unlink_prior_action: {
+        Args: { p_reference_id: string }
         Returns: Json
       }
       ia_update_annual_plan_working_copy: {

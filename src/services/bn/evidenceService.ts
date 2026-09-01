@@ -325,13 +325,22 @@ export async function getEvidenceChecklist(claimId: string): Promise<BnEvidenceC
 }
 
 export async function isEvidenceComplete(claimId: string): Promise<boolean> {
+  // `is_blocking` alone is not trustworthy (legacy rows derived it from
+  // `blocks_submission` only). A MANDATORY or decision-blocking requirement
+  // is incomplete until it is verified/fulfilled/waived, whatever the flag.
   const { data, error } = await db
     .from('bn_evidence_checklist')
-    .select('id')
-    .eq('claim_id', claimId)
-    .eq('is_blocking', true);
+    .select('id, status, is_blocking, bn_doc_requirement(requirement_level, blocks_decision)')
+    .eq('claim_id', claimId);
   if (error) throw error;
-  return (data || []).length === 0;
+  const satisfied = ['FULFILLED', 'VERIFIED', 'WAIVED'];
+  const incomplete = (data || []).filter((r: any) => {
+    const blocking = r.is_blocking === true ||
+      r.bn_doc_requirement?.requirement_level === 'MANDATORY' ||
+      r.bn_doc_requirement?.blocks_decision === true;
+    return blocking && !satisfied.includes(String(r.status ?? '').toUpperCase());
+  });
+  return incomplete.length === 0;
 }
 
 export async function generateEvidenceChecklist(claimId: string, productId: string, stage?: string): Promise<void> {

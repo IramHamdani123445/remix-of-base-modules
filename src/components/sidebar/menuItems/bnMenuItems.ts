@@ -67,19 +67,19 @@ const _bnMenuItemsRaw = [
         title: "Claim Worklist",
         url: "/bn/claims",
         icon: ClipboardList,
-        requiresPermission: "benefits_management",
+        requiresPermission: "bn_claim_worklist",
       },
       {
         title: "Claim Queue",
         url: "/bn/queue",
         icon: Inbox,
-        requiresPermission: "benefits_management",
+        requiresPermission: "bn_claim_queue",
       },
       {
         title: "My Workbench",
         url: "/bn/workbench",
         icon: LayoutDashboard,
-        requiresPermission: "benefits_management",
+        requiresPermission: "bn_claim_worklist",
         description: "All workbaskets visible to you via your direct, bundle, and delegated BN roles.",
       },
       {
