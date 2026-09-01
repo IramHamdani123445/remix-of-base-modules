@@ -1,9 +1,11 @@
 /**
- * Attach Evidence dialog for Compliance Classic.
- * Uploads to the existing `documents` storage bucket and inserts into
- * `ce_inspection_evidence`. Mirrors the write pattern used by
- * fieldAuditService.uploadEvidence, but adds an inspection picker so
- * staff can attach evidence to any inspection from the register page.
+ * Attach Evidence — Compliance Inspection Evidence Register.
+ *
+ * The binary is uploaded to the PRIVATE `ce-field-evidence` bucket and the
+ * metadata row is created by the governed RPC `ce_evidence_attach_v1`, which
+ * validates the inspection/finding relationship, records the authenticated
+ * capturer and writes the audit entry. Success is only reported when BOTH the
+ * storage object and the database record exist.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,15 +18,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  EVIDENCE_BUCKET, EVIDENCE_TYPE_LABELS, formatFileSize, uploadEvidenceObject, validateEvidenceFile,
+} from '@/lib/compliance/evidenceFileAccess';
 
 const EVIDENCE_TYPES = ['DOCUMENT', 'PHOTO', 'PAYROLL', 'SIGNED_SHEET', 'NOTE', 'OTHER'] as const;
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Pre-selects an inspection when the dialog is opened from a workspace. */
   inspectionId?: string;
+  onCreated?: () => void;
 }
 
 interface InspectionOption {
@@ -35,7 +40,7 @@ interface InspectionOption {
   status: string | null;
 }
 
-export function EvidenceUploadDialog({ open, onOpenChange, inspectionId }: Props) {
+export function EvidenceUploadDialog({ open, onOpenChange, inspectionId, onCreated }: Props) {
   const qc = useQueryClient();
   const [selectedInspection, setSelectedInspection] = useState<string>('');
   const [findingId, setFindingId] = useState<string>('');
@@ -59,7 +64,7 @@ export function EvidenceUploadDialog({ open, onOpenChange, inspectionId }: Props
 
   const inspectionsQ = useQuery({
     queryKey: ['ce-inspections-picker'],
-    enabled: open && !inspectionId,
+    enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ce_inspections')
@@ -70,6 +75,11 @@ export function EvidenceUploadDialog({ open, onOpenChange, inspectionId }: Props
       return (data ?? []) as InspectionOption[];
     },
   });
+
+  const selected = useMemo(
+    () => (inspectionsQ.data ?? []).find((i) => i.id === selectedInspection) ?? null,
+    [inspectionsQ.data, selectedInspection],
+  );
 
   const findingsQ = useQuery({
     queryKey: ['ce-inspection-findings', selectedInspection],
@@ -101,51 +111,52 @@ export function EvidenceUploadDialog({ open, onOpenChange, inspectionId }: Props
 
   const canSubmit = useMemo(() => {
     if (!selectedInspection) return false;
-    if (evidenceType === 'NOTE') return description.trim().length > 0;
+    if (evidenceType === 'NOTE') return description.trim().length > 0 || !!file;
     return !!file;
   }, [selectedInspection, evidenceType, description, file]);
 
   const upload = useMutation({
     mutationFn: async () => {
-      let file_name = description.trim().slice(0, 80) || 'Note';
-      let file_url = '';
-      let file_size = 0;
+      let storagePath: string | null = null;
+      let fileName = description.trim().slice(0, 80) || 'Note';
+      let fileSize: number | null = null;
+      let mimeType: string | null = null;
 
       if (file) {
-        if (file.size > MAX_FILE_SIZE) throw new Error('File exceeds 25 MB limit');
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `compliance/evidence/${selectedInspection}/${Date.now()}-${safeName}`;
-        const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { upsert: false });
-        if (upErr) throw upErr;
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
-        file_name = file.name;
-        file_url = urlData.publicUrl;
-        file_size = file.size;
+        const invalid = validateEvidenceFile(file);
+        if (invalid) throw new Error(invalid);
+        storagePath = await uploadEvidenceObject(selectedInspection, file);
+        fileName = file.name;
+        fileSize = file.size;
+        mimeType = file.type || null;
       }
 
-      const { data: userData } = await supabase.auth.getUser();
-      const capturedBy = userData?.user?.email ?? userData?.user?.id ?? null;
-
-      const { error } = await supabase.from('ce_inspection_evidence').insert({
-        inspection_id: selectedInspection,
-        finding_id: findingId || null,
-        evidence_type: evidenceType,
-        file_name,
-        file_url,
-        file_size,
-        description: description.trim() || null,
-        gps_lat: gpsLat ? Number(gpsLat) : null,
-        gps_lng: gpsLng ? Number(gpsLng) : null,
-        captured_at: new Date().toISOString(),
-        captured_by: capturedBy,
-        created_by: capturedBy,
-      } as any);
-      if (error) throw error;
+      const { data, error } = await (supabase.rpc as any)('ce_evidence_attach_v1', {
+        p_inspection_id: selectedInspection,
+        p_evidence_type: evidenceType,
+        p_file_name: fileName,
+        p_storage_bucket: storagePath ? EVIDENCE_BUCKET : null,
+        p_storage_path: storagePath,
+        p_file_size: fileSize,
+        p_mime_type: mimeType,
+        p_description: description.trim() || null,
+        p_finding_id: findingId || null,
+        p_gps_lat: gpsLat ? Number(gpsLat) : null,
+        p_gps_lng: gpsLng ? Number(gpsLng) : null,
+      });
+      if (error) {
+        // Roll the orphan object back so storage and metadata never diverge.
+        if (storagePath) await supabase.storage.from(EVIDENCE_BUCKET).remove([storagePath]).catch(() => {});
+        throw error;
+      }
+      return data as string;
     },
     onSuccess: () => {
       toast.success('Evidence attached');
-      qc.invalidateQueries({ queryKey: ['ce-evidence-list'] });
+      qc.invalidateQueries({ queryKey: ['ce-evidence-register'] });
+      qc.invalidateQueries({ queryKey: ['ce-evidence-facets'] });
       qc.invalidateQueries({ queryKey: ['inspection-evidence'] });
+      onCreated?.();
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e?.message ?? 'Failed to attach evidence'),
@@ -157,26 +168,30 @@ export function EvidenceUploadDialog({ open, onOpenChange, inspectionId }: Props
         <DialogHeader>
           <DialogTitle>Attach Evidence</DialogTitle>
           <DialogDescription>
-            Attach a document, photo, payroll record, or note to an inspection.
+            Evidence is stored in secure compliance storage and linked to an inspection. The employer is
+            derived from the selected inspection.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {!inspectionId && (
-            <div className="space-y-1.5">
-              <Label>Inspection *</Label>
-              <Select value={selectedInspection} onValueChange={setSelectedInspection}>
-                <SelectTrigger><SelectValue placeholder="Select an inspection" /></SelectTrigger>
-                <SelectContent>
-                  {(inspectionsQ.data ?? []).map((i) => (
-                    <SelectItem key={i.id} value={i.id}>
-                      {i.inspection_number} — {i.employer_name ?? i.employer_id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <Label>Inspection *</Label>
+            <Select value={selectedInspection} onValueChange={(v) => { setSelectedInspection(v); setFindingId(''); }} disabled={!!inspectionId}>
+              <SelectTrigger><SelectValue placeholder="Select an inspection" /></SelectTrigger>
+              <SelectContent>
+                {(inspectionsQ.data ?? []).map((i) => (
+                  <SelectItem key={i.id} value={i.id}>
+                    {i.inspection_number} — {i.employer_name ?? i.employer_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selected && (
+              <p className="text-xs text-muted-foreground">
+                Employer: <span className="font-medium">{selected.employer_name ?? '—'}</span> ({selected.employer_id})
+              </p>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -184,7 +199,9 @@ export function EvidenceUploadDialog({ open, onOpenChange, inspectionId }: Props
               <Select value={evidenceType} onValueChange={setEvidenceType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {EVIDENCE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {EVIDENCE_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>{EVIDENCE_TYPE_LABELS[t] ?? t}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -207,13 +224,21 @@ export function EvidenceUploadDialog({ open, onOpenChange, inspectionId }: Props
             <Input
               type="file"
               accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                if (f) {
+                  const invalid = validateEvidenceFile(f);
+                  if (invalid) { toast.error(invalid); e.target.value = ''; setFile(null); return; }
+                }
+                setFile(f);
+              }}
             />
             {file && (
               <p className="text-xs text-muted-foreground">
-                {file.name} • {(file.size / 1024).toFixed(0)} KB
+                {file.name} • {formatFileSize(file.size)} • {file.type || 'unknown type'}
               </p>
             )}
+            <p className="text-xs text-muted-foreground">Max 25 MB. Images, PDF, Word, Excel, CSV and text only.</p>
           </div>
 
           <div className="space-y-1.5">
