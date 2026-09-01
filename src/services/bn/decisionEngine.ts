@@ -1,6 +1,8 @@
 import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 import { supabase } from '@/integrations/supabase/client';
 import { isEvidenceComplete } from '@/services/bn/evidenceService';
+import { expandAllowedRoles, userHoldsAllowedRole } from '@/services/bn/roleVocabulary';
+
 import type {
   BnClaimTransitionRule,
   BnAvailableAction,
