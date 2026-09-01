@@ -147,7 +147,7 @@ export function ProceedingDetailDialog({ rowKey, onClose, canOpenLegal }: Props)
                   label="Legal Case No."
                   value={
                     p.lg_case_id && canOpenLegal ? (
-                      <Link className="text-primary hover:underline" to={`/legal/cases/${p.lg_case_id}`}>
+                      <Link className="text-primary hover:underline" to={`/legal/lg/cases/${p.lg_case_id}`}>
                         {p.lg_case_no} <ExternalLink className="inline h-3 w-3" />
                       </Link>
                     ) : (
