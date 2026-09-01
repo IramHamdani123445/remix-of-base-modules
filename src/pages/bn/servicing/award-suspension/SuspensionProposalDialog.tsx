@@ -449,14 +449,14 @@ export function SuspensionProposalDialog({
         </div>
 
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-6">
-          <BnBusyButton loading={submitting}
+          <Button
             variant="outline"
             className="min-h-[44px] w-full sm:w-auto"
             disabled={submitting}
             onClick={() => onOpenChange(false)}
           >
             Cancel
-          </BnBusyButton>
+          </Button>
           <Button
             className="min-h-[44px] w-full sm:w-auto"
             data-testid="suspension-submit"

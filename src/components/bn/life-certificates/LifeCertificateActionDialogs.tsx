@@ -317,7 +317,7 @@ const LifeCertificateActionDialogs: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={submitting} variant="outline" onClick={onCancel} disabled={submitting}>Cancel</BnBusyButton>
+          <Button variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
           <Button onClick={() => void submit()} disabled={!canSubmit || submitting}>
             {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Confirm
           </Button>

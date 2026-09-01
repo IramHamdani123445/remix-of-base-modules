@@ -486,13 +486,13 @@ export function AddFormulaWizard({ open, onClose, existingCodes, onCreated }: Pr
 
         <DialogFooter className="flex sm:justify-between gap-2">
           <div className="flex gap-2">
-            <BnBusyButton loading={saving} variant="ghost" onClick={close} disabled={saving}>Cancel</BnBusyButton>
+            <Button variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
           </div>
           <div className="flex gap-2">
             {step > 0 && (
-              <BnBusyButton loading={saving} variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>
+              <Button variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>
                 <ChevronLeft className="h-4 w-4 mr-1" /> Back
-              </BnBusyButton>
+              </Button>
             )}
             {step < STEP_LABELS.length - 1 ? (
               <Button

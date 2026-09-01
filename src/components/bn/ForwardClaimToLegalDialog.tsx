@@ -151,9 +151,9 @@ export function ForwardClaimToLegalDialog({
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={submitting} variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancel
-          </BnBusyButton>
+          </Button>
           <Button onClick={submit} disabled={submitting}>
             {submitting ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />

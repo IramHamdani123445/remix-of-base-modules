@@ -619,9 +619,9 @@ export default function BenefitsLegalReferralWizard() {
       )}
 
       <div className="flex items-center justify-between">
-        <BnBusyButton loading={submitting} variant="outline" onClick={back} disabled={step === 0 || submitting}>
+        <Button variant="outline" onClick={back} disabled={step === 0 || submitting}>
           Back
-        </BnBusyButton>
+        </Button>
         {step < STEPS.length - 1 ? (
           <Button onClick={next}>
             Next <ArrowRight className="h-4 w-4 ml-2" />

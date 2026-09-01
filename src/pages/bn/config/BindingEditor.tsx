@@ -355,7 +355,7 @@ export function BindingEditor({ open, binding, onClose, onSaved }: Props) {
         )}
 
         <SheetFooter className="mt-6">
-          <BnBusyButton loading={saving} variant="outline" onClick={onClose} disabled={saving}>Cancel</BnBusyButton>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving || loading}>
             {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
             Save binding

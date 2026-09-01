@@ -136,9 +136,9 @@ export const BnUpratingSubmitForApprovalDialog: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </BnBusyButton>
+          </Button>
           <Button
             onClick={() => onSubmit({ submission_note: note.trim() })}
             disabled={isSaving || !readiness?.can_submit}

@@ -275,7 +275,7 @@ const MedicalReviewScheduler: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <BnBusyButton loading={submitting} variant="outline" onClick={() => setScheduleOpen(false)} disabled={submitting}>Cancel</BnBusyButton>
+            <Button variant="outline" onClick={() => setScheduleOpen(false)} disabled={submitting}>Cancel</Button>
             <Button onClick={doSchedule} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Calendar className="h-4 w-4 mr-1" />}
               Confirm Schedule
@@ -314,7 +314,7 @@ const MedicalReviewScheduler: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <BnBusyButton loading={submitting} variant="outline" onClick={() => setOutcomeOpen(false)} disabled={submitting}>Cancel</BnBusyButton>
+            <Button variant="outline" onClick={() => setOutcomeOpen(false)} disabled={submitting}>Cancel</Button>
             <Button onClick={doOutcome} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
               Save Outcome

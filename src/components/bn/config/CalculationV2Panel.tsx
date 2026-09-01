@@ -341,7 +341,7 @@ export function CalculationV2Panel({ productId, productVersionId, isReadOnly }: 
                   />
                 </div>
                 <div className="md:col-span-2 flex justify-end gap-2">
-                  <BnBusyButton loading={saving} variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Cancel</BnBusyButton>
+                  <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Cancel</Button>
                   <BnBusyButton loading={saving} variant="outline" onClick={handleValidateBinding} disabled={saving}>
                     <ShieldCheck className="mr-2 h-4 w-4" />Validate
                   </BnBusyButton>

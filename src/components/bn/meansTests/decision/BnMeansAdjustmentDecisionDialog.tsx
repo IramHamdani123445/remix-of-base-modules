@@ -208,9 +208,9 @@ export const BnMeansAdjustmentDecisionDialog: React.FC<BnMeansAdjustmentDecision
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={busy} variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
-          </BnBusyButton>
+          </Button>
           <BnBusyButton loading={busy} onClick={submit} disabled={busy} data-testid="means-adjustment-decision-submit">
             Record decision
           </BnBusyButton>

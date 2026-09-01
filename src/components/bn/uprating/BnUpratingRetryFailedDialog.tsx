@@ -98,9 +98,9 @@ export const BnUpratingRetryFailedDialog: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </BnBusyButton>
+          </Button>
           <Button onClick={onConfirm} disabled={!canRetry || isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Retry eligible items

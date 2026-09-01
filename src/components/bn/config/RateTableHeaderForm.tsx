@@ -324,7 +324,7 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind 
 
   const footer = (
     <div className="flex flex-wrap items-center gap-2 w-full justify-end">
-      <BnBusyButton loading={saving} variant="ghost" onClick={onClose} disabled={saving}>Cancel</BnBusyButton>
+      <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
       <Button variant="outline" onClick={() => persist('DRAFT')} disabled={saving}>
         {saving && pendingStatus === 'DRAFT' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
         Save Draft

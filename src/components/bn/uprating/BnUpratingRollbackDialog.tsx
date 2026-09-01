@@ -143,9 +143,9 @@ export const BnUpratingRollbackDialog: React.FC<BnUpratingRollbackDialogProps> =
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </BnBusyButton>
+          </Button>
           <Button
             variant="destructive"
             disabled={!valid || isSaving}

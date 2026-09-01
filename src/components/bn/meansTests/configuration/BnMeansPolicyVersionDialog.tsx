@@ -246,7 +246,7 @@ export const BnMeansPolicyVersionDialog: React.FC<BnMeansPolicyVersionDialogProp
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={pending} variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</BnBusyButton>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
           <Button onClick={submit} disabled={pending} data-testid="means-policy-version-save">
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {version ? 'Save draft' : 'Create version'}

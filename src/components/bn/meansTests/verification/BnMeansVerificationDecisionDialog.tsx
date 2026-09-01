@@ -186,7 +186,7 @@ export const BnMeansVerificationDecisionDialog: React.FC<BnMeansVerificationDeci
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={busy} variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</BnBusyButton>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
           <BnBusyButton loading={busy}
             disabled={busy || missing || !fact}
             data-testid="means-verification-decision-submit"

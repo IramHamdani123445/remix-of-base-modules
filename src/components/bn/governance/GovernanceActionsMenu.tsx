@@ -205,7 +205,7 @@ export function GovernanceActionsMenu({ ruleId, ruleCode, status, defaults, onCh
           )}
 
           <DialogFooter>
-            <BnBusyButton loading={busy} variant="outline" onClick={close} disabled={busy}>Cancel</BnBusyButton>
+            <Button variant="outline" onClick={close} disabled={busy}>Cancel</Button>
             <BnBusyButton loading={busy} onClick={run} disabled={busy}
               variant={pending?.destructive ? 'destructive' : 'default'}>
               {busy ? 'Working…' : pending?.label}

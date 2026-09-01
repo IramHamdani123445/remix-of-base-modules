@@ -95,7 +95,7 @@ export function CorrectionRequestDialog({ open, onOpenChange, claimId, channel, 
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={submitting} variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</BnBusyButton>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
           <BnBusyButton loading={submitting} onClick={handleSubmit} disabled={submitting}>{submitting ? 'Sending…' : 'Send Request'}</BnBusyButton>
         </DialogFooter>
       </DialogContent>

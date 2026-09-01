@@ -317,14 +317,14 @@ export function SuspensionDecisionPanel({
           </div>
 
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <BnBusyButton loading={busy}
+            <Button
               variant="outline"
               className="min-h-[44px] w-full sm:w-auto"
               disabled={busy !== null}
               onClick={() => setRejectOpen(false)}
             >
               Cancel
-            </BnBusyButton>
+            </Button>
             <Button
               className="min-h-[44px] w-full sm:w-auto"
               data-testid="confirm-reject"

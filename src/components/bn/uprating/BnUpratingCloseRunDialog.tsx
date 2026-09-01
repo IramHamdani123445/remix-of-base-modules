@@ -160,9 +160,9 @@ export const BnUpratingCloseRunDialog: React.FC<BnUpratingCloseRunDialogProps> =
         )}
 
         <DialogFooter>
-          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </BnBusyButton>
+          </Button>
           <Button
             onClick={() => onConfirm(justification.trim() ? justification.trim() : null)}
             disabled={!canClose || isSaving}

@@ -286,7 +286,7 @@ const SurvivorsBenefitProcessing: React.FC = () => {
           )}
 
           <DialogFooter>
-            <BnBusyButton loading={submitting} variant="outline" onClick={() => setDetailOpen(false)} disabled={submitting}>Close</BnBusyButton>
+            <Button variant="outline" onClick={() => setDetailOpen(false)} disabled={submitting}>Close</Button>
             {canAdvance && selected && statusConfig[selected.status]?.next && (
               <Button onClick={advance} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-1" />}

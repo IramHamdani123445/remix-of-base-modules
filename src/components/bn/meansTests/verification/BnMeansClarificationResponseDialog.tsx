@@ -98,7 +98,7 @@ export const BnMeansClarificationResponseDialog: React.FC<BnMeansClarificationRe
         </div>
 
         <DialogFooter>
-          <BnBusyButton loading={busy} variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</BnBusyButton>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
           <BnBusyButton loading={busy}
             disabled={busy || !responseKind || !fact}
             data-testid="means-clarification-response-submit"

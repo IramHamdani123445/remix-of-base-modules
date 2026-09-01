@@ -279,7 +279,7 @@ function DecisionDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <BnBusyButton loading={busy} variant="outline" onClick={onClose} disabled={busy}>Close</BnBusyButton>
+          <Button variant="outline" onClick={onClose} disabled={busy}>Close</Button>
           {row.canAct && (
             <>
               <BnBusyButton loading={busy} variant="destructive" disabled={busy} onClick={() => act('REJECT')}>

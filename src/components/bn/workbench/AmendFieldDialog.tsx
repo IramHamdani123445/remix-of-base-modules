@@ -152,7 +152,7 @@ export const AmendFieldDialog: React.FC<Props> = ({ claimId, field, currentValue
           </div>
         </div>
         <DialogFooter>
-          <BnBusyButton loading={submitting} variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</BnBusyButton>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
           <BnBusyButton loading={submitting} onClick={handleSubmit} disabled={submitting}>
             {submitting ? 'Saving…' : 'Save amendment'}
           </BnBusyButton>

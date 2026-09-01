@@ -438,9 +438,9 @@ export const BnUpratingVersionEditorDialog: React.FC<BnUpratingVersionEditorDial
         )}
 
         <DialogFooter>
-          <BnBusyButton loading={submitting} variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancel
-          </BnBusyButton>
+          </Button>
           <BnBusyButton loading={submitting} onClick={handleSubmit} disabled={submitting}>
             {version ? 'Save draft' : 'Create draft version'}
           </BnBusyButton>
