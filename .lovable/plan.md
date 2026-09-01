@@ -1,5 +1,7 @@
 # Fix: claim approved with a mandatory document missing, and Claim Queue hidden for Benefits Manager
 
+Not yet implemented — this plan is awaiting approval.
+
 ## Issue 1 — BN-20260901-19059 approved with DOC-002 outstanding (verified)
 
 The checklist row for DOC-002 on that claim reads:
@@ -12,7 +14,7 @@ requirement: DOC-002, requirement_level = MANDATORY,
 
 Every approval control (`approvalPreconditions.ts`, `isEvidenceComplete`,
 the workflow runtime) filters on `is_blocking = true`, so the row was invisible
-and approval passed with the badge showing "Evidence Complete".
+and approval passed while the badge showed "Evidence Complete".
 
 Root cause: the database function `bn_submit_claim_application` creates the
 checklist with

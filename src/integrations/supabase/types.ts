@@ -26945,6 +26945,8 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           category: string | null
+          compare_fact_key: string | null
+          conditional_when: Json | null
           confidence_status: string
           created_at: string
           created_by: string | null
@@ -26952,11 +26954,15 @@ export type Database = {
           default_group_sort_order: number
           default_rule_sort_order: number
           description: string | null
+          document_type_code: string | null
           effective_date: string | null
           effective_from: string | null
           effective_to: string | null
+          end_fact_key: string | null
+          existence_check_code: string | null
           fact_key: string | null
           failure_message_text: string | null
+          fallback_end_fact_key: string | null
           governance_status: string
           governance_updated_at: string | null
           governance_updated_by: string | null
@@ -26970,24 +26976,31 @@ export type Database = {
           legal_notes: string | null
           legal_reference: string | null
           legislative_reference: string | null
+          message_template: string | null
           operator: string
           parameter: string | null
           priority: number
           product_type: string | null
+          reason_code_group: string | null
+          required_status: string | null
           rule_code: string
           rule_group_code: string | null
           rule_group_id: string | null
           rule_group_name: string | null
+          rule_kind: Database["public"]["Enums"]["bn_eligibility_rule_kind"]
           rule_name: string
           rule_status: string
           source_document: string | null
           source_name: string | null
           source_section: string | null
           source_url: string | null
+          start_fact_key: string | null
           statutory_basis: string | null
+          supersedes_rule_id: string | null
           tags: string[]
           technical_validated_at: string | null
           technical_validated_by: string | null
+          unit: Database["public"]["Enums"]["bn_eligibility_rule_unit"] | null
           updated_at: string
           updated_by: string | null
           value_from: string | null
@@ -27000,6 +27013,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           category?: string | null
+          compare_fact_key?: string | null
+          conditional_when?: Json | null
           confidence_status?: string
           created_at?: string
           created_by?: string | null
@@ -27007,11 +27022,15 @@ export type Database = {
           default_group_sort_order?: number
           default_rule_sort_order?: number
           description?: string | null
+          document_type_code?: string | null
           effective_date?: string | null
           effective_from?: string | null
           effective_to?: string | null
+          end_fact_key?: string | null
+          existence_check_code?: string | null
           fact_key?: string | null
           failure_message_text?: string | null
+          fallback_end_fact_key?: string | null
           governance_status?: string
           governance_updated_at?: string | null
           governance_updated_by?: string | null
@@ -27025,24 +27044,31 @@ export type Database = {
           legal_notes?: string | null
           legal_reference?: string | null
           legislative_reference?: string | null
+          message_template?: string | null
           operator: string
           parameter?: string | null
           priority?: number
           product_type?: string | null
+          reason_code_group?: string | null
+          required_status?: string | null
           rule_code: string
           rule_group_code?: string | null
           rule_group_id?: string | null
           rule_group_name?: string | null
+          rule_kind?: Database["public"]["Enums"]["bn_eligibility_rule_kind"]
           rule_name: string
           rule_status?: string
           source_document?: string | null
           source_name?: string | null
           source_section?: string | null
           source_url?: string | null
+          start_fact_key?: string | null
           statutory_basis?: string | null
+          supersedes_rule_id?: string | null
           tags?: string[]
           technical_validated_at?: string | null
           technical_validated_by?: string | null
+          unit?: Database["public"]["Enums"]["bn_eligibility_rule_unit"] | null
           updated_at?: string
           updated_by?: string | null
           value_from?: string | null
@@ -27055,6 +27081,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           category?: string | null
+          compare_fact_key?: string | null
+          conditional_when?: Json | null
           confidence_status?: string
           created_at?: string
           created_by?: string | null
@@ -27062,11 +27090,15 @@ export type Database = {
           default_group_sort_order?: number
           default_rule_sort_order?: number
           description?: string | null
+          document_type_code?: string | null
           effective_date?: string | null
           effective_from?: string | null
           effective_to?: string | null
+          end_fact_key?: string | null
+          existence_check_code?: string | null
           fact_key?: string | null
           failure_message_text?: string | null
+          fallback_end_fact_key?: string | null
           governance_status?: string
           governance_updated_at?: string | null
           governance_updated_by?: string | null
@@ -27080,24 +27112,31 @@ export type Database = {
           legal_notes?: string | null
           legal_reference?: string | null
           legislative_reference?: string | null
+          message_template?: string | null
           operator?: string
           parameter?: string | null
           priority?: number
           product_type?: string | null
+          reason_code_group?: string | null
+          required_status?: string | null
           rule_code?: string
           rule_group_code?: string | null
           rule_group_id?: string | null
           rule_group_name?: string | null
+          rule_kind?: Database["public"]["Enums"]["bn_eligibility_rule_kind"]
           rule_name?: string
           rule_status?: string
           source_document?: string | null
           source_name?: string | null
           source_section?: string | null
           source_url?: string | null
+          start_fact_key?: string | null
           statutory_basis?: string | null
+          supersedes_rule_id?: string | null
           tags?: string[]
           technical_validated_at?: string | null
           technical_validated_by?: string | null
+          unit?: Database["public"]["Enums"]["bn_eligibility_rule_unit"] | null
           updated_at?: string
           updated_by?: string | null
           value_from?: string | null
@@ -27111,6 +27150,13 @@ export type Database = {
             columns: ["rule_group_id"]
             isOneToOne: false
             referencedRelation: "bn_rule_group"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_rule_catalogue_supersedes_rule_id_fkey"
+            columns: ["supersedes_rule_id"]
+            isOneToOne: false
+            referencedRelation: "bn_rule_catalogue"
             referencedColumns: ["id"]
           },
         ]
