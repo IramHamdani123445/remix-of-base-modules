@@ -21,6 +21,7 @@ import type {
   BnUpratingReferenceData,
 } from '@/types/bn/uprating/upratingPolicy';
 import type { BnUpratingPolicyType } from '@/types/bn/uprating/upratingPolicyTypes';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export interface BnUpratingVersionEditorDialogProps {
   open: boolean;
@@ -437,12 +438,12 @@ export const BnUpratingVersionEditorDialog: React.FC<BnUpratingVersionEditorDial
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <BnBusyButton loading={submitting} variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
+          </BnBusyButton>
+          <BnBusyButton loading={submitting} onClick={handleSubmit} disabled={submitting}>
             {version ? 'Save draft' : 'Create draft version'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

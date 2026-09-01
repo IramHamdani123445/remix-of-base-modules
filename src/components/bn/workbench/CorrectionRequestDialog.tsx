@@ -11,6 +11,7 @@ import { useUserCode } from '@/hooks/useUserCode';
 import { createCorrectionRequest } from '@/services/bn/amendmentPolicyService';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApplicationChannel, FieldOwnership } from '@/types/bn/amendment';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -94,8 +95,8 @@ export function CorrectionRequestDialog({ open, onOpenChange, claimId, channel, 
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={submitting}>{submitting ? 'Sending…' : 'Send Request'}</Button>
+          <BnBusyButton loading={submitting} variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</BnBusyButton>
+          <BnBusyButton loading={submitting} onClick={handleSubmit} disabled={submitting}>{submitting ? 'Sending…' : 'Send Request'}</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

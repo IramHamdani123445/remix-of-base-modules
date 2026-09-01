@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw, ShieldAlert, TriangleAlert, Zap } from 'lucide-react';
 import { meansQueryService } from '@/services/bn/meansTests/meansQueryService';
 import { meansCommandService } from '@/services/bn/meansTests/meansCommandService';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   activationReasonLabel,
   eligibilityStatusLabel,
@@ -254,16 +255,16 @@ export const BnMeansActivationSection: React.FC<BnMeansActivationSectionProps> =
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Button
+            <BnBusyButton loading={busy}
               size="sm"
               disabled={!readiness.can_activate || busy}
               onClick={() => mutation.mutate('BN_MEANS_ACTIVATE')}
               data-testid="means-activate-button"
             >
               <Zap className="mr-2 h-4 w-4" /> Activate assessment
-            </Button>
+            </BnBusyButton>
             {publication?.status === 'FAILED' && (
-              <Button
+              <BnBusyButton loading={busy}
                 size="sm"
                 variant="outline"
                 disabled={busy}
@@ -271,10 +272,10 @@ export const BnMeansActivationSection: React.FC<BnMeansActivationSectionProps> =
                 data-testid="means-retry-publication-button"
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Retry fact publication
-              </Button>
+              </BnBusyButton>
             )}
             {eligibility.retry_available && (
-              <Button
+              <BnBusyButton loading={busy}
                 size="sm"
                 variant="outline"
                 disabled={busy}
@@ -282,10 +283,10 @@ export const BnMeansActivationSection: React.FC<BnMeansActivationSectionProps> =
                 data-testid="means-retry-eligibility-button"
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Retry eligibility rerun
-              </Button>
+              </BnBusyButton>
             )}
             {eligibility.request_id && (
-              <Button
+              <BnBusyButton loading={busy}
                 size="sm"
                 variant="ghost"
                 disabled={busy}
@@ -293,7 +294,7 @@ export const BnMeansActivationSection: React.FC<BnMeansActivationSectionProps> =
                 data-testid="means-refresh-eligibility-button"
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh eligibility result
-              </Button>
+              </BnBusyButton>
             )}
           </div>
         </CardContent>

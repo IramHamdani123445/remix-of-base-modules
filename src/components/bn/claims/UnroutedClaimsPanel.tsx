@@ -18,6 +18,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUserCode } from '@/hooks/useUserCode';
 import { BN_CLAIM_STATUS_LABELS } from '@/types/bn';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   findUnroutedClaims,
   routeClaims,
@@ -94,9 +95,9 @@ export function UnroutedClaimsPanel() {
               These claims are active but no queue owns them, so no officer will see them.
             </CardDescription>
           </div>
-          <Button size="sm" onClick={handleRouteAll} disabled={busy}>
+          <BnBusyButton loading={busy} size="sm" onClick={handleRouteAll} disabled={busy}>
             <RefreshCw className="mr-1 h-3 w-3" /> Route all
-          </Button>
+          </BnBusyButton>
         </div>
       </CardHeader>
       <CardContent>
@@ -128,14 +129,14 @@ export function UnroutedClaimsPanel() {
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{c.reason}</TableCell>
                 <TableCell>
-                  <Button
+                  <BnBusyButton loading={busy}
                     size="sm"
                     variant="outline"
                     disabled={busy}
                     onClick={() => handleRouteOne(c.id)}
                   >
                     Route
-                  </Button>
+                  </BnBusyButton>
                 </TableCell>
               </TableRow>
             ))}

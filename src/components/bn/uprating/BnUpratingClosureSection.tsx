@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, CheckCircle2, Lock, RefreshCw, ShieldAlert } from 'lucide-react';
 import type { BnUpratingCloseReadiness } from '@/types/bn/uprating/upratingRun';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export interface BnUpratingClosureSectionProps {
   readonly readiness: BnUpratingCloseReadiness | null;
@@ -168,12 +169,12 @@ export const BnUpratingClosureSection: React.FC<BnUpratingClosureSectionProps> =
         )}
 
         {!isClosed && (
-          <Button onClick={onCloseRun} disabled={!readiness.can_close || isBusy}>
+          <BnBusyButton loading={isBusy} onClick={onCloseRun} disabled={!readiness.can_close || isBusy}>
             <Lock className="mr-2 h-4 w-4" />
             {readiness.completion_path === 'ROLLED_BACK'
               ? 'Close rolled-back run'
               : 'Close reconciled run'}
-          </Button>
+          </BnBusyButton>
         )}
       </CardContent>
     </Card>

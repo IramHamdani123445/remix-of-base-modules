@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, AlertTriangle, CheckCircle2, Clock, FileText, Filter, ArrowRight, Heart, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   advanceSurvivorAward,
   fetchAwards,
@@ -285,7 +286,7 @@ const SurvivorsBenefitProcessing: React.FC = () => {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailOpen(false)} disabled={submitting}>Close</Button>
+            <BnBusyButton loading={submitting} variant="outline" onClick={() => setDetailOpen(false)} disabled={submitting}>Close</BnBusyButton>
             {canAdvance && selected && statusConfig[selected.status]?.next && (
               <Button onClick={advance} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-1" />}

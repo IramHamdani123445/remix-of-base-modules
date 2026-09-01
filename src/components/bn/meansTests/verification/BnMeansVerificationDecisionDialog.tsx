@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -185,8 +186,8 @@ export const BnMeansVerificationDecisionDialog: React.FC<BnMeansVerificationDeci
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={busy} variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</BnBusyButton>
+          <BnBusyButton loading={busy}
             disabled={busy || missing || !fact}
             data-testid="means-verification-decision-submit"
             onClick={() =>
@@ -210,7 +211,7 @@ export const BnMeansVerificationDecisionDialog: React.FC<BnMeansVerificationDeci
             }
           >
             Record decision
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

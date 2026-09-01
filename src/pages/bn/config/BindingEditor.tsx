@@ -18,6 +18,7 @@ import { Loader2, Plus, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { requireUserCode } from '@/lib/bn/requireUserCode';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const STAGES = ['PRIMARY','CAP','ARREARS','PRORATION','BENEFICIARY_SPLIT','FINAL'] as const;
 const SOURCE_TYPES = ['FACT','DERIVED_FACT','PRODUCT_PARAMETER','RATE_TABLE','MATRIX_TABLE','PRIOR_FORMULA_RESULT','CLAIM_FIELD','MANUAL_INPUT','CONSTANT'] as const;
@@ -354,7 +355,7 @@ export function BindingEditor({ open, binding, onClose, onSaved }: Props) {
         )}
 
         <SheetFooter className="mt-6">
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <BnBusyButton loading={saving} variant="outline" onClick={onClose} disabled={saving}>Cancel</BnBusyButton>
           <Button onClick={handleSave} disabled={saving || loading}>
             {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
             Save binding

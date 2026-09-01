@@ -12,6 +12,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   recordReceipt, verifyCertificate, rejectCertificate, requestResubmission,
   waiveObligation, deferObligation, escalateToSuspension, proposeReinstatement,
@@ -316,7 +317,7 @@ const LifeCertificateActionDialogs: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
+          <BnBusyButton loading={submitting} variant="outline" onClick={onCancel} disabled={submitting}>Cancel</BnBusyButton>
           <Button onClick={() => void submit()} disabled={!canSubmit || submitting}>
             {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Confirm
           </Button>

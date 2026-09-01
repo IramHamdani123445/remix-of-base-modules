@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AlertTriangle, CheckCircle2, Loader2, ShieldAlert } from 'lucide-react';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   approveSuspension,
   rejectSuspension,
@@ -230,7 +231,7 @@ export function SuspensionDecisionPanel({
 
         {showApproval && (
           <>
-            <Button
+            <BnBusyButton loading={busy}
               variant="outline"
               size="sm"
               data-testid="reject-button"
@@ -238,7 +239,7 @@ export function SuspensionDecisionPanel({
               onClick={() => setRejectOpen(true)}
             >
               Reject
-            </Button>
+            </BnBusyButton>
             <Button
               size="sm"
               data-testid="approve-button"
@@ -316,14 +317,14 @@ export function SuspensionDecisionPanel({
           </div>
 
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
+            <BnBusyButton loading={busy}
               variant="outline"
               className="min-h-[44px] w-full sm:w-auto"
               disabled={busy !== null}
               onClick={() => setRejectOpen(false)}
             >
               Cancel
-            </Button>
+            </BnBusyButton>
             <Button
               className="min-h-[44px] w-full sm:w-auto"
               data-testid="confirm-reject"

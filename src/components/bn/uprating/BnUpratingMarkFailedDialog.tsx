@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { BnUpratingPostExecutionReadiness } from '@/types/bn/uprating/upratingRun';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export interface BnUpratingMarkFailedDialogProps {
   readonly open: boolean;
@@ -105,9 +106,9 @@ export const BnUpratingMarkFailedDialog: React.FC<BnUpratingMarkFailedDialogProp
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button
             variant="destructive"
             disabled={!valid || isSaving}

@@ -26,6 +26,7 @@ import {
 } from '@/services/bn/awardServicingService';
 import { medicalReviewLegacyScheduleCommands } from '@/services/bn/medicalReviewLegacyScheduleCommands';
 import { describeMedicalReviewFailure, MedicalReviewError } from '@/features/bn/medical-reviews/model/errors';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   SCHEDULED: { label: 'Scheduled', color: 'bg-blue-500/10 text-blue-700 border-blue-300' },
@@ -274,7 +275,7 @@ const MedicalReviewScheduler: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setScheduleOpen(false)} disabled={submitting}>Cancel</Button>
+            <BnBusyButton loading={submitting} variant="outline" onClick={() => setScheduleOpen(false)} disabled={submitting}>Cancel</BnBusyButton>
             <Button onClick={doSchedule} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Calendar className="h-4 w-4 mr-1" />}
               Confirm Schedule
@@ -313,7 +314,7 @@ const MedicalReviewScheduler: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOutcomeOpen(false)} disabled={submitting}>Cancel</Button>
+            <BnBusyButton loading={submitting} variant="outline" onClick={() => setOutcomeOpen(false)} disabled={submitting}>Cancel</BnBusyButton>
             <Button onClick={doOutcome} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
               Save Outcome

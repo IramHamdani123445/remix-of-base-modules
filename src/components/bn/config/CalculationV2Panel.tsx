@@ -33,6 +33,7 @@ import {
 import { runFormula, applyRounding } from '@/services/bn/calc/formulaRunner';
 import { resolveVariables, emptyContext } from '@/services/bn/calc/variableResolver';
 import { ProductFormulaStepMappings, type StepMappingJson } from '@/components/bn/config/ProductFormulaStepMappings';
+import { BnBusyButton } from '@/components/bn/shared';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
@@ -340,10 +341,10 @@ export function CalculationV2Panel({ productId, productVersionId, isReadOnly }: 
                   />
                 </div>
                 <div className="md:col-span-2 flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Cancel</Button>
-                  <Button variant="outline" onClick={handleValidateBinding} disabled={saving}>
+                  <BnBusyButton loading={saving} variant="ghost" onClick={() => setEditing(null)} disabled={saving}>Cancel</BnBusyButton>
+                  <BnBusyButton loading={saving} variant="outline" onClick={handleValidateBinding} disabled={saving}>
                     <ShieldCheck className="mr-2 h-4 w-4" />Validate
-                  </Button>
+                  </BnBusyButton>
                   <Button onClick={handleSave} disabled={saving}>
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}Save
                   </Button>
@@ -464,7 +465,7 @@ function SimulatePanel({ productId, productVersionId, bindings, templates }: Sim
           <Textarea value={scopeJson} onChange={(e) => setScopeJson(e.target.value)} rows={8} className="font-mono text-xs" />
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <Button onClick={runAll} disabled={busy}><Play className="mr-2 h-4 w-4" />Run all bindings</Button>
+          <BnBusyButton loading={busy} onClick={runAll} disabled={busy}><Play className="mr-2 h-4 w-4" />Run all bindings</BnBusyButton>
           <div className="flex items-end gap-2">
             <div>
               <Label>Or single binding</Label>
@@ -478,7 +479,7 @@ function SimulatePanel({ productId, productVersionId, bindings, templates }: Sim
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="secondary" onClick={runOne} disabled={busy || !singleBindingId}>Run one</Button>
+            <BnBusyButton loading={busy} variant="secondary" onClick={runOne} disabled={busy || !singleBindingId}>Run one</BnBusyButton>
           </div>
         </div>
 

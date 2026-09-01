@@ -24,6 +24,7 @@ import {
   type BnMeansPolicyVersionForm,
 } from '@/types/bn/meansTests/meansPolicyAdmin';
 import { meansPolicyAdminService } from '@/services/bn/meansTests/meansPolicyAdminService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 function numText(value: unknown): string {
   return value === null || value === undefined || value === '' ? '' : String(value);
@@ -245,7 +246,7 @@ export const BnMeansPolicyVersionDialog: React.FC<BnMeansPolicyVersionDialogProp
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>
+          <BnBusyButton loading={pending} variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</BnBusyButton>
           <Button onClick={submit} disabled={pending} data-testid="means-policy-version-save">
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {version ? 'Save draft' : 'Create version'}

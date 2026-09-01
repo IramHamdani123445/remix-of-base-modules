@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, ShieldAlert } from 'lucide-react';
+import { BnBusyButton } from '@/components/bn/shared';
 import type {
   BnUpratingExecutionReadiness,
   BnUpratingRunExecutionView,
@@ -97,9 +98,9 @@ export const BnUpratingRetryFailedDialog: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button onClick={onConfirm} disabled={!canRetry || isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Retry eligible items

@@ -22,6 +22,7 @@ import {
 import { useUserCode } from '@/hooks/useUserCode';
 import { Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BnBusyButton } from '@/components/bn/shared';
 
 
 interface Props { claimId: string }
@@ -276,15 +277,15 @@ function TaskRow({
             rows={2}
           />
           <div className="flex flex-wrap gap-2">
-            <Button
+            <BnBusyButton loading={busy}
               size="sm"
               className="gap-1.5"
               disabled={busy || !reviewable}
               onClick={() => onDecide('ACCEPTED', notes)}
             >
               <Check className="h-3.5 w-3.5" /> Accept
-            </Button>
-            <Button
+            </BnBusyButton>
+            <BnBusyButton loading={busy}
               size="sm"
               variant="destructive"
               className="gap-1.5"
@@ -292,8 +293,8 @@ function TaskRow({
               onClick={() => onDecide('REJECTED', notes)}
             >
               <X className="h-3.5 w-3.5" /> Reject
-            </Button>
-            <Button
+            </BnBusyButton>
+            <BnBusyButton loading={busy}
               size="sm"
               variant="outline"
               className="gap-1.5"
@@ -301,15 +302,15 @@ function TaskRow({
               onClick={() => onDecide('PENDING', notes)}
             >
               <RotateCcw className="h-3.5 w-3.5" /> Reopen
-            </Button>
-            <Button
+            </BnBusyButton>
+            <BnBusyButton loading={busy}
               size="sm"
               variant="ghost"
               disabled={busy || closed}
               onClick={() => onDecide('CANCELLED', notes)}
             >
               Cancel task
-            </Button>
+            </BnBusyButton>
           </div>
         </div>
       )}

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2 } from 'lucide-react';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   formatMinor,
   type BnUpratingApprovalDecision,
@@ -145,9 +146,9 @@ export const BnUpratingApprovalDecisionDialog: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button
             onClick={() =>
               onSubmit({

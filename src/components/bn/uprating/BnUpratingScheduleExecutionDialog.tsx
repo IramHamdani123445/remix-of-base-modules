@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import type { BnUpratingScheduleReadiness } from '@/types/bn/uprating/upratingRun';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export interface ScheduleExecutionFormValues {
   readonly planned_execution_at: string;
@@ -174,9 +175,9 @@ export const BnUpratingScheduleExecutionDialog: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button
             onClick={() =>
               onSubmit({

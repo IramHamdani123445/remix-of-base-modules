@@ -31,6 +31,7 @@ import {
   type SuspensionProposalResult,
 } from '@/services/bn/awardSuspensionCommandService';
 import { formatDate, formatMoney } from './suspensionViewModels';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -448,14 +449,14 @@ export function SuspensionProposalDialog({
         </div>
 
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-6">
-          <Button
+          <BnBusyButton loading={submitting}
             variant="outline"
             className="min-h-[44px] w-full sm:w-auto"
             disabled={submitting}
             onClick={() => onOpenChange(false)}
           >
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button
             className="min-h-[44px] w-full sm:w-auto"
             data-testid="suspension-submit"

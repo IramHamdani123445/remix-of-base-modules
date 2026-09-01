@@ -24,6 +24,7 @@ import {
 import { Loader2, ShieldCheck, XCircle, Rocket, Inbox, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   listPendingForRoles, getApprovalChain, getApprovalHistory, recordDecision,
   type ApprovalLevelPolicy, type ApprovalEvent, type PendingApprovalRow,
@@ -278,21 +279,21 @@ function DecisionDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={busy}>Close</Button>
+          <BnBusyButton loading={busy} variant="outline" onClick={onClose} disabled={busy}>Close</BnBusyButton>
           {row.canAct && (
             <>
-              <Button variant="destructive" disabled={busy} onClick={() => act('REJECT')}>
+              <BnBusyButton loading={busy} variant="destructive" disabled={busy} onClick={() => act('REJECT')}>
                 <XCircle className="h-4 w-4 mr-1" /> Reject
-              </Button>
-              <Button disabled={busy} onClick={() => act('APPROVE')}>
+              </BnBusyButton>
+              <BnBusyButton loading={busy} disabled={busy} onClick={() => act('APPROVE')}>
                 <ShieldCheck className="h-4 w-4 mr-1" /> Approve L{row.nextLevel?.level}
-              </Button>
+              </BnBusyButton>
             </>
           )}
           {canPublish && (
-            <Button disabled={busy} onClick={() => act('PUBLISH')} className="bg-emerald-600 hover:bg-emerald-700">
+            <BnBusyButton loading={busy} disabled={busy} onClick={() => act('PUBLISH')} className="bg-emerald-600 hover:bg-emerald-700">
               <Rocket className="h-4 w-4 mr-1" /> Publish (Activate)
-            </Button>
+            </BnBusyButton>
           )}
         </DialogFooter>
       </DialogContent>

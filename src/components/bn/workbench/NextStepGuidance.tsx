@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBlockingMutation } from '@/hooks/useBlockingMutation';
 import { useUserCode } from '@/hooks/useUserCode';
 import { toast } from 'sonner';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   submitClaimForDecision,
   approveClaim,
@@ -222,7 +223,7 @@ export const NextStepGuidance: React.FC<Props> = ({
       <AlertDescription className="flex items-center justify-between gap-3 flex-wrap">
         <span>{step.body}</span>
         {('actionLabel' in step) && step.actionLabel && step.onAction && (
-          <Button
+          <BnBusyButton loading={pending}
             size="sm"
             onClick={step.onAction}
             // Disabled while the user code is unavailable, so the action cannot
@@ -240,7 +241,7 @@ export const NextStepGuidance: React.FC<Props> = ({
           >
             {userCodeLoading ? 'Loading…' : step.actionLabel}
             <ArrowRight className="ml-1 h-3.5 w-3.5" />
-          </Button>
+          </BnBusyButton>
         )}
       </AlertDescription>
     </Alert>

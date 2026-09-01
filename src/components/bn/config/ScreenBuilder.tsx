@@ -52,6 +52,7 @@ import {
 } from '@/hooks/bn/useBnConfig';
 import { SMART_FIELD_TYPES } from '@/services/bn/registries';
 import { ScreenTemplatePreview } from './ScreenTemplatePreview';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export const APP_CHANNELS = [
   { key: 'PUBLIC_ONLINE', label: 'Public Online' },
@@ -544,7 +545,7 @@ function FieldInspectorDialog({
         </ScrollArea>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save Field'}</Button>
+          <BnBusyButton loading={saving} onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save Field'}</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

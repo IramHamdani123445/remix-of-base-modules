@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Scale } from 'lucide-react';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   formatMinor,
   type BnUpratingPostExecutionReadiness,
@@ -144,9 +145,9 @@ export const BnUpratingReconcileDialog: React.FC<BnUpratingReconcileDialogProps>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button onClick={onConfirm} disabled={isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Reconcile run

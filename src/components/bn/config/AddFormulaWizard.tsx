@@ -36,6 +36,7 @@ import { parseFormula } from '@/lib/bn/formulaParser';
 import { useVariableResolver } from '@/hooks/bn/useVariableResolver';
 import CountryFieldSelector from '@/components/bn/selectors/CountryFieldSelector';
 import LegalReferenceSelector from '@/components/bn/selectors/LegalReferenceSelector';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -485,13 +486,13 @@ export function AddFormulaWizard({ open, onClose, existingCodes, onCreated }: Pr
 
         <DialogFooter className="flex sm:justify-between gap-2">
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
+            <BnBusyButton loading={saving} variant="ghost" onClick={close} disabled={saving}>Cancel</BnBusyButton>
           </div>
           <div className="flex gap-2">
             {step > 0 && (
-              <Button variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>
+              <BnBusyButton loading={saving} variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>
                 <ChevronLeft className="h-4 w-4 mr-1" /> Back
-              </Button>
+              </BnBusyButton>
             )}
             {step < STEP_LABELS.length - 1 ? (
               <Button

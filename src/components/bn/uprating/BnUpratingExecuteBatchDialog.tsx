@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ShieldAlert } from 'lucide-react';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   formatMinor,
   type BnUpratingExecutionReadiness,
@@ -143,9 +144,9 @@ export const BnUpratingExecuteBatchDialog: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button onClick={onConfirm} disabled={!canExecute || !acknowledged || isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isFirstBatch ? 'Execute approved run' : 'Execute next batch'}

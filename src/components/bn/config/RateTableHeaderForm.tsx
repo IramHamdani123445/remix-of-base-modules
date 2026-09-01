@@ -35,6 +35,7 @@ import {
 } from '@/services/bn/rateTableDimensionSources';
 import { useReferenceValues } from '@/hooks/bn/useReferenceData';
 import { BN_REF_GROUPS } from '@/services/bn/referenceDataService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 // Fallback values (used only if the reference-data tables are unreachable).
 const TABLE_TYPES_FALLBACK = [
@@ -323,7 +324,7 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind 
 
   const footer = (
     <div className="flex flex-wrap items-center gap-2 w-full justify-end">
-      <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+      <BnBusyButton loading={saving} variant="ghost" onClick={onClose} disabled={saving}>Cancel</BnBusyButton>
       <Button variant="outline" onClick={() => persist('DRAFT')} disabled={saving}>
         {saving && pendingStatus === 'DRAFT' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
         Save Draft

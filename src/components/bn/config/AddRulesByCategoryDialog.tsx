@@ -19,6 +19,7 @@ import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
 import { RULE_CATEGORIES, type RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -195,9 +196,9 @@ export function AddRulesByCategoryDialog({ open, onOpenChange, versionId, onAdde
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={busy || selected.size === 0}>
+          <BnBusyButton loading={busy} onClick={handleSave} disabled={busy || selected.size === 0}>
             {busy ? 'Adding…' : `Add ${selected.size} rule(s)`}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

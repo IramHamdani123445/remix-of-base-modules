@@ -26,6 +26,7 @@ import type { ReferralDocumentDraft } from "@/services/legal/coreLegalReferralDo
 import ReferralDocumentSelector from "@/components/legal/lg/ReferralDocumentSelector";
 import HistoryTimelinePanel from "@/components/legal/lg/HistoryTimelinePanel";
 import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
+import { BnBusyButton } from '@/components/bn/shared';
 
 const sb = supabase as any;
 
@@ -618,9 +619,9 @@ export default function BenefitsLegalReferralWizard() {
       )}
 
       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={back} disabled={step === 0 || submitting}>
+        <BnBusyButton loading={submitting} variant="outline" onClick={back} disabled={step === 0 || submitting}>
           Back
-        </Button>
+        </BnBusyButton>
         {step < STEPS.length - 1 ? (
           <Button onClick={next}>
             Next <ArrowRight className="h-4 w-4 ml-2" />

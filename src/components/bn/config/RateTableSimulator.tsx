@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Play, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { lookupRate, type LookupResult } from '@/services/bn/calc/rateTableLookup';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Dim { dimension_key: string; dimension_label: string; match_type: 'RANGE' | 'EXACT' | 'IN' }
 
@@ -51,9 +52,9 @@ export function RateTableSimulator({ tableCode, dimensions }: { tableCode: strin
           </div>
         ))}
       </div>
-      <Button size="sm" variant="outline" onClick={run} disabled={busy || !dimensions.length} className="gap-1.5">
+      <BnBusyButton loading={busy} size="sm" variant="outline" onClick={run} disabled={busy || !dimensions.length} className="gap-1.5">
         <Play className="h-3.5 w-3.5" /> Run
-      </Button>
+      </BnBusyButton>
       {result && (
         <div className={`text-xs rounded-md border p-2 ${result.value != null ? 'bg-background' : 'bg-destructive/10 border-destructive/40'}`}>
           {result.value != null ? (

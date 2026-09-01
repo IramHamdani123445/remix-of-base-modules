@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Lock, FilePlus2, Eye, Archive } from 'lucide-react';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export type LiveGuardIntent = 'EDIT' | 'DELETE';
 
@@ -73,14 +74,14 @@ export function LiveVersionGuardDialog({
         <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
           <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
           {onViewCurrent && (
-            <Button variant="outline" onClick={onViewCurrent} disabled={busy} className="gap-2">
+            <BnBusyButton loading={busy} variant="outline" onClick={onViewCurrent} disabled={busy} className="gap-2">
               <Eye className="h-4 w-4" /> View Current Version
-            </Button>
+            </BnBusyButton>
           )}
           {isDelete && isActive && onRetire && (
-            <Button variant="outline" onClick={onRetire} disabled={busy} className="gap-2">
+            <BnBusyButton loading={busy} variant="outline" onClick={onRetire} disabled={busy} className="gap-2">
               <Archive className="h-4 w-4" /> Retire Version
-            </Button>
+            </BnBusyButton>
           )}
           <AlertDialogAction onClick={onCreateDraft} disabled={busy} className="gap-2">
             <FilePlus2 className="h-4 w-4" />

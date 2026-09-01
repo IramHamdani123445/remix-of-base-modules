@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { formatMinor, type BnUpratingApprovalReadiness } from '@/types/bn/uprating/upratingRun';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   readonly open: boolean;
@@ -135,9 +136,9 @@ export const BnUpratingSubmitForApprovalDialog: React.FC<Props> = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button
             onClick={() => onSubmit({ submission_note: note.trim() })}
             disabled={isSaving || !readiness?.can_submit}

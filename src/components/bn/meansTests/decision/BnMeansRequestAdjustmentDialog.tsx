@@ -28,6 +28,7 @@ import {
 } from '@/components/bn/meansTests/controls/MeansControls';
 import { meansQueryService } from '@/services/bn/meansTests/meansQueryService';
 import type { BnMeansOptionSet } from '@/types/bn/meansTests/meansFieldContract';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   adjustmentReasonOptions,
   adjustmentTargetChoices,
@@ -303,12 +304,12 @@ export const BnMeansRequestAdjustmentDialog: React.FC<BnMeansRequestAdjustmentDi
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+          <BnBusyButton loading={busy} variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
-          </Button>
-          <Button onClick={submit} disabled={busy} data-testid="means-adjustment-submit">
+          </BnBusyButton>
+          <BnBusyButton loading={busy} onClick={submit} disabled={busy} data-testid="means-adjustment-submit">
             Request adjustment
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

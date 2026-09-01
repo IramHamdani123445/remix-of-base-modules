@@ -19,6 +19,7 @@ import {
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import CountryFieldSelector from '@/components/bn/selectors/CountryFieldSelector';
 import LegalReferenceSelector from '@/components/bn/selectors/LegalReferenceSelector';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   ruleId: string;
@@ -204,11 +205,11 @@ export function GovernanceActionsMenu({ ruleId, ruleCode, status, defaults, onCh
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={close} disabled={busy}>Cancel</Button>
-            <Button onClick={run} disabled={busy}
+            <BnBusyButton loading={busy} variant="outline" onClick={close} disabled={busy}>Cancel</BnBusyButton>
+            <BnBusyButton loading={busy} onClick={run} disabled={busy}
               variant={pending?.destructive ? 'destructive' : 'default'}>
               {busy ? 'Working…' : pending?.label}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

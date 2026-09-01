@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { forwardBenefitsClaimToLegal } from "@/services/legal/benefitsForwardingService";
 import { useUserCode } from "@/hooks/useUserCode";
 import { useQueryClient } from "@tanstack/react-query";
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -150,9 +151,9 @@ export function ForwardClaimToLegalDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+          <BnBusyButton loading={submitting} variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button onClick={submit} disabled={submitting}>
             {submitting ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />

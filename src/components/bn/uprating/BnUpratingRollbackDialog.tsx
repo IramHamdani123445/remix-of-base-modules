@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { formatMinor, type BnUpratingRollbackReadiness } from '@/types/bn/uprating/upratingRun';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export interface BnUpratingRollbackDialogProps {
   readonly open: boolean;
@@ -142,9 +143,9 @@ export const BnUpratingRollbackDialog: React.FC<BnUpratingRollbackDialogProps> =
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <BnBusyButton loading={isSaving} variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
-          </Button>
+          </BnBusyButton>
           <Button
             variant="destructive"
             disabled={!valid || isSaving}
