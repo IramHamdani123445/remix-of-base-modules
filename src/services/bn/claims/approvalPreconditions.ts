@@ -142,11 +142,15 @@ export async function checkApprovalPreconditions(
   // The requirement is embedded so a blocker can name the document rather than
   // its row id. `bn_evidence_checklist` carries no readable label of its own,
   // and an officer told "874bede8-2dd0-44b5…" has been told nothing.
+  // `is_blocking` on the checklist row alone is not trustworthy: rows written
+  // by the submission RPC used to derive it from `blocks_submission` only, so
+  // mandatory decision-stage documents were stored non-blocking and approvals
+  // sailed past them. A requirement that is MANDATORY or decision-blocking is
+  // a gate regardless of what the row flag says.
   const { data: blocking, error: blockingError } = await db
     .from('bn_evidence_checklist')
-    .select('id, status, requirement_id, bn_doc_requirement(document_type_code, description)')
-    .eq('claim_id', claimId)
-    .eq('is_blocking', true);
+    .select('id, status, is_blocking, requirement_id, bn_doc_requirement(document_type_code, description, requirement_level, blocks_decision, blocks_submission)')
+    .eq('claim_id', claimId);
   if (blockingError) {
     blockers.push({
       code: 'DOCUMENTS_UNVERIFIABLE',
@@ -155,12 +159,18 @@ export async function checkApprovalPreconditions(
         'so it cannot be confirmed that required documents are present. Approval refused.',
     });
   } else {
-    const rows: any[] = Array.isArray(blocking) ? blocking : [];
+    const rows: any[] = (Array.isArray(blocking) ? blocking : []).filter((r) =>
+      r.is_blocking === true ||
+      r.bn_doc_requirement?.requirement_level === 'MANDATORY' ||
+      r.bn_doc_requirement?.blocks_decision === true,
+    );
     // Whether a waiver satisfies a mandatory document is the product's call
-    // (`non_waivable`), not this function's.
+    // (`non_waivable`), not this function's. `FULFILLED` is the status the
+    // evidence service writes when a document is verified — it satisfies the
+    // gate exactly as `VERIFIED` does.
     const satisfying = controls.documentsNonWaivable
-      ? ['VERIFIED']
-      : ['VERIFIED', 'WAIVED'];
+      ? ['VERIFIED', 'FULFILLED']
+      : ['VERIFIED', 'WAIVED', 'FULFILLED'];
     const unmet = rows.filter(
       (r) => !satisfying.includes(String(r.status ?? '').toUpperCase()),
     );
