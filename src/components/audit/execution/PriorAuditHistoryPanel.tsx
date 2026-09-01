@@ -16,7 +16,7 @@ import {
   usePriorAuditHistoryMutations,
   type PriorRelationshipType,
 } from '@/hooks/audit/usePriorAuditHistory';
-import { formatDateForDisplay } from '@/utils/dateFormat';
+import { formatDateForDisplay } from '@/lib/format-config';
 
 interface PriorAuditHistoryPanelProps {
   engagementId: string;
@@ -266,9 +266,11 @@ export function PriorAuditHistoryPanel({ engagementId }: PriorAuditHistoryPanelP
         open={!!linkTarget}
         onOpenChange={(open) => !open && setLinkTarget(null)}
         title="Review prior corrective action in this audit"
-        description="This creates a reference only. The action remains owned by its original audit and finding."
       >
         <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            This creates a reference only. The action remains owned by its original audit and finding.
+          </p>
           <div>
             <Label className="text-xs">Relationship</Label>
             <Select value={relationship} onValueChange={(v) => setRelationship(v as PriorRelationshipType)}>
