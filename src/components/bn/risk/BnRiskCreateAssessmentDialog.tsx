@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { riskAssessmentService } from '@/services/bn/risk/riskAssessmentService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -140,9 +141,9 @@ export const BnRiskCreateAssessmentDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!canSubmit} onClick={() => mutation.mutate()}>
+          <BnBusyButton loading={mutation.isPending} disabled={!canSubmit} onClick={() => mutation.mutate()}>>
             {mutation.isPending ? 'Opening…' : 'Open assessment'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

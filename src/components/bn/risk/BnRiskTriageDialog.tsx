@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { riskCommandService } from '@/services/bn/risk/riskCommandService';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -133,9 +134,9 @@ export const BnRiskTriageDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!canSubmit} onClick={() => mutation.mutate()}>
+          <BnBusyButton loading={mutation.isPending} disabled={!canSubmit} onClick={() => mutation.mutate()}>>
             {mutation.isPending ? 'Recording…' : 'Record triage'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

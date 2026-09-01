@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Trash2, Save, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useBnWorkflowTemplates } from '@/hooks/bn/useBnConfig';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Row {
   id?: string;
@@ -159,9 +160,9 @@ export function ProductWorkflowChannelGrid({ productVersionId, isReadOnly }: Pro
           <Button size="sm" variant="outline" onClick={add} disabled={isReadOnly}>
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
-          <Button size="sm" onClick={() => saveMutation.mutate()} disabled={!dirty || isReadOnly || saveMutation.isPending || validation.length > 0}>
+          <BnBusyButton loading={saveMutation.isPending} size="sm" onClick={() => saveMutation.mutate()} disabled={!dirty || isReadOnly || saveMutation.isPending || validation.length > 0}>>
             <Save className="h-4 w-4 mr-1" /> Save
-          </Button>
+          </BnBusyButton>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

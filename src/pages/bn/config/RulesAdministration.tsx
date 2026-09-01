@@ -40,6 +40,7 @@ import {
 } from '@/hooks/bn/useBnRulesAdmin';
 
 import { RULE_VERSION_STATUSES, assertVersionReadiness, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 // Canonical lifecycle: DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVED
 const STATUS_COLORS: Record<string, string> = {
@@ -540,9 +541,9 @@ export default function RulesAdministration() {
                 <label className="text-sm font-medium">Change Notes</label>
                 <Textarea value={cloneNotes} onChange={(e) => setCloneNotes(e.target.value)} placeholder="Describe the reason for this revision..." rows={3} />
               </div>
-              <Button onClick={handleClone} disabled={!cloneLabel || cloneMutation.isPending} className="w-full">
+              <BnBusyButton loading={cloneMutation.isPending} onClick={handleClone} disabled={!cloneLabel || cloneMutation.isPending} className="w-full">>
                 <Copy className="h-4 w-4 mr-2" /> Create Draft
-              </Button>
+              </BnBusyButton>
             </div>
           </SheetContent>
         </Sheet>

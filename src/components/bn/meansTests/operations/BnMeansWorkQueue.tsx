@@ -27,6 +27,7 @@ import {
   type BnMeansQueueSort,
 } from '@/types/bn/meansTests/meansOperations';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const PAGE_SIZE = 25;
 
@@ -273,7 +274,7 @@ export const BnMeansWorkQueue: React.FC<BnMeansWorkQueueProps> = ({
                         )}
                         <TableCell className="whitespace-nowrap text-right">
                           {showAssignment && !row.is_read_only && (
-                            <Button
+                            <BnBusyButton loading={assign.isPending}
                               size="sm"
                               variant="outline"
                               className="mr-2"
@@ -285,9 +286,9 @@ export const BnMeansWorkQueue: React.FC<BnMeansWorkQueueProps> = ({
                                 })
                               }
                               data-testid={`means-ops-assign-${row.record_id}`}
-                            >
+                            >>
                               {row.is_mine ? 'Release' : 'Claim'}
-                            </Button>
+                            </BnBusyButton>
                           )}
                           <Button
                             size="sm"

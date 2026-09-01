@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatAuditDate } from '@/lib/dateFormat';
 import { riskControlExecutionService } from '@/services/bn/risk/riskControlExecutionService';
+import { BnBusyButton } from '@/components/bn/shared';
 import type {
   BnRiskControlExecutionReadiness,
 } from '@/types/bn/risk/riskControlExecution';
@@ -151,14 +152,14 @@ export const BnRiskControlExecutionDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={mutation.isPending}
             disabled={mutation.isPending}
             onClick={() => { setError(null); mutation.mutate(); }}
-          >
+          >>
             {mutation.isPending
               ? 'Submitting…'
               : mode === 'RETRY' ? 'Retry execution' : 'Submit to owning domain'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

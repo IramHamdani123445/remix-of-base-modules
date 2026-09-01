@@ -26,6 +26,7 @@ import {
   type BnRiskRecommendationSectionState,
 } from '@/types/bn/risk/riskControl';
 import { BnRiskRecommendationDialog } from './BnRiskRecommendationDialog';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface TargetOption {
   readonly type: string;
@@ -140,14 +141,14 @@ export const BnRiskRecommendationSection: React.FC<Props> = ({
         </div>
         <div className="flex gap-2">
           {state === 'PENDING_APPROVAL' && isActionEnabled('WITHDRAW_RECOMMENDATION') && (
-            <Button
+            <BnBusyButton loading={withdrawMutation.isPending}
               size="sm"
               variant="outline"
               disabled={withdrawMutation.isPending}
               onClick={() => withdrawMutation.mutate()}
-            >
+            >>
               Withdraw
-            </Button>
+            </BnBusyButton>
           )}
           <Button size="sm" disabled={!canRecommend} onClick={() => { setError(null); setOpen(true); }}>
             Recommend control

@@ -21,6 +21,7 @@ import { computeAllRuleReadiness, computeCoverageTypeReadiness } from '@/service
 import type { RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
 import type { EligibilityFact } from '@/services/bn/eligibilityFactService';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const empty: CoverageTypeInput = { coverage_code: '', coverage_name: '', description: '', active_flag: true };
 
@@ -138,7 +139,7 @@ export function CoverageTypesTab({ rules, facts }: { rules: RuleCatalogueItem[];
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
-            <Button onClick={onSave} disabled={upsert.isPending}>{upsert.isPending ? 'Saving…' : 'Save'}</Button>
+            <BnBusyButton loading={upsert.isPending} onClick={onSave} disabled={upsert.isPending}>>{upsert.isPending ? 'Saving…' : 'Save'}</BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -162,7 +163,7 @@ export function CoverageTypesTab({ rules, facts }: { rules: RuleCatalogueItem[];
                 </Select>
               </div>
               <div className="space-y-2"><Label>Priority</Label><Input type="number" value={pickPriority} onChange={e => setPickPriority(e.target.value)} /></div>
-              <Button onClick={onAssign} disabled={!pickRule || assign.isPending}>Assign</Button>
+              <BnBusyButton loading={assign.isPending} onClick={onAssign} disabled={!pickRule || assign.isPending}>>Assign</BnBusyButton>
             </div>
 
             <Table>

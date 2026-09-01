@@ -21,6 +21,7 @@ import {
 import { riskCommandService } from '@/services/bn/risk/riskCommandService';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -161,12 +162,12 @@ export const BnRiskLinkSignalsDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={mutation.isPending}
             disabled={!selected || mutation.isPending}
             onClick={() => mutation.mutate()}
-          >
+          >>
             {mutation.isPending ? 'Linking…' : 'Link signals'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

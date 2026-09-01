@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { riskControlService } from '@/services/bn/risk/riskControlService';
+import { BnBusyButton } from '@/components/bn/shared';
 import type {
   BnRiskControlType,
   BnRiskRecommendationReadiness,
@@ -291,9 +292,9 @@ export const BnRiskRecommendationDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button disabled={!canSubmit} onClick={() => mutation.mutate()}>
+          <BnBusyButton loading={mutation.isPending} disabled={!canSubmit} onClick={() => mutation.mutate()}>>
             {mutation.isPending ? 'Submitting…' : 'Submit for independent approval'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

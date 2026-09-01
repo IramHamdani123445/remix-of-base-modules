@@ -32,6 +32,7 @@ import type {
   BnRiskInformationRequestRow,
 } from '@/types/bn/risk/riskAssessment';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const NONE = '__NONE__';
 
@@ -345,14 +346,14 @@ export const BnRiskInformationSection: React.FC<Props> = ({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setRequestOpen(false)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={requestMutation.isPending}
               disabled={
                 !typeCode || !recipientKind || required.trim() === '' || requestMutation.isPending
               }
               onClick={() => requestMutation.mutate()}
-            >
+            >>
               {requestMutation.isPending ? 'Recording…' : 'Record request'}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -388,12 +389,12 @@ export const BnRiskInformationSection: React.FC<Props> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResponseRow(null)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={responseMutation.isPending}
               disabled={!outcome || responseMutation.isPending}
               onClick={() => responseMutation.mutate()}
-            >
+            >>
               {responseMutation.isPending ? 'Saving…' : 'Record response'}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -416,12 +417,12 @@ export const BnRiskInformationSection: React.FC<Props> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCloseRow(null)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={closeMutation.isPending}
               disabled={closeJustification.trim() === '' || closeMutation.isPending}
               onClick={() => closeMutation.mutate()}
-            >
+            >>
               {closeMutation.isPending ? 'Closing…' : 'Close request'}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

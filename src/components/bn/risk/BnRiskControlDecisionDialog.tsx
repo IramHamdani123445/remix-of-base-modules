@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { riskControlService } from '@/services/bn/risk/riskControlService';
+import { BnBusyButton } from '@/components/bn/shared';
 import type {
   BnRiskControlApprovalReadiness,
   BnRiskControlDecision,
@@ -137,12 +138,12 @@ export const BnRiskControlDecisionDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={mutation.isPending}
             disabled={reasonCode === '' || mutation.isPending || !decision}
             onClick={() => mutation.mutate()}
-          >
+          >>
             {mutation.isPending ? 'Recording…' : 'Record decision'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

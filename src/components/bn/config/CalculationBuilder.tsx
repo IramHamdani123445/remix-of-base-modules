@@ -26,6 +26,7 @@ import { useBnFormulaVariableRegistry, buildSampleMap, buildLabelMap } from '@/h
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { validateProductActivation, type ActivationResult } from '@/services/bn/productActivationValidator';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   versionId: string | undefined;
@@ -352,9 +353,9 @@ export function CalculationBuilder({ versionId, isReadOnly }: Props) {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button onClick={() => saveMutation.mutate()} disabled={isReadOnly || saveMutation.isPending} className="gap-2">
+              <BnBusyButton loading={saveMutation.isPending} onClick={() => saveMutation.mutate()} disabled={isReadOnly || saveMutation.isPending} className="gap-2">>
                 <Save className="h-4 w-4" /> {saveMutation.isPending ? 'Saving…' : 'Save calculation'}
-              </Button>
+              </BnBusyButton>
             </div>
           </CardContent>
         </Card>

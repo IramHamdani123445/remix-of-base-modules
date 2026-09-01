@@ -20,6 +20,7 @@ import {
 import { riskAssessmentService } from '@/services/bn/risk/riskAssessmentService';
 import type { BnRiskFactorRow } from '@/types/bn/risk/riskAssessment';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -105,9 +106,9 @@ export const BnRiskVoidFactorDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="destructive" disabled={!canSubmit} onClick={() => mutation.mutate()}>
+          <BnBusyButton loading={mutation.isPending} variant="destructive" disabled={!canSubmit} onClick={() => mutation.mutate()}>>
             {mutation.isPending ? 'Voiding…' : 'Void factor'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

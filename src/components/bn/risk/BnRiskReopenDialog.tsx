@@ -25,6 +25,7 @@ import { formatAuditDate } from '@/lib/dateFormat';
 import { riskOutcomeService } from '@/services/bn/risk/riskOutcomeService';
 import type { BnRiskClosureReadiness } from '@/types/bn/risk/riskOutcome';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -164,14 +165,14 @@ export const BnRiskReopenDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={mutation.isPending}
             data-testid="bn-risk-reopen-submit"
             disabled={!reasonCode || !justificationValid || mutation.isPending
               || !readiness.can_reopen}
             onClick={() => { setError(null); setConflict(false); mutation.mutate(); }}
-          >
+          >>
             {mutation.isPending ? 'Reopening…' : 'Reopen Risk assessment'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

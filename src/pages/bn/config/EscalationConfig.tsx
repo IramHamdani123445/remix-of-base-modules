@@ -24,6 +24,7 @@ import { BN_REF_GROUPS } from '@/services/bn/referenceDataService';
 import { useWorkflowRoles } from '@/hooks/bn/useWorkflowRoles';
 import { useBnConfigAudit } from '@/hooks/bn/useBnConfigAudit';
 import { BNDataGrid, type BNColumnDef } from '@/components/bn/grid';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const db = supabase as any;
 
@@ -546,7 +547,7 @@ export default function EscalationConfig() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
-              <Button onClick={handleSave} disabled={saveMutation.isPending}>Save</Button>
+              <BnBusyButton loading={saveMutation.isPending} onClick={handleSave} disabled={saveMutation.isPending}>>Save</BnBusyButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>
