@@ -349,6 +349,42 @@ export default function WorkbasketConfig() {
               </div>
 
               <div className="rounded-md border p-3 space-y-3">
+                <div className="text-sm font-semibold">Arrival Notification</div>
+                <p className="text-xs text-muted-foreground">
+                  Wording shown to every user holding this basket's roles when a claim arrives here.
+                  Tokens: {'{claim_number}'}, {'{benefit}'}, {'{status}'}, {'{basket_name}'}, {'{due_date}'}, {'{priority}'}.
+                  Leave blank to use the basket's default wording.
+                </p>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Notification Title</label>
+                  <Input
+                    value={form.notify_title}
+                    onChange={(e) => setForm((p) => ({ ...p, notify_title: e.target.value }))}
+                    placeholder="e.g. Eligibility review required"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Notification Message</label>
+                  <Textarea
+                    rows={2}
+                    value={form.notify_body}
+                    onChange={(e) => setForm((p) => ({ ...p, notify_body: e.target.value }))}
+                    placeholder="e.g. {claim_number} — {benefit} is waiting for an eligibility decision."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Action Label</label>
+                  <Input
+                    value={form.notify_action_label}
+                    onChange={(e) => setForm((p) => ({ ...p, notify_action_label: e.target.value }))}
+                    placeholder="e.g. Review eligibility"
+                  />
+                </div>
+              </div>
+
+
+
+              <div className="rounded-md border p-3 space-y-3">
                 <div className="text-sm font-semibold">SLA / Escalation</div>
                 <p className="text-xs text-muted-foreground">
                   Default escalation policy applied to all tasks in this basket. Workflow-step level policy (if any) overrides this default.
