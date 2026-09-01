@@ -9,6 +9,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 
 export default function LegacyNoticesRedirect() {
-  const { search } = useLocation();
-  return <Navigate to={`/compliance/notices/register${search}`} replace />;
+  const { search, state } = useLocation();
+  // `state` carries employer/case pre-fill from Employer 360 and Case Detail.
+  return <Navigate to={`/compliance/notices/register${search}`} state={state} replace />;
 }
