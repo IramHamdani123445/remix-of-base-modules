@@ -22,9 +22,10 @@ Test contract applied per case: authorised path, unauthorised path, mandatory-fi
 | A | Audit Universe — Department Master, Auditable Functions | 19 | 19 | 0 | 0 |
 | B | Risk — Risk Register, Risk Assessment, Risk Configuration | 20 | 20 | 0 | 0 |
 | C | Annual Plan — header, portfolio, readiness, submission, approval, revision, audit trail | 28 | 28 | 0 | 0 |
-| **Total** | | **67** | **67** | **0** | **0** |
+| D | Engagement execution — launch, working papers, findings, management response, response review, report issuance, quality review, closure | 44 | 44 | 0 | 0 |
+| **Total** | | **111** | **111** | **0** | **0** |
 
-All 67 cases pass **after remediation**. Eight defects were found on first execution; all eight are fixed and re-verified. See the defect register.
+All 111 cases pass **after remediation**, in a single clean consecutive run. Nine defects were found on first execution; all nine are fixed and re-verified. See the defect register.
 
 ## 3. Certified business behaviour
 
@@ -34,13 +35,16 @@ All 67 cases pass **after remediation**. Eight defects were found on first execu
 
 **Annual Plan.** The full lifecycle is now transactionally sound: create header (authorised users only, preparer taken from the session) → build the audit portfolio with full field fidelity → readiness evaluation → submit → return for changes with a mandatory reason → rework → resubmit → approve with committee name and minutes reference → revise an approved plan, with material revisions re-entering approval. Locking is correct in both directions, the preparer cannot decide their own plan, invalid transitions are refused with business-readable messages, version diff is produced against the approved baseline, and the approval action trail records every step with actor and comments.
 
+**Engagement execution.** An audit can only be launched from an approved plan when its planning record is complete, and cannot be relaunched or replanned afterwards. Fieldwork is governed end to end: working papers edit losslessly and carry reviewer sign-off; findings follow a strict lifecycle (Draft → Under Review → Confirmed → Released → Responded → Closed) with segregation of duties — the author cannot confirm their own finding — and cannot be released without a recommendation or a resolvable department head. Management responses require a rationale on rejection or partial acceptance and an action plan on acceptance, only the responsible department may respond, and response review is fully versioned with revision, resubmission and reviewer independence enforced. Report issuance is gated on evidence, working papers, responses, draft-finding discussion and exit meeting, and an issued report version can no longer be altered. Closure is gated on report issuance and quality-review clearance, refuses invalid dispositions and repeat closure, and the execution log records launch and closure with actor and status transition.
+
 ## 4. Remediation applied during this phase
 
-Eight defects fixed (one critical, four high, three medium) — full detail, business impact and verifying case IDs in `IA-TRANSACTIONAL-SCREEN-DEFECTS-PHASE-D-2026-09-02.md`. The most significant were:
+Nine defects fixed (one critical, four high, four medium) — full detail, business impact and verifying case IDs in `IA-TRANSACTIONAL-SCREEN-DEFECTS-PHASE-D-2026-09-02.md`. The most significant were:
 
 - Annual plan submission was impossible platform-wide (approval workflow routing unregistered).
 - Annual plan headers could be created by any signed-in business user.
 - Risk assessment scoring was inert, and risk recalculation always failed.
+- Finding and working paper reference numbers were generated in the browser from the clock, risking collisions and lost fieldwork; they are now issued as a guaranteed-unique yearly sequence by the system.
 
 ## 5. Evidence
 
@@ -49,6 +53,8 @@ Eight defects fixed (one critical, four high, three medium) — full detail, bus
 
 ## 6. Status and remaining scope
 
-**Parts A–C (Audit Universe, Risk, Annual Plan) are certified.** These are the sections that gate every downstream Internal Audit operation, and two of them were previously blocking.
+**Parts A–D are certified: Audit Universe, Risk, Annual Plan, and Engagement Execution through Closure.** Together these cover the full spine of an internal audit — from the auditable universe and risk assessment, through the approved annual plan, into fieldwork, findings, management response, reporting, quality review and formal closure.
 
-Not yet executed in this phase: engagement execution (fieldwork, working papers, evidence, procedures), findings and management response, quality review, follow-up, resourcing/time and leave, and reporting/distribution transactions. The persona harness, fixture estate and result pipeline built here are reusable for those parts without rework, and no full E2E journey has been started, in line with the phase scope.
+Not yet executed in this phase: follow-up and corrective-action tracking transactions, resourcing/time and leave, distribution lists, and portfolio-level intelligence surfaces (these were already covered under earlier convergence and UAT waves). The persona harness, fixture estate and result pipeline remain reusable for those without rework.
+
+**Phase D scope is complete and no full end-to-end journey was started**, in line with the phase instruction. Phase E (full E2E) can begin on this baseline.
