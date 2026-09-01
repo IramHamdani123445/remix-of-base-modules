@@ -242,12 +242,44 @@ Deno.serve(async (req) => {
       },
     );
     if (certError) return json({ error: certError.message ?? 'certification_failed' }, 400);
+
+    // DEF-E2E-002: recording the runtime certification alone left the PRIVILEGED
+    // dispatch activation pinned to the previous revision, so every freshly
+    // rendered job was denied with `certification_revision_mismatch` and could
+    // never dispatch after a redeploy. Advance the activation pin to the same,
+    // uniformly observed revision. Non-fatal: certification itself is recorded.
+    let dispatchActivation: unknown = null;
+    let dispatchActivationError: string | null = null;
+    const { data: marker } = await svc
+      .from('platform_environment_marker')
+      .select('project_ref')
+      .limit(1)
+      .maybeSingle();
+    const projectRef = (marker as { project_ref?: string } | null)?.project_ref ?? null;
+    if (projectRef) {
+      const { data: act, error: actError } = await svc.rpc(
+        'omni_comms_priv_set_dispatch_certified_from',
+        {
+          p_certified_revision: runtimeRevision,
+          p_project_ref: projectRef,
+          p_note: `release-control-edge certify_deployment by ${actorId}`,
+        },
+      );
+      dispatchActivation = act ?? null;
+      dispatchActivationError = actError?.message ?? null;
+    } else {
+      dispatchActivationError = 'environment_marker_missing';
+    }
+
     return json({
       certification: data,
       runtime_revision: runtimeRevision,
       dispatcher_revision: dispatcherRevision,
+      dispatch_activation: dispatchActivation,
+      dispatch_activation_error: dispatchActivationError,
       live_delivery_enabled: false,
     });
+
   }
 
   /**
