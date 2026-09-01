@@ -40725,62 +40725,107 @@ export type Database = {
         Row: {
           captured_at: string
           captured_by: string | null
+          captured_by_user_id: string | null
           checklist_response_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           evidence_type: string
+          file_ext: string | null
           file_name: string
           file_size: number | null
+          file_state: string
           file_url: string
           finding_id: string | null
           gps_lat: number | null
           gps_lng: number | null
           id: string
           inspection_id: string | null
+          mime_type: string | null
           plan_item_id: string | null
+          replacement_reason: string | null
+          status: string
+          storage_bucket: string | null
+          storage_path: string | null
+          superseded_at: string | null
+          superseded_by_id: string | null
+          supersedes_id: string | null
           updated_at: string
           updated_by: string | null
+          version_no: number
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+          withdrawn_reason: string | null
         }
         Insert: {
           captured_at?: string
           captured_by?: string | null
+          captured_by_user_id?: string | null
           checklist_response_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           evidence_type?: string
+          file_ext?: string | null
           file_name: string
           file_size?: number | null
+          file_state?: string
           file_url: string
           finding_id?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
           inspection_id?: string | null
+          mime_type?: string | null
           plan_item_id?: string | null
+          replacement_reason?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          superseded_at?: string | null
+          superseded_by_id?: string | null
+          supersedes_id?: string | null
           updated_at?: string
           updated_by?: string | null
+          version_no?: number
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Update: {
           captured_at?: string
           captured_by?: string | null
+          captured_by_user_id?: string | null
           checklist_response_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           evidence_type?: string
+          file_ext?: string | null
           file_name?: string
           file_size?: number | null
+          file_state?: string
           file_url?: string
           finding_id?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
           inspection_id?: string | null
+          mime_type?: string | null
           plan_item_id?: string | null
+          replacement_reason?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          superseded_at?: string | null
+          superseded_by_id?: string | null
+          supersedes_id?: string | null
           updated_at?: string
           updated_by?: string | null
+          version_no?: number
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Relationships: [
           {
@@ -40818,7 +40863,47 @@ export type Database = {
             referencedRelation: "ce_weekly_plan_items"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_inspection_evidence_supersedes_fk"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "ce_inspection_evidence"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      ce_inspection_evidence_audit: {
+        Row: {
+          action: string
+          actor_code: string | null
+          actor_id: string | null
+          created_at: string
+          details: Json
+          evidence_id: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_code?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          evidence_id: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_code?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          evidence_id?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
       }
       ce_inspection_findings: {
         Row: {
@@ -124627,6 +124712,78 @@ export type Database = {
       ce_evaluate_stage_eligibility_v1: {
         Args: { p_stage_code: string; p_violation_id: string }
         Returns: Json
+      }
+      ce_evidence_attach_v1: {
+        Args: {
+          p_description?: string
+          p_evidence_type: string
+          p_file_name: string
+          p_file_size?: number
+          p_finding_id?: string
+          p_gps_lat?: number
+          p_gps_lng?: number
+          p_inspection_id: string
+          p_mime_type?: string
+          p_storage_bucket?: string
+          p_storage_path?: string
+        }
+        Returns: string
+      }
+      ce_evidence_audit: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_evidence_id: string
+          p_reason?: string
+        }
+        Returns: undefined
+      }
+      ce_evidence_capability: { Args: { p_uid: string }; Returns: Json }
+      ce_evidence_detail_v1: { Args: { p_id: string }; Returns: Json }
+      ce_evidence_flag_file_state_v1: {
+        Args: { p_id: string; p_state: string }
+        Returns: undefined
+      }
+      ce_evidence_log_access_v1: {
+        Args: { p_action: string; p_id: string }
+        Returns: undefined
+      }
+      ce_evidence_register_facets_v1: { Args: never; Returns: Json }
+      ce_evidence_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_evidence_replace_v1: {
+        Args: {
+          p_file_name: string
+          p_file_size: number
+          p_id: string
+          p_mime_type: string
+          p_reason: string
+          p_storage_bucket: string
+          p_storage_path: string
+        }
+        Returns: string
+      }
+      ce_evidence_update_metadata_v1: {
+        Args: {
+          p_description: string
+          p_evidence_type: string
+          p_finding_id?: string
+          p_id: string
+        }
+        Returns: undefined
+      }
+      ce_evidence_withdraw_v1: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
       }
       ce_execute_automation_job: {
         Args: {
