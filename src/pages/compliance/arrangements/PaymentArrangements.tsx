@@ -94,7 +94,7 @@ function KpiTile({
     tone === 'success'
       ? 'text-success'
       : tone === 'warning'
-        ? 'text-warning-foreground'
+        ? 'text-warning'
         : tone === 'destructive'
           ? 'text-destructive'
           : tone === 'primary'
@@ -326,7 +326,7 @@ export default function PaymentArrangements() {
         <Card className="border-warning/40">
           <CardContent className="p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-warning-foreground" />
+              <AlertTriangle className="h-4 w-4 text-warning" />
               <span className="text-sm font-semibold">Requires attention</span>
               <Badge variant="outline">{kpis.attention ?? attention.length}</Badge>
               {register.filters.tab !== 'ATTENTION' && (
@@ -348,7 +348,7 @@ export default function PaymentArrangements() {
                     <span className="text-muted-foreground">{formatXCD(a.outstanding ?? 0)}</span>
                   </div>
                   <div className="text-muted-foreground truncate">{a.employer_name}</div>
-                  <div className="text-warning-foreground">{a.reason}</div>
+                  <div className="text-warning">{a.reason}</div>
                 </button>
               ))}
             </div>
@@ -553,7 +553,7 @@ export default function PaymentArrangements() {
                         {r.case_number ? `Case ${r.case_number}` : 'No linked case'}
                       </div>
                       {r.attention_score > 0 && (
-                        <Badge variant="outline" className="mt-1 text-[10px] border-warning/40 text-warning-foreground">
+                        <Badge variant="outline" className="mt-1 text-[10px] border-warning/40 text-warning">
                           Attention
                         </Badge>
                       )}
@@ -581,7 +581,7 @@ export default function PaymentArrangements() {
                         <div className="text-destructive">{r.overdue_count} overdue</div>
                       )}
                       {Number(r.unattributed_amount ?? 0) > 0 && (
-                        <div className="text-warning-foreground">
+                        <div className="text-warning">
                           {formatXCD(r.unattributed_amount)} unallocated
                         </div>
                       )}
