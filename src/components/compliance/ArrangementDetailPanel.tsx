@@ -47,6 +47,8 @@ import { ArrangementCoveragePanel } from '@/components/compliance/ArrangementCov
 import { ArrangementInstallmentsPanel } from '@/components/compliance/arrangements/ArrangementInstallmentsPanel';
 import { ArrangementAllocationsPanel } from '@/components/compliance/arrangements/ArrangementAllocationsPanel';
 import { ArrangementOperationalStrip } from '@/components/compliance/arrangements/ArrangementOperationalStrip';
+import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
+
 import { useUserCode } from '@/hooks/useUserCode';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
