@@ -233,7 +233,7 @@ const LegalProceedingsPage = () => {
   const to = Math.min(reg.page * reg.pageSize, total);
 
   const columns = useMemo(
-    () => SORTS.filter((s) => (s.key === 'outstanding' ? canMoney : true)),
+    () => SORTS.filter((s) => (s.key === 'exposure' ? canMoney : true)),
     [canMoney],
   );
 
