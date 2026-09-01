@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
+import { allowedMigrationTableNames } from '@/platform/omni-comms/registry/migrationTableGovernance';
 import { OMNI_COMMS_DEFERRED_OBJECTS } from '@/platform/omni-comms/registry/deferredObjects';
 import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_INTEGRATION_REGISTRY } from '@/platform/omni-comms/registry/integrationRegistry';
@@ -148,9 +149,7 @@ describe('Epic 1 — Story 5 final verification', () => {
     const migrationsDir = path.join(REPO_ROOT, 'supabase', 'migrations');
     if (!fs.existsSync(migrationsDir)) return;
     const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql'));
-      const allowed = new Set(
-        OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'AVAILABLE').map((o) => o.name),
-      );
+      const allowed = allowedMigrationTableNames();
     for (const f of files) {
       const contents = fs.readFileSync(path.join(migrationsDir, f), 'utf8');
       const created = Array.from(contents.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?(omni_comms_[a-z_]+)/gi)).map((m) => m[1].toLowerCase());

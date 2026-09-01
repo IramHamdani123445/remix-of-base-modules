@@ -32,7 +32,8 @@ export function useIAFindingMutations() {
         responsible_person: null,
         target_date: targetDate.toISOString().split('T')[0],
         status: 'Not Started',
-        department_audit_id: finding.department_audit_id || null,
+        // ADR-01: canonical spine is the engagement, not the legacy department audit.
+        engagement_id: finding.engagement_id || null,
         created_by: finding.created_by || null,
       });
       // Also send notification if department_id is set

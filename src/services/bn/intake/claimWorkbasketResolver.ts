@@ -65,7 +65,8 @@ const NONE = (reason: string): ResolvedClaimWorkbasket => ({
  * unmapped and reported, rather than routed to an approximate basket — a claim
  * sitting in the wrong officer's queue is worse than one reported as unrouted.
  * `SYSTEM` steps have no human queue by definition; `INSPECTOR` and
- * `MEDICAL_BOARD` have no basket in the catalogue at all.
+ * `MEDICAL_BOARD` have no basket in the catalogue at all, which the resolver
+ * reports as a configuration gap instead of substituting a nearby basket.
  *
  * In practice every seeded template starts at INTAKE / CLERK, so the first
  * entry carries almost all real traffic.
@@ -78,27 +79,64 @@ export const STEP_ROLE_TO_BASKET_ROLE: Record<string, string> = {
   FINANCE: 'BN_PAYMENT_OFFICER',
 };
 
+/**
+ * Fallback owner for a workflow STEP when the product's template does not
+ * declare that step.
+ *
+ * Most seeded templates declare only INTAKE, yet a claim genuinely moves on to
+ * eligibility, calculation, decision and payment. Without this the claim would
+ * sit in the intake basket for its whole life, which is the behaviour the queue
+ * screens showed. This says who owns each stage by role, and the basket lookup
+ * is unchanged — so a step still routes to a real, configured basket or is
+ * reported as a gap.
+ */
+export const STEP_NAME_TO_BASKET_ROLE: Record<string, string> = {
+  INTAKE: 'BN_INTAKE_OFFICER',
+  EMPLOYER_VERIFY: 'BN_INTAKE_OFFICER',
+  ELIGIBILITY: 'BN_ELIGIBILITY_OFFICER',
+  // These roles are the ones the live workbasket catalogue actually staffs —
+  // an invented role would resolve to no basket and strand the claim.
+  EVIDENCE_REVIEW: 'BN_DOCUMENT_OFFICER',
+  MEANS_TEST: 'BN_ELIGIBILITY_OFFICER',
+  CALCULATION: 'BN_CALCULATION_OFFICER',
+  DECISION: 'BN_SUPERVISOR',
+  AWARD_SETUP: 'BN_AWARD_OFFICER',
+  PAYMENT: 'BN_PAYMENT_OFFICER',
+};
+
 interface StepConfig {
   step?: string;
   role?: string;
   sla_days?: number;
 }
 
+/** All steps of a template's `steps_config`, tolerating the shapes seen in data. */
+export function allSteps(stepsConfig: unknown): StepConfig[] {
+  const asArray = (v: unknown): StepConfig[] =>
+    Array.isArray(v)
+      ? v.filter((s): s is StepConfig => !!s && typeof s === 'object')
+      : [];
+  if (Array.isArray(stepsConfig)) return asArray(stepsConfig);
+  if (stepsConfig && typeof stepsConfig === 'object') {
+    return asArray((stepsConfig as Record<string, unknown>).steps);
+  }
+  return [];
+}
+
 /** First step of a template's `steps_config`, tolerating the shapes seen in data. */
 export function firstStep(stepsConfig: unknown): StepConfig | null {
-  if (Array.isArray(stepsConfig) && stepsConfig.length > 0) {
-    const s = stepsConfig[0];
-    return s && typeof s === 'object' ? (s as StepConfig) : null;
-  }
-  // Some templates store { steps: [...] } rather than a bare array.
-  if (stepsConfig && typeof stepsConfig === 'object') {
-    const inner = (stepsConfig as Record<string, unknown>).steps;
-    if (Array.isArray(inner) && inner.length > 0) {
-      const s = inner[0];
-      return s && typeof s === 'object' ? (s as StepConfig) : null;
-    }
-  }
-  return null;
+  return allSteps(stepsConfig)[0] ?? null;
+}
+
+/** The step with this name, if the template declares it. */
+export function stepByName(stepsConfig: unknown, stepName: string | null | undefined): StepConfig | null {
+  const target = String(stepName ?? '').trim().toUpperCase();
+  if (!target) return null;
+  return (
+    allSteps(stepsConfig).find(
+      (s) => String(s.step ?? '').trim().toUpperCase() === target,
+    ) ?? null
+  );
 }
 
 /**
@@ -113,6 +151,7 @@ export function basketRoleForStepRole(stepRole: string | null | undefined): stri
   return STEP_ROLE_TO_BASKET_ROLE[role] ?? null;
 }
 
+
 function addDays(iso: string, days: number): string {
   const d = new Date(iso);
   d.setDate(d.getDate() + days);
@@ -125,15 +164,20 @@ export async function resolveClaimWorkbasket(params: {
   /** Restricts the basket search to a product category when the product sets one. */
   productCategory?: string | null;
   assignedAt?: string;
+  /**
+   * Workflow step that owns the claim now (from its status). Omitted at intake,
+   * where the template's first step is the answer.
+   */
+  targetStep?: string | null;
 }): Promise<ResolvedClaimWorkbasket> {
-  const { productVersionId, channelCode } = params;
+  const { productVersionId, channelCode, targetStep } = params;
   if (!productVersionId) return NONE('claim has no product version');
 
   const resolved = await resolveProductWorkflow(productVersionId, channelCode);
   if (!resolved.workflowTemplateId) {
     return NONE(
       'no workflow template is mapped to this product version and channel, ' +
-      'so the product does not say which queue a new claim belongs in',
+      'so the product does not say which queue this claim belongs in',
     );
   }
 
@@ -145,7 +189,14 @@ export async function resolveClaimWorkbasket(params: {
   if (templateError) return NONE(`could not read workflow template — ${templateError.message}`);
   if (!template) return NONE('the mapped workflow template no longer exists');
 
-  const step = firstStep((template as any).steps_config);
+  // A named target step is honoured even when the template omits it: the step
+  // still has a known owning role, and routing a claim by the stage it has
+  // actually reached beats leaving it in the intake basket for its whole life.
+  const declaredStep = targetStep
+    ? stepByName((template as any).steps_config, targetStep)
+    : firstStep((template as any).steps_config);
+
+  const step = declaredStep ?? (targetStep ? { step: targetStep } : null);
   if (!step) {
     return NONE(
       `workflow template ${(template as any).template_code} has no steps configured, ` +
@@ -153,14 +204,18 @@ export async function resolveClaimWorkbasket(params: {
     );
   }
 
-  const stepName = step.step ?? null;
+  const stepName = step.step ?? targetStep ?? null;
   const stepRole = step.role ?? null;
-  const basketRole = basketRoleForStepRole(stepRole);
+  const basketRole =
+    basketRoleForStepRole(stepRole) ??
+    STEP_NAME_TO_BASKET_ROLE[String(stepName ?? '').trim().toUpperCase()] ??
+    null;
   if (!basketRole) {
     return {
       ...NONE(
-        `the first workflow step (${stepName ?? 'unnamed'}) is assigned to role ` +
+        `workflow step "${stepName ?? 'unnamed'}" is assigned to role ` +
         `"${stepRole ?? 'none'}", which has no matching workbasket role`,
+
       ),
       stepName,
       stepRole,

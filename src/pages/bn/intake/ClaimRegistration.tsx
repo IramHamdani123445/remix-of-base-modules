@@ -90,6 +90,12 @@ import {
 } from '@/services/bn/forms/sectionCatalogue';
 import type { PersonSummary, Dependant } from '@/services/bn/integration';
 import PaymentDetailsSection from '@/components/bn/payment/PaymentDetailsSection';
+import { validateField } from '@/lib/fieldValidationRegistry';
+import { IP_MASTER_FIELDS } from '@/lib/fieldLengths';
+
+const CONTACT_PHONE_MAX = IP_MASTER_FIELDS.contact_phone.maxLength;
+const CONTACT_EMAIL_MAX = IP_MASTER_FIELDS.contact_email.maxLength;
+
 
 
 type DocStatus = 'PROVIDED' | 'PENDING' | 'WAIVED';
@@ -201,7 +207,22 @@ export default function ClaimRegistration() {
   );
 
   // ─── Step 1 — SSN lookup ─────────────────────────────────────────
+  function handleContactChange(field: 'contactPhone' | 'contactEmail', value: string) {
+    if (field === 'contactPhone') setContactPhone(value); else setContactEmail(value);
+    const result = validateField(
+      field === 'contactPhone' ? 'ip.contact_phone' : 'ip.contact_email',
+      value,
+    );
+    setErrors(prev => {
+      const next = { ...prev };
+      if (result.valid) delete next[field];
+      else next[field] = result.error!;
+      return next;
+    });
+  }
+
   async function handleSsnLookup() {
+
     const v = ssn.trim();
     if (!v) {
       setErrors(e => ({ ...e, ssn: 'SSN is required' }));
@@ -505,7 +526,16 @@ export default function ClaimRegistration() {
         ) {
           return 'This product requires payment details before continuing.';
         }
+        // Account number is mandatory whenever an EFT profile is being used.
+        if (
+          paymentPolicy.payment_details_visibility !== 'HIDE' &&
+          paymentProfile?.payment_method === 'EFT' &&
+          !paymentProfile?.account_number_masked
+        ) {
+          return 'Account number is required — complete and save the payment details before continuing.';
+        }
         return null;
+
       case 'internal':
         return null;
       case 'review': return null;
@@ -533,10 +563,35 @@ export default function ClaimRegistration() {
 
   // ─── Submit ──────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!selectedProduct) { toast.error('Select a benefit.'); return; }
-    if (!resolvedVersion) { toast.error('No active product version resolved.'); return; }
     const effectiveSsn = (person?.ssn ?? ssn).trim();
-    if (!effectiveSsn) { toast.error('SSN is required.'); return; }
+
+    // Field problems are shown inline and summarised in a single toast, rather
+    // than raised as one terse error toast per problem.
+    const fieldErrors: Record<string, string> = {};
+    if (!effectiveSsn) fieldErrors.ssn = 'SSN is required';
+    const phoneCheck = validateField('ip.contact_phone', contactPhone);
+    if (!phoneCheck.valid) fieldErrors.contactPhone = phoneCheck.error!;
+    const emailCheck = validateField('ip.contact_email', contactEmail);
+    if (!emailCheck.valid) fieldErrors.contactEmail = emailCheck.error!;
+    if (!selectedProduct) fieldErrors.product = 'Select a benefit';
+    if (!resolvedVersion) fieldErrors.version = 'No active product version resolved';
+
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      toast.error('Please check the form for valid information!', {
+        description: Object.values(fieldErrors).join(' · '),
+      });
+      // Take the officer back to the step that owns the first failing field,
+      // so the error is visible in context rather than only in a toast.
+      const owningStep: StepKey =
+        fieldErrors.ssn ? 'ssn'
+        : fieldErrors.product ? 'benefit'
+        : fieldErrors.version ? 'version'
+        : 'internal'; // contact phone / email
+      setStep(owningStep);
+      return;
+    }
+
 
     const pendingDocs = Object.entries(docState)
       .filter(([, v]) => v.status === 'PENDING')
@@ -581,7 +636,9 @@ export default function ClaimRegistration() {
           declaration_accepted: true,
         },
       });
-      toast.success(`Claim ${result.claimNumber} registered`);
+      toast.success(`Claim ${result.claimNumber} registered`, {
+        description: 'The claim has been created — routing and workflow status are shown below.',
+      });
       // Registered is not the same as payable. The officer should leave the
       // counter knowing what adjudication will have to resolve (BUG-48).
       if (eligSummary.verdict === 'FAILED') {
@@ -646,13 +703,15 @@ export default function ClaimRegistration() {
       }).catch(() => {});
       navigate(`/bn/claims/${result.claimId}`);
     } catch (e: any) {
-      toast.error('Failed to register claim', { description: e?.message });
+      // Server messages can be multi-line; split them into a readable
+      // title + body rather than one run-on toast.
+      showBlockerToast(e?.message, { fallbackTitle: 'Failed to register claim' });
     }
   }
 
   // ─── Render ──────────────────────────────────────────────────────
   return (
-    <PermissionWrapper moduleName="bn_claims">
+    <PermissionWrapper moduleName="bn_register_claim">
       <div className="p-6 space-y-4">
         <header className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/bn/claims')}>
@@ -699,7 +758,11 @@ export default function ClaimRegistration() {
                   <Input
                     placeholder="Enter SSN…"
                     value={ssn}
-                    onChange={e => setSsn(e.target.value)}
+                    className={errors.ssn ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                    onChange={e => {
+                      setSsn(e.target.value);
+                      setErrors(prev => { const n = { ...prev }; delete n.ssn; return n; });
+                    }}
                     onKeyDown={e => e.key === 'Enter' && handleSsnLookup()}
                   />
                   <Button onClick={handleSsnLookup} disabled={personLoading}>
@@ -707,6 +770,8 @@ export default function ClaimRegistration() {
                     <span className="ml-1">Search</span>
                   </Button>
                 </div>
+                {errors.ssn && <p className="text-xs text-destructive mt-1">{errors.ssn}</p>}
+
                 {personError && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -1226,8 +1291,24 @@ export default function ClaimRegistration() {
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Contact Phone"><Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} /></Field>
-                  <Field label="Contact Email"><Input value={contactEmail} onChange={e => setContactEmail(e.target.value)} /></Field>
+                  <Field label="Contact Phone" error={errors.contactPhone}>
+                    <Input
+                      value={contactPhone}
+                      maxLength={CONTACT_PHONE_MAX}
+                      className={errors.contactPhone ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                      onChange={e => handleContactChange('contactPhone', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Contact Email" error={errors.contactEmail}>
+                    <Input
+                      type="email"
+                      value={contactEmail}
+                      maxLength={CONTACT_EMAIL_MAX}
+                      className={errors.contactEmail ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                      onChange={e => handleContactChange('contactEmail', e.target.value)}
+                    />
+                  </Field>
+
                 </div>
                 <Field label="Internal Notes">
                   <Textarea value={internalNotes} onChange={e => setInternalNotes(e.target.value)} rows={3} maxLength={500} />
@@ -1267,6 +1348,19 @@ export default function ClaimRegistration() {
 
             {step === 'review' && (
               <StepCard title="10. Review & Submit" desc="Submitting creates the claim, captures snapshots, and starts the workflow.">
+                {Object.keys(errors).length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Cannot submit yet</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {Object.values(errors).map((msg, i) => (
+                          <li key={i}>{msg}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <ReviewLine k="Claimant" v={person ? `${person.fullName} (${person.ssn})` : pendingVerification ? `${pendingPerson.firstName} ${pendingPerson.lastName} (pending verification)` : '—'} />
                 <ReviewLine k="Benefit" v={selectedProduct ? `${(selectedProduct as any).benefit_name} (${(selectedProduct as any).benefit_code})` : '—'} />
                 <ReviewLine k="Claim Date" v={formatDateForDisplay(claimDate)} />
@@ -1344,14 +1438,16 @@ function StepCard({ title, desc, children }: { title: string; desc?: string; chi
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
   return (
     <div className="space-y-1">
       <Label className="text-xs">{label}</Label>
       {children}
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   );
 }
+
 
 function Detail({ k, v }: { k: string; v: any }) {
   return (

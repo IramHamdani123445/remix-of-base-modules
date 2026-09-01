@@ -189,28 +189,79 @@ export const BENEFIT_FIELDS: Record<string, FormFieldDef[]> = {
 };
 
 /**
+ * Whole-key aliases — legacy product codes that must keep resolving exactly
+ * as they always have. Checked before token analysis.
+ */
+const BENEFIT_KEY_ALIASES: Record<string, string> = {
+  SB: 'SICKNESS', SICK: 'SICKNESS', SKN_SICK: 'SICKNESS',
+  MB: 'MATERNITY', SKN_MAT: 'MATERNITY',
+  EI: 'EMPLOYMENT_INJURY', INJURY: 'EMPLOYMENT_INJURY', SKN_EI_INJ: 'EMPLOYMENT_INJURY',
+  SKN_EI_DIS: 'DISABLEMENT', DIS: 'DISABLEMENT',
+  SKN_EI_MED: 'MEDICAL_EXPENSE', MED: 'MEDICAL_EXPENSE',
+  SKN_EI_DTH: 'EMPLOYMENT_INJURY_DEATH', EID: 'EMPLOYMENT_INJURY_DEATH',
+  FG: 'FUNERAL_GRANT', SKN_FUN: 'FUNERAL_GRANT',
+  AB: 'AGE_BENEFIT', AGE: 'AGE_BENEFIT', SKN_AGE: 'AGE_BENEFIT',
+  INV: 'INVALIDITY', SKN_INV: 'INVALIDITY',
+  SURV: 'SURVIVORS', SKN_SUR: 'SURVIVORS',
+  NCP: 'NON_CONTRIBUTORY_PENSION', SKN_NCP: 'NON_CONTRIBUTORY_PENSION',
+};
+
+/**
+ * Token → benefit key. Applied to individual `_`-separated tokens so that
+ * arbitrary product codes (SICK_11, MATERNITY_GRANT_TEST, SKN_STB_SICK…)
+ * resolve on their own merit without an entry per product.
+ */
+const BENEFIT_TOKENS: Record<string, string> = {
+  MAT: 'MATERNITY', MATERNITY: 'MATERNITY', MB: 'MATERNITY',
+  SICK: 'SICKNESS', SICKNESS: 'SICKNESS', STB: 'SICKNESS', SB: 'SICKNESS',
+  EI: 'EMPLOYMENT_INJURY', INJ: 'EMPLOYMENT_INJURY', INJURY: 'EMPLOYMENT_INJURY',
+  DIS: 'DISABLEMENT', DISABLEMENT: 'DISABLEMENT',
+  MED: 'MEDICAL_EXPENSE', MEDICAL: 'MEDICAL_EXPENSE',
+  DTH: 'EMPLOYMENT_INJURY_DEATH', DEATH: 'EMPLOYMENT_INJURY_DEATH', EID: 'EMPLOYMENT_INJURY_DEATH',
+  FUN: 'FUNERAL_GRANT', FUNERAL: 'FUNERAL_GRANT', FG: 'FUNERAL_GRANT',
+  AGE: 'AGE_BENEFIT', AGEG: 'AGE_BENEFIT', AB: 'AGE_BENEFIT',
+  INV: 'INVALIDITY', INVALIDITY: 'INVALIDITY',
+  SUR: 'SURVIVORS', SURV: 'SURVIVORS', SURVIVOR: 'SURVIVORS', SURVIVORS: 'SURVIVORS',
+  NCP: 'NON_CONTRIBUTORY_PENSION',
+};
+
+/** More specific benefit keys win when a code carries competing tokens. */
+const BENEFIT_SPECIFICITY: string[] = [
+  'EMPLOYMENT_INJURY_DEATH',
+  'DISABLEMENT',
+  'MEDICAL_EXPENSE',
+  'FUNERAL_GRANT',
+  'SURVIVORS',
+  'NON_CONTRIBUTORY_PENSION',
+  'MATERNITY',
+  'SICKNESS',
+  'INVALIDITY',
+  'AGE_BENEFIT',
+  'EMPLOYMENT_INJURY',
+];
+
+/**
  * Normalize benefit type / product code to a catalogue key.
  */
 export function normalizeBenefitKey(key?: string | null): string | null {
   if (!key) return null;
-  const u = key.toUpperCase().replace(/[-\s]/g, '_');
+  const u = key.toUpperCase().replace(/[-\s.]/g, '_');
   if (BENEFIT_FIELDS[u]) return u;
-  // Common aliases
-  const alias: Record<string, string> = {
-    SB: 'SICKNESS', SICK: 'SICKNESS', SKN_SICK: 'SICKNESS',
-    MB: 'MATERNITY', SKN_MAT: 'MATERNITY',
-    EI: 'EMPLOYMENT_INJURY', INJURY: 'EMPLOYMENT_INJURY', SKN_EI_INJ: 'EMPLOYMENT_INJURY',
-    SKN_EI_DIS: 'DISABLEMENT', DIS: 'DISABLEMENT',
-    SKN_EI_MED: 'MEDICAL_EXPENSE', MED: 'MEDICAL_EXPENSE',
-    SKN_EI_DTH: 'EMPLOYMENT_INJURY_DEATH', EID: 'EMPLOYMENT_INJURY_DEATH',
-    FG: 'FUNERAL_GRANT', SKN_FUN: 'FUNERAL_GRANT',
-    AB: 'AGE_BENEFIT', AGE: 'AGE_BENEFIT', SKN_AGE: 'AGE_BENEFIT',
-    INV: 'INVALIDITY', SKN_INV: 'INVALIDITY',
-    SURV: 'SURVIVORS', SKN_SUR: 'SURVIVORS',
-    NCP: 'NON_CONTRIBUTORY_PENSION', SKN_NCP: 'NON_CONTRIBUTORY_PENSION',
-  };
-  return alias[u] ?? null;
+  if (BENEFIT_KEY_ALIASES[u]) return BENEFIT_KEY_ALIASES[u];
+
+  const matches = new Set<string>();
+  for (const token of u.split('_')) {
+    if (!token || /^\d+$/.test(token)) continue;
+    const hit = BENEFIT_TOKENS[token];
+    if (hit) matches.add(hit);
+  }
+  if (matches.size === 0) return null;
+  for (const candidate of BENEFIT_SPECIFICITY) {
+    if (matches.has(candidate)) return candidate;
+  }
+  return null;
 }
+
 
 export function getDefaultSectionsForBenefit(benefitKey: string): FormSectionDef[] {
   const specific = BENEFIT_SECTIONS[benefitKey];

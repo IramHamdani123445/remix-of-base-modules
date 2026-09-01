@@ -27,6 +27,8 @@ import {
 } from '@/services/bn/bnWorkflowIntegrationService';
 import { BENEFITS_CLAIM_SUBMITTED_EVENT_CODE } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
 import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
+import { normalizeChannelCode } from '@/services/bn/workflow/channelNormalization';
+
 
 const db = supabase as any;
 
@@ -246,7 +248,12 @@ export async function submitClaimApplication(
 
       const productVersionId = claim?.product_version_id ?? null;
       const productId = claim?.product_id ?? null;
-      const channelCode = CHANNEL_TO_CONFIG[input.channel];
+      // One channel vocabulary for the whole platform. The intake spellings
+      // (STAFF_OFFLINE, PUBLIC_ONLINE…) match nothing stored in the config or
+      // mapping tables, so an un-normalised value can never find a workflow.
+      const channelCode =
+        normalizeChannelCode(input.channel) ?? CHANNEL_TO_CONFIG[input.channel] ?? null;
+
 
       let workflowDefinitionId: string | null = null;
       let workbasketId: string | null = input.workbasketId ?? null;

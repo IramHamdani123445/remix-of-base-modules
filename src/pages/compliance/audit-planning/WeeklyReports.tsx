@@ -462,7 +462,7 @@ export default function WeeklyReports() {
               {isAlreadySubmitted && (
                 <div className="border-l-4 border-green-500 bg-green-50 p-4">
                   <p className="text-sm font-medium text-green-800">
-                    Report submitted on {selectedPlan.outcome_submitted_at ? new Date(selectedPlan.outcome_submitted_at).toLocaleString() : 'N/A'}
+                    Report submitted on {(selectedPlan.outcome_submitted_at ?? (selectedPlan as any).submitted_date) ? new Date((selectedPlan.outcome_submitted_at ?? (selectedPlan as any).submitted_date) as string).toLocaleString() : 'N/A'}
                   </p>
                   {selectedPlan.status === WeeklyPlanStatus.COMPLETED && (
                     <p className="text-sm text-green-700 mt-1">✓ Approved by supervisor</p>

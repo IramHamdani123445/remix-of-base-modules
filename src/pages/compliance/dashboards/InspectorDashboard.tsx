@@ -10,6 +10,10 @@ import {
 import { WorkboardCaseloadSummary } from '@/components/compliance/WorkboardCaseloadSummary';
 import { useNavigate } from 'react-router-dom';
 import { useInspectorWorkboard } from '@/hooks/useInspectorWorkboard';
+import { useInspectorAnalytics, pctDelta } from '@/hooks/compliance/useInspectorAnalytics';
+import {
+  InspectorPerformanceSection, InspectorRangeSelector,
+} from '@/components/compliance/workboard/analytics/InspectorPerformancePanels';
 import { WorkboardActionCard } from '@/components/compliance/workboard/WorkboardActionCard';
 import { ActionExecutionDialog, ActionDialogMode } from '@/components/compliance/workboard/ActionExecutionDialog';
 import { FollowUpAction } from '@/types/violationActions';
@@ -17,11 +21,13 @@ import { FollowUpAction } from '@/types/violationActions';
 const InspectorDashboard = () => {
   const navigate = useNavigate();
   const wb = useInspectorWorkboard();
+  const analytics = useInspectorAnalytics();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<ActionDialogMode>('details');
   const [selectedAction, setSelectedAction] = useState<FollowUpAction | null>(null);
 
   const c = wb.counts.data;
+  const ak = analytics.data?.kpis;
 
   const openDialog = (action: FollowUpAction, mode: ActionDialogMode) => {
     setSelectedAction(action);
@@ -30,11 +36,26 @@ const InspectorDashboard = () => {
   };
 
   const kpis = [
-    { label: 'Due Today', value: c?.dueToday ?? '—', icon: ClipboardCheck, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Overdue', value: c?.overdue ?? '—', icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' },
-    { label: 'This Week', value: c?.thisWeek ?? '—', icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Completed', value: c?.completed ?? '—', icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    {
+      label: 'Due Today', value: c?.dueToday ?? '—', icon: ClipboardCheck,
+      color: 'text-primary', bg: 'bg-primary/10', delta: null as number | null, invert: false,
+    },
+    {
+      label: 'Overdue', value: c?.overdue ?? '—', icon: AlertTriangle,
+      color: 'text-destructive', bg: 'bg-destructive/10',
+      delta: ak ? pctDelta(ak.became_overdue, ak.became_overdue_prev) : null, invert: true,
+    },
+    {
+      label: 'This Week', value: c?.thisWeek ?? '—', icon: Calendar,
+      color: 'text-blue-600', bg: 'bg-blue-50', delta: null as number | null, invert: false,
+    },
+    {
+      label: 'Completed', value: c?.completed ?? '—', icon: CheckCircle,
+      color: 'text-green-600', bg: 'bg-green-50',
+      delta: ak ? pctDelta(ak.completed_period, ak.completed_prev) : null, invert: false,
+    },
   ];
+
 
   const renderList = (data: FollowUpAction[] | undefined, isLoading: boolean, isOverdue = false, emptyMsg = 'No actions') => {
     if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
@@ -73,7 +94,12 @@ const InspectorDashboard = () => {
           </div>
           <p className="text-muted-foreground">Manage your assigned follow-up actions and field work</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <InspectorRangeSelector
+            value={analytics.rangeKey}
+            onChange={analytics.setRangeKey}
+            generatedAt={analytics.data?.generated_at}
+          />
           <Button variant="outline" size="sm" onClick={() => navigate('/compliance/field/my-plans')}>
             <Calendar className="h-4 w-4 mr-1" /> My Plans
           </Button>
@@ -103,13 +129,28 @@ const InspectorDashboard = () => {
               <div className="text-2xl font-bold text-foreground">
                 {wb.counts.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : kpi.value}
               </div>
+              {kpi.delta !== null && !analytics.unavailable && (
+                <p className={`mt-1 text-xs font-medium ${
+                  (kpi.invert ? kpi.delta <= 0 : kpi.delta >= 0) ? 'text-emerald-600' : 'text-destructive'
+                }`}>
+                  {kpi.delta > 0 ? '+' : ''}{Math.round(kpi.delta * 10) / 10}% vs previous period
+                </p>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
+      {/* Performance & trend intelligence */}
+      <InspectorPerformanceSection
+        data={analytics.data}
+        isLoading={analytics.isLoading}
+        unavailable={analytics.unavailable}
+      />
+
       {/* Caseload Summary */}
       <WorkboardCaseloadSummary />
+
 
       {/* Total pending */}
       {c && c.total > 0 && (

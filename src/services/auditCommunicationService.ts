@@ -2,9 +2,10 @@
  * AuditCommunicationService — instance lifecycle:
  *   create draft → submit_for_approval → approve/reject → send (via dispatch) → audit events.
  *
- * Reuses existing `send-notification` Edge Function for actual delivery
- * (mirrors the BN module pattern). Approval-gating is enforced here
- * before any send is attempted.
+ * Delivery is delegated to the Omni-Comms Hub through the governed Compliance
+ * audit producer. This service NEVER contacts a provider directly: it keeps
+ * ownership of the communication record, approval gating and the per-recipient
+ * delivery ledger, and hands the approved communication to the Hub.
  */
 import { supabase } from '@/integrations/supabase/client';
 import type {
@@ -20,6 +21,11 @@ import { auditCommunicationTemplateService } from './auditCommunicationTemplateS
 import { auditCommunicationRecipientService } from './auditCommunicationRecipientService';
 import { resolveOnlineResponse } from './onlineResponseResolver';
 import { commApprovalPolicyService } from './commApprovalPolicyService';
+import {
+  emitAuditCommunicationIssued,
+  type AuditCommunicationRecipientInput,
+} from '@/platform/omni-comms/integrations/business/complianceAuditCommunicationProducer';
+import type { OmniCommsChannel } from '@/platform/omni-comms/sendCommunication';
 
 const COMM = 'ce_audit_communications' as any;
 const REC = 'ce_audit_communication_recipients' as any;
@@ -224,7 +230,8 @@ export const auditCommunicationService = {
 
   /**
    * Send the communication: must be in `approved` status.
-   * Uses existing send-notification Edge Function. Returns aggregate result.
+   * Hands the approved communication to the Omni-Comms Hub. Returns the
+   * aggregate hand-over result (accepted vs refused), not provider proof.
    */
   async send(id: string, userCode?: string): Promise<{ ok: boolean; sent: number; failed: number }> {
     const comm = await this.getById(id);
@@ -268,14 +275,20 @@ export const auditCommunicationService = {
     const wantEmail = comm.channel === 'email' || comm.channel === 'both';
     const wantSms = comm.channel === 'sms' || comm.channel === 'both';
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    // Channels the Hub is asked to consider. Compliance states the business
+    // intent; the Hub decides template, branding, sender and whether the
+    // message may actually leave.
+    const channels: OmniCommsChannel[] = [
+      ...(wantEmail ? (['email'] as const) : []),
+      ...(wantSms ? (['sms'] as const) : []),
+    ];
 
-    let sent = 0;
-    let failed = 0;
+    // Per-recipient delivery ledger stays owned by Compliance: it records that
+    // the communication was handed to the Hub, not that a provider accepted it.
+    const ledger: Array<{ deliveryId: string }> = [];
+    const hubRecipients: AuditCommunicationRecipientInput[] = [];
 
     for (const r of recipients) {
-      // Email leg
       if (wantEmail && r.recipient_email) {
         const { data: del } = await (supabase.from(DEL) as any)
           .insert({
@@ -287,52 +300,8 @@ export const auditCommunicationService = {
           })
           .select()
           .single();
-
-        try {
-          const resp = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${supabaseKey}`,
-              apikey: supabaseKey,
-            },
-            body: JSON.stringify({
-              recipient_email: r.recipient_email,
-              subject: comm.subject_snapshot || '(no subject)',
-              body: comm.email_body_snapshot || '',
-              trigger_source: 'ce_audit_communication',
-              triggered_by: userCode,
-              metadata: { communication_id: id, comm_type: comm.comm_type },
-            }),
-          });
-          if (resp.ok) {
-            const j = await resp.json().catch(() => ({}));
-            await (supabase.from(DEL) as any)
-              .update({
-                status: 'sent',
-                delivered_at: new Date().toISOString(),
-                notification_log_id: (j as any)?.notification_log_id ?? null,
-              })
-              .eq('id', (del as any).id);
-            sent++;
-          } else {
-            const errText = await resp.text();
-            await (supabase.from(DEL) as any)
-              .update({ status: 'failed', failure_reason: errText.slice(0, 500) })
-              .eq('id', (del as any).id);
-            failed++;
-          }
-        } catch (e: any) {
-          await (supabase.from(DEL) as any)
-            .update({ status: 'failed', failure_reason: e?.message?.slice(0, 500) })
-            .eq('id', (del as any).id);
-          failed++;
-        }
+        if (del?.id) ledger.push({ deliveryId: del.id });
       }
-
-      // SMS leg — uses same edge function with channel hint;
-      // if the function isn't SMS-capable in this env it will return a clear error
-      // and we record `failed`, so the user sees what happened.
       if (wantSms && r.recipient_mobile) {
         const { data: del } = await (supabase.from(DEL) as any)
           .insert({
@@ -344,46 +313,63 @@ export const auditCommunicationService = {
           })
           .select()
           .single();
-        try {
-          const resp = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${supabaseKey}`,
-              apikey: supabaseKey,
-            },
-            body: JSON.stringify({
-              channel: 'sms',
-              to: r.recipient_mobile,
-              recipient_email: r.recipient_email || `${r.recipient_mobile}@sms.local`,
-              subject: comm.subject_snapshot || '',
-              body: comm.sms_body_snapshot || comm.subject_snapshot || '',
-              trigger_source: 'ce_audit_communication',
-              triggered_by: userCode,
-              metadata: { communication_id: id, comm_type: comm.comm_type, sms: true },
-            }),
-          });
-          if (resp.ok) {
-            await (supabase.from(DEL) as any)
-              .update({ status: 'sent', delivered_at: new Date().toISOString() })
-              .eq('id', (del as any).id);
-            sent++;
-          } else {
-            const errText = await resp.text();
-            await (supabase.from(DEL) as any)
-              .update({ status: 'failed', failure_reason: errText.slice(0, 500) })
-              .eq('id', (del as any).id);
-            failed++;
-          }
-        } catch (e: any) {
-          await (supabase.from(DEL) as any)
-            .update({ status: 'failed', failure_reason: e?.message?.slice(0, 500) })
-            .eq('id', (del as any).id);
-          failed++;
-        }
+        if (del?.id) ledger.push({ deliveryId: del.id });
+      }
+      if ((wantEmail && r.recipient_email) || (wantSms && r.recipient_mobile)) {
+        hubRecipients.push({
+          recipientId: r.id,
+          displayName: r.recipient_name ?? null,
+          email: r.recipient_email ?? null,
+          phone: r.recipient_mobile ?? null,
+        });
       }
     }
 
+    let sent = 0;
+    let failed = 0;
+    let handoverFailure: string | null = null;
+
+    if (hubRecipients.length > 0 && channels.length > 0) {
+      const result = await emitAuditCommunicationIssued({
+        communicationId: id,
+        commType: comm.comm_type ?? null,
+        caseType: (comm.context_data_json as any)?.case_type ?? null,
+        subject: comm.subject_snapshot ?? null,
+        emailBody: comm.email_body_snapshot ?? null,
+        smsBody: comm.sms_body_snapshot ?? null,
+        channels,
+        recipients: hubRecipients,
+      });
+
+      const accepted = result.outcome === 'accepted' || result.outcome === 'replayed';
+      if (accepted) {
+        sent = ledger.length;
+      } else {
+        failed = ledger.length;
+        handoverFailure = result.blockers.join(', ') || result.outcome;
+      }
+
+      for (const entry of ledger) {
+        await (supabase.from(DEL) as any)
+          .update(
+            accepted
+              ? { status: 'queued', failure_reason: null }
+              : { status: 'failed', failure_reason: handoverFailure?.slice(0, 500) ?? 'not_accepted' },
+          )
+          .eq('id', entry.deliveryId);
+      }
+
+      await logEvent(id, 'hub_handover', userCode, {
+        outcome: result.outcome,
+        blockers: result.blockers,
+        request_id: result.requestId,
+        channels,
+      });
+    }
+
+
+    // `sent` here means "accepted by the Hub". Actual dispatch is decided by
+    // the governed delivery state of the channel, never by Compliance.
     const finalStatus = failed === 0 ? 'sent' : sent === 0 ? 'failed' : 'partial';
     await (supabase.from(COMM) as any)
       .update({ status: finalStatus, sent_at: new Date().toISOString(), updated_by: userCode })

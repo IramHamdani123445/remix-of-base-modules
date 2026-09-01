@@ -5,7 +5,10 @@ import { Briefcase, User, Shield, Calendar, Target, TrendingUp, AlertTriangle, C
 import { formatDateForDisplay } from '@/lib/format-config';
 import { LaunchReadinessPanel } from '@/components/audit/LaunchReadinessPanel';
 import { AuditNextActionsPanel, deriveNextActions } from '@/components/audit/workspace/AuditNextActionsPanel';
-import { Progress } from '@/components/ui/progress';
+import type { NextActionKey } from '@/components/audit/workspace/AuditNextActionsPanel';
+import { resolveRecommendedActionTab } from '@/components/audit/execution/recommendedActionDispatch';
+import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
+import { AuditProgressPanel } from '@/components/audit/execution/AuditProgressPanel';
 
 function InfoRow({ label, value, highlight }: { label: string; value: any; highlight?: boolean }) {
   return (
@@ -54,15 +57,7 @@ export function AuditOverviewTab({
   getDeptName, getFunctionName, getAuditorName, getPlanTitle,
   workspaceCounts, onNavigateTab,
 }: AuditOverviewTabProps) {
-  const totalSteps = 6;
-  let completedSteps = 0;
-  if (['Fieldwork In Progress', 'Findings Drafting', 'Management Response Pending', 'Final Report Issued', 'Follow-up Monitoring', 'Closed'].includes(execStatus)) completedSteps++;
-  if (['Findings Drafting', 'Management Response Pending', 'Final Report Issued', 'Follow-up Monitoring', 'Closed'].includes(execStatus)) completedSteps++;
-  if (auditFindings.length > 0) completedSteps++;
-  if (auditResponses.length > 0) completedSteps++;
-  if (auditActions.length > 0) completedSteps++;
-  if (['Final Report Issued', 'Closed'].includes(execStatus)) completedSteps++;
-  const progressPct = Math.round((completedSteps / totalSteps) * 100);
+  const auditPermissions = useInternalAuditPermissions();
 
   const sourceLabel = audit?.engagement_type === 'Ad Hoc' ? 'Ad Hoc Audit' :
     audit?.engagement_type === 'Supplementary' ? 'Supplementary Plan' :
@@ -70,19 +65,27 @@ export function AuditOverviewTab({
 
   const goTo = (tab: string) => onNavigateTab?.(tab);
 
+  /**
+   * IA-POST-UAT-01 — single dispatcher for Recommended Actions.
+   * Keys resolve through an exhaustive Record (see recommendedActionDispatch),
+   * so a new key without a dispatcher fails typecheck. No mutation happens here.
+   */
+  const dispatchRecommendedAction = (key: NextActionKey) => {
+    const tab = resolveRecommendedActionTab(key);
+    if (tab) goTo(tab);
+  };
+
+
+
   return (
     <div className="grid gap-5 md:grid-cols-3">
       <div className="md:col-span-2 space-y-4">
-        {/* Progress Summary */}
-        <Card className="border-primary/20 bg-primary/[0.02]">
+        {/* Server-derived lifecycle progress */}
+        <AuditProgressPanel auditId={auditId} />
+
+        {/* Headline counters */}
+        <Card>
           <CardContent className="pt-5 pb-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />Audit Progress
-              </h3>
-              <span className="text-xs font-bold text-primary">{progressPct}%</span>
-            </div>
-            <Progress value={progressPct} className="h-2 mb-4" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <MiniStat icon={AlertTriangle} label="Findings" value={auditFindings.length} color="text-amber-600" />
               <MiniStat icon={MessageSquare} label="Responses" value={`${auditResponses.length}/${auditFindings.length}`} color="text-blue-600" />
@@ -91,6 +94,7 @@ export function AuditOverviewTab({
             </div>
           </CardContent>
         </Card>
+
 
         {/* Quick Jump Cards */}
         {workspaceCounts && (
@@ -177,8 +181,15 @@ export function AuditOverviewTab({
             responses: auditResponses.length,
             actions: auditActions.length,
             overdueActions: overdueActionsCount,
+          }, {
+            canLaunch: auditPermissions.can('launch_department_audit'),
+            canClose: auditPermissions.can('close_department_audit'),
+            canExecuteAudit: auditPermissions.can('execute_audit_activities'),
+            canManageActions: auditPermissions.can('progress_audit_actions') || auditPermissions.can('manage_audit_followups'),
           })}
+          onDispatch={dispatchRecommendedAction}
         />
+
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Execution Summary</CardTitle></CardHeader>
           <CardContent className="space-y-1">

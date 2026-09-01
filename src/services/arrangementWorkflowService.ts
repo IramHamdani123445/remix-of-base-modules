@@ -21,60 +21,45 @@ export const DEFAULT_ALLOCATION_ORDER: AllocationTarget[] = [
 ];
 
 // ── Lifecycle ───────────────────────────────────────────────────
-export async function submitForApproval(arrangementId: string, userCode: string) {
+// Submit / approve / reject are server-governed commands. The database
+// enforces capability, state and segregation of duties (an officer cannot
+// approve an arrangement they created or submitted); direct table writes are
+// blocked by zz_ce_arrangement_governed_guard.
+export async function submitForApproval(arrangementId: string, _userCode?: string, note?: string) {
   assertArrangementEnabled();
-  const { error } = await supabase
-    .from('ce_payment_arrangements')
-    .update({ status: 'PENDING_APPROVAL', updated_by: userCode, updated_at: new Date().toISOString() } as any)
-    .eq('id', arrangementId).eq('status', 'DRAFT');
+  const { error } = await supabase.rpc('ce_arrangement_submit_v1' as any, {
+    p_arrangement_id: arrangementId,
+    p_note: note ?? null,
+  } as any);
   if (error) throw error;
 }
 
-export async function approveArrangement(arrangementId: string, userCode: string) {
+export async function approveArrangement(arrangementId: string, _userCode?: string, comments?: string) {
   assertArrangementEnabled();
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from('ce_payment_arrangements')
-    .update({ status: 'ACTIVE', approved_by: userCode, approved_at: now, updated_by: userCode, updated_at: now } as any)
-    .eq('id', arrangementId).eq('status', 'PENDING_APPROVAL');
+  const { error } = await supabase.rpc('ce_arrangement_approve_v1' as any, {
+    p_arrangement_id: arrangementId,
+    p_comments: comments ?? null,
+  } as any);
   if (error) throw error;
 }
 
-export async function rejectArrangement(arrangementId: string, userCode: string, reason?: string) {
+export async function rejectArrangement(arrangementId: string, _userCode?: string, reason?: string) {
   assertArrangementEnabled();
-  const { error } = await supabase
-    .from('ce_payment_arrangements')
-    .update({
-      status: 'CANCELLED',
-      breach_reason: reason || null,
-      updated_by: userCode,
-      updated_at: new Date().toISOString(),
-    } as any)
-    .eq('id', arrangementId)
-    .in('status', ['DRAFT', 'PENDING_APPROVAL']);
+  const { error } = await supabase.rpc('ce_arrangement_reject_v1' as any, {
+    p_arrangement_id: arrangementId,
+    p_reason: reason && reason.trim() ? reason : 'Rejected by approver',
+  } as any);
   if (error) throw error;
 }
 
 /**
- * Direct activation from DRAFT — used when the reviewer has authority to
- * skip the two-step submit/approve workflow (e.g. supervisor-created plans).
- * Sets ACTIVE + records approver metadata in one step.
+ * Direct activation from DRAFT is no longer permitted: every activation must
+ * pass through submit → approve so that segregation of duties is provable.
  */
-export async function activateArrangement(arrangementId: string, userCode: string) {
+export async function activateArrangement(arrangementId: string, _userCode?: string) {
   assertArrangementEnabled();
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from('ce_payment_arrangements')
-    .update({
-      status: 'ACTIVE',
-      approved_by: userCode,
-      approved_at: now,
-      updated_by: userCode,
-      updated_at: now,
-    } as any)
-    .eq('id', arrangementId)
-    .in('status', ['DRAFT', 'PENDING_APPROVAL']);
-  if (error) throw error;
+  await submitForApproval(arrangementId);
+  await approveArrangement(arrangementId);
 }
 
 // ── Installment payment recording ───────────────────────────────

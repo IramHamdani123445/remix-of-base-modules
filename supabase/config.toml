@@ -74,3 +74,6 @@ project_id = "xynceskeiiisiefqlgxo"
 
   [functions.omni-comms-print-equipment-sync]
     verify_jwt = true
+
+  [functions.ia-acceptance-persona-provision]
+    verify_jwt = true

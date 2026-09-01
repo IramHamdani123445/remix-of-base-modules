@@ -1,0 +1,1 @@
+ALTER FUNCTION public.ce_compliance_analytics_v1(date, date, text, text, text, text, text) VOLATILE;

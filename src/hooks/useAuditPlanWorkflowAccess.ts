@@ -112,7 +112,8 @@ export function useAuditAnnualPlanPermissionContext(): AnnualPlanPermissionConte
     const isAdmin = normalizedRoles.some((role) => role === 'admin' || role === 'application admin');
     const permissionSet = new Set(permissionRows.map((entry) => `${entry.module_name}:${entry.action_name}`));
     const moduleViews = Array.from(new Set(permissionRows.filter((entry) => entry.action_name === 'view').map((entry) => entry.module_name).filter(Boolean)));
-    const canManagePlans = isAdmin || permissionSet.has('audit_plans:create') || permissionSet.has('audit_plans:edit') || permissionSet.has('audit_plans:view') || moduleViews.includes('audit_plans');
+    // DEF-S1B-35: maker authority requires an explicit create/edit grant — read access alone must not expose plan authoring controls.
+    const canManagePlans = isAdmin || permissionSet.has('audit_plans:create') || permissionSet.has('audit_plans:edit');
     const canApprovePlans = isAdmin || permissionSet.has('plan_approval:approve');
     const canViewPlans = isAdmin || moduleViews.includes('audit_plans') || canManagePlans || canApprovePlans;
     const isLoading = authLoading || permissionsLoading;
@@ -123,8 +124,10 @@ export function useAuditAnnualPlanPermissionContext(): AnnualPlanPermissionConte
       switch (permission) {
         case 'create_audit_plans':
         case 'edit_audit_plans':
-        case 'view_audit_plans':
           return canManagePlans;
+        case 'view_audit_plans':
+          return canViewPlans;
+
         case 'approve_audit_plans':
           return canApprovePlans;
         case 'admin':
@@ -188,7 +191,8 @@ export function getSubmitEligibility(
   const hasMakerPerm = admin || hasAnyPermission(hasPermission, SUBMIT_PERMISSIONS);
 
   if (!hasMakerPerm) {
-    return { visible: true, enabled: false, reason: 'Missing submission permission. Only annual plan makers/preparers can submit this plan.' };
+    // DEF-S1B-35: hide maker controls entirely from users without submission authority.
+    return { visible: false, enabled: false, reason: 'Missing submission permission. Only annual plan makers/preparers can submit this plan.' };
   }
 
   if (!planStatus || !SUBMITTABLE_STATUSES.includes(planStatus as PlanStatus)) {

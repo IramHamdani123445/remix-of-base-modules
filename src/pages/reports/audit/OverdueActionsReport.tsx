@@ -1,79 +1,58 @@
 import { useState, useMemo } from 'react';
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { MetricCard } from "@/components/shared/MetricCard";
-import { QueryByFilter } from "@/components/shared/QueryByFilter";
+import { PageHeader } from '@/components/shared/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { MetricCard } from '@/components/shared/MetricCard';
+import { QueryByFilter } from '@/components/shared/QueryByFilter';
 import { ExportActions } from '@/components/reports/ExportActions';
 import { ExportColumn } from '@/utils/exportUtils';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { AlertTriangle, Clock, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { formatDateForDisplay } from '@/lib/format-config';
-import { differenceInDays, parseISO } from 'date-fns';
+import { useIaActionRegister, useIaActionCentreCounts, type IaFilters } from '@/hooks/useAuditActionCentre';
 
 const exportColumns: ExportColumn[] = [
+  { header: 'Action Ref', key: 'action_ref', width: 16 },
   { header: 'Action', key: 'action_description', width: 35 },
-  { header: 'Assigned To', key: 'assigned_to_name', width: 20 },
-  { header: 'Status', key: 'status', width: 15 },
-  { header: 'Priority', key: 'priority', width: 12 },
-  { header: 'Due Date', key: 'due_date', width: 18 },
-  { header: 'Days Overdue', key: 'days_overdue', width: 15 },
-  { header: 'Finding', key: 'finding_title', width: 25 },
+  { header: 'Engagement', key: 'engagement_code', width: 16 },
+  { header: 'Owner', key: 'action_owner', width: 22 },
+  { header: 'Status', key: 'lifecycle_status', width: 18 },
+  { header: 'Severity', key: 'finding_severity', width: 12 },
+  { header: 'Target Date', key: 'current_target_date', width: 16 },
+  { header: 'Days Overdue', key: 'overdue_days', width: 14 },
+  { header: 'Finding', key: 'finding_title', width: 28 },
 ];
 
-const PRIORITY_COLORS: Record<string, string> = {
-  Critical: 'bg-red-100 text-red-800 border-red-300',
-  High: 'bg-orange-100 text-orange-800 border-orange-300',
-  Medium: 'bg-amber-100 text-amber-800 border-amber-300',
+const SEVERITY_CLASS: Record<string, string> = {
+  Critical: 'bg-destructive/15 text-destructive border-destructive/40',
+  High: 'bg-warning/20 text-warning-foreground border-warning/40',
+  Medium: 'bg-muted text-muted-foreground',
   Low: 'bg-muted text-muted-foreground',
 };
 
 export default function OverdueActionsReport() {
   const [filters, setFilters] = useState<Record<string, any>>({});
 
-  const { data: actions = [], isLoading } = useQuery({
-    queryKey: ['ia_overdue_actions_report', filters],
-    queryFn: async () => {
-      let query = supabase
-        .from('ia_action_tracking' as any)
-        .select('*, finding:finding_id(title)')
-        .order('due_date', { ascending: true });
+  const registerFilters: IaFilters = {
+    severity: filters.severity && filters.severity !== 'all' ? filters.severity : null,
+    status: filters.status && filters.status !== 'all' ? filters.status : null,
+    overdue: filters.scope === 'overdue',
+    due_soon: filters.scope === 'due_soon',
+    open_only: filters.scope === 'open',
+  };
 
-      if (filters.priority && filters.priority !== 'all') {
-        query = query.eq('priority', filters.priority);
-      }
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-      const { data, error } = await query.limit(500);
-      if (error) throw error;
-      return (data as any[]) || [];
-    },
-  });
+  const register = useIaActionRegister(registerFilters);
+  const counts = useIaActionCentreCounts(registerFilters);
 
-  const enriched = useMemo(() => {
-    const now = new Date();
-    return actions.map((a: any) => {
-      const daysOverdue = a.due_date ? differenceInDays(now, parseISO(a.due_date)) : 0;
-      return {
-        ...a,
-        action_description: a.action_title || a.description || 'Untitled action',
-        assigned_to_name: a.assigned_to_name || a.assigned_to || '—',
-        finding_title: a.finding?.title || '—',
-        days_overdue: a.status !== 'Completed' && daysOverdue > 0 ? daysOverdue : 0,
-        is_overdue: a.status !== 'Completed' && daysOverdue > 0,
-      };
-    });
-  }, [actions]);
+  const rows = useMemo(() => ((register.data as any[]) || []), [register.data]);
 
-  const overdueItems = enriched.filter((a: any) => a.is_overdue);
-  const completedItems = enriched.filter((a: any) => a.status === 'Completed');
-  const criticalOverdue = overdueItems.filter((a: any) => a.priority === 'Critical' || a.priority === 'High');
+  const overdueItems = rows.filter((a: any) => a.is_overdue);
+  const openItems = rows.filter((a: any) => a.is_open);
+  const criticalOverdue = overdueItems.filter(
+    (a: any) => a.finding_severity === 'Critical' || a.finding_severity === 'High',
+  );
 
-  // Aging chart
   const agingData = useMemo(() => {
     const buckets = [
       { name: '1-7 days', value: 0, color: 'hsl(var(--warning))' },
@@ -82,51 +61,76 @@ export default function OverdueActionsReport() {
       { name: '90+ days', value: 0, color: 'hsl(var(--destructive))' },
     ];
     overdueItems.forEach((a: any) => {
-      if (a.days_overdue <= 7) buckets[0].value++;
-      else if (a.days_overdue <= 30) buckets[1].value++;
-      else if (a.days_overdue <= 90) buckets[2].value++;
+      const d = Number(a.overdue_days) || 0;
+      if (d <= 7) buckets[0].value++;
+      else if (d <= 30) buckets[1].value++;
+      else if (d <= 90) buckets[2].value++;
       else buckets[3].value++;
     });
     return buckets.filter(b => b.value > 0);
   }, [overdueItems]);
 
   const filterFields = [
-    { name: 'priority', label: 'Priority', type: 'select' as const, options: [
-      { label: 'All', value: 'all' },
-      { label: 'Critical', value: 'Critical' },
-      { label: 'High', value: 'High' },
-      { label: 'Medium', value: 'Medium' },
-      { label: 'Low', value: 'Low' },
-    ]},
-    { name: 'status', label: 'Status', type: 'select' as const, options: [
-      { label: 'All', value: 'all' },
-      { label: 'Open', value: 'Open' },
-      { label: 'In Progress', value: 'In Progress' },
-      { label: 'Completed', value: 'Completed' },
-      { label: 'Overdue', value: 'Overdue' },
-    ]},
+    {
+      name: 'scope',
+      label: 'Scope',
+      type: 'select' as const,
+      options: [
+        { label: 'All actions', value: 'all' },
+        { label: 'Overdue only', value: 'overdue' },
+        { label: 'Due soon (14 days)', value: 'due_soon' },
+        { label: 'Open only', value: 'open' },
+      ],
+    },
+    {
+      name: 'severity',
+      label: 'Finding Severity',
+      type: 'select' as const,
+      options: [
+        { label: 'All', value: 'all' },
+        { label: 'Critical', value: 'Critical' },
+        { label: 'High', value: 'High' },
+        { label: 'Medium', value: 'Medium' },
+        { label: 'Low', value: 'Low' },
+      ],
+    },
+    {
+      name: 'status',
+      label: 'Action Status',
+      type: 'select' as const,
+      options: [
+        { label: 'All', value: 'all' },
+        { label: 'Open', value: 'Open' },
+        { label: 'In Progress', value: 'In Progress' },
+        { label: 'Verification Required', value: 'Verification Required' },
+        { label: 'Closed', value: 'Closed' },
+      ],
+    },
   ];
+
+  const centreOverdue = (counts.data as any)?.overdue_actions;
 
   return (
     <div className="container mx-auto p-6 space-y-6" id="overdue-actions-report">
       <div className="flex justify-between items-start">
         <PageHeader
           title="Overdue Actions & Aging"
-          subtitle="Track overdue audit actions with aging analysis"
+          subtitle="Reads the same governed action register as the Action Centre"
           breadcrumbs={[
-            { label: "Internal Audit", href: "/audit/dashboard" },
-            { label: "Reports" },
-            { label: "Overdue Actions" },
+            { label: 'Internal Audit', href: '/audit/dashboard' },
+            { label: 'Reports' },
+            { label: 'Overdue Actions' },
           ]}
         />
         <ExportActions
           reportTitle="Overdue Actions Report"
           fileName="overdue-actions"
-          data={enriched}
+          data={rows}
           columns={exportColumns}
           additionalInfo={[
             { label: 'Report Date', value: new Date().toLocaleDateString() },
-            { label: 'Total Overdue', value: String(overdueItems.length) },
+            { label: 'Records Exported', value: String(rows.length) },
+            { label: 'Overdue', value: String(overdueItems.length) },
           ]}
         />
       </div>
@@ -136,11 +140,22 @@ export default function OverdueActionsReport() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard title="Total Actions" value={String(enriched.length)} icon={Clock} variant="info" />
+        <MetricCard title="Actions in scope" value={String(rows.length)} icon={Clock} variant="info" />
         <MetricCard title="Overdue" value={String(overdueItems.length)} icon={AlertTriangle} variant="warning" />
-        <MetricCard title="Critical/High Overdue" value={String(criticalOverdue.length)} icon={ShieldAlert} variant="error" />
-        <MetricCard title="Completed" value={String(completedItems.length)} icon={CheckCircle2} variant="success" />
+        <MetricCard
+          title="Critical/High Overdue"
+          value={String(criticalOverdue.length)}
+          icon={ShieldAlert}
+          variant="error"
+        />
+        <MetricCard title="Open" value={String(openItems.length)} icon={CheckCircle2} variant="success" />
       </div>
+
+      {centreOverdue !== undefined && Number(centreOverdue) !== overdueItems.length && (
+        <p className="text-xs text-muted-foreground">
+          Action Centre reports {String(centreOverdue)} overdue actions for the current scope.
+        </p>
+      )}
 
       {agingData.length > 0 && (
         <Card>
@@ -170,51 +185,55 @@ export default function OverdueActionsReport() {
       )}
 
       <Card>
-        <CardHeader><CardTitle>Action Details</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Action Details ({rows.length})</CardTitle></CardHeader>
         <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-6">Loading...</p>
+          {register.isLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Loading…</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Ref</TableHead>
                   <TableHead>Action</TableHead>
-                  <TableHead>Assigned To</TableHead>
+                  <TableHead>Engagement</TableHead>
+                  <TableHead>Owner</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Days Overdue</TableHead>
-                  <TableHead>Finding</TableHead>
+                  <TableHead>Severity</TableHead>
+                  <TableHead>Target Date</TableHead>
+                  <TableHead>Overdue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {enriched.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No actions found</TableCell></TableRow>
-                ) : enriched.map((row: any) => (
-                  <TableRow key={row.id} className={row.is_overdue ? 'bg-destructive/5' : ''}>
-                    <TableCell className="font-medium text-sm max-w-[250px] truncate">{row.action_description}</TableCell>
-                    <TableCell className="text-xs">{row.assigned_to_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">{row.status}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`text-[10px] ${PRIORITY_COLORS[row.priority] || 'bg-muted text-muted-foreground'}`}>
-                        {row.priority || '—'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">{row.due_date ? formatDateForDisplay(row.due_date) : '—'}</TableCell>
-                    <TableCell>
-                      {row.is_overdue ? (
-                        <Badge className="bg-red-100 text-red-800 border-red-300 text-[10px]">
-                          {row.days_overdue}d overdue
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs max-w-[180px] truncate">{row.finding_title}</TableCell>
+                {rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">No actions found</TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  rows.map((row: any) => (
+                    <TableRow key={row.action_id} className={row.is_overdue ? 'bg-destructive/5' : ''}>
+                      <TableCell className="text-xs font-medium">{row.action_ref || '—'}</TableCell>
+                      <TableCell className="text-sm max-w-[240px] truncate">{row.action_description}</TableCell>
+                      <TableCell className="text-xs">{row.engagement_code || '—'}</TableCell>
+                      <TableCell className="text-xs">{row.action_owner || '—'}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{row.lifecycle_status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] ${SEVERITY_CLASS[row.finding_severity] || 'bg-muted text-muted-foreground'}`}>
+                          {row.finding_severity || '—'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {row.current_target_date ? formatDateForDisplay(row.current_target_date) : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {row.is_overdue ? (
+                          <Badge variant="destructive" className="text-[10px]">{row.overdue_days}d overdue</Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           )}

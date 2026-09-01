@@ -21,6 +21,7 @@ import {
   RefreshCw,
   GitMerge,
   Sparkles,
+  AlertTriangle,
   MoreHorizontal,
   CalendarPlus,
   ScrollText,
@@ -81,6 +82,7 @@ function bucketLabel(b: PlanCandidateV3['bucket']): string {
     case 'RISK_MONITORING': return 'Risk monitoring';
     case 'ROUTINE_COVERAGE': return 'Routine coverage';
     case 'CAMPAIGN_INTEL': return 'Campaign / intel';
+    default: return 'Unclassified';
   }
 }
 
@@ -96,6 +98,15 @@ export function CandidateCardV3(props: CandidateCardV3Props) {
   const isDemoted = actions.some(a => a.action_type === 'demote_watchlist');
   const isException = actions.some(a => a.action_type === 'convert_exception');
 
+  // Defensive rendering: never trust the engine payload shape.
+  const safeReasons = Array.isArray(c.recommendation_reasons)
+    ? c.recommendation_reasons.filter(
+        (r): r is NonNullable<typeof r> =>
+          !!r && typeof r === 'object' && typeof r.label === 'string' && r.label.length > 0,
+      )
+    : [];
+  const dataIssues = Array.isArray(c.data_issues) ? c.data_issues : [];
+
   const overdueDays = c.overdue_days ?? 0;
   const dueLabel =
     overdueDays > 0
@@ -103,6 +114,8 @@ export function CandidateCardV3(props: CandidateCardV3Props) {
       : c.next_due_date
       ? `Due ${formatDateForDisplay(c.next_due_date)}`
       : 'No cycle date';
+
+
 
   return (
     <Card
@@ -178,16 +191,32 @@ export function CandidateCardV3(props: CandidateCardV3Props) {
         </p>
       )}
 
-      {/* Reason badges */}
-      {c.recommendation_reasons && c.recommendation_reasons.length > 0 && (
+      {/* Reason badges — defensive: the engine may return empty slots */}
+      {safeReasons.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {c.recommendation_reasons.slice(0, 4).map((r) => (
-            <Badge key={r.code} variant="secondary" className="text-[10px] py-0 px-1.5">
+          {safeReasons.slice(0, 4).map((r, i) => (
+            <Badge key={`${r.code}-${i}`} variant="secondary" className="text-[10px] py-0 px-1.5">
               {r.label}
             </Badge>
           ))}
         </div>
       )}
+
+      {/* Data-quality notice — never hide a defective record silently */}
+      {dataIssues.length > 0 && (
+        <div
+          className="flex items-start gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-1 text-[10px] text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+          title={dataIssues.map((i) => i.message).join('\n')}
+        >
+          <AlertTriangle className="h-3 w-3 mt-[1px] shrink-0" />
+          <span className="leading-snug">
+            Data needs correction — {dataIssues[0].message}
+            {dataIssues.length > 1 ? ` (+${dataIssues.length - 1} more)` : ''}
+          </span>
+        </div>
+      )}
+
+
 
       {/* Action row */}
       <div className="flex items-center justify-between pt-1 border-t">

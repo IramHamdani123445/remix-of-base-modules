@@ -1,5 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveLegalEnterprise } from "@/lib/enterprise/legalEnterpriseMetadata";
+import {
+  emitLegalInfoRequested,
+  emitLegalInfoResponded,
+} from "@/platform/omni-comms/integrations/business/legalCommunicationProducer";
 
 const sb = supabase as any;
 
@@ -270,6 +274,9 @@ export async function dispatchInfoRequestNotifications(infoRequestId: string) {
         .maybeSingle();
       userId = prof?.user_id ?? null;
     }
+    // Compatibility record ONLY — the governed Hub emission below is
+    // evaluate-only until Legal is certified for live delivery. Retired as
+    // soon as Legal in-app delivery goes live in the Hub.
     if (userId) {
       await sb.from("in_app_notifications").insert({
         user_id: userId,
@@ -294,40 +301,31 @@ export async function dispatchInfoRequestNotifications(infoRequestId: string) {
         },
       });
     }
-    // Best-effort email
+    // Governed leg: the Hub owns template, branding, sender and delivery.
     if (routing.user) {
       const { data: prof } = await sb.from("profiles")
-        .select("email")
+        .select("email,full_name")
         .eq("user_code", routing.user)
         .maybeSingle();
-      const email = prof?.email;
-      if (email) {
-        await sb.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "legal-info-request",
-            recipientEmail: email,
-            replyTo: ent.reply_to_email || undefined,
-            idempotencyKey: `lir-${ir.id}`,
-            templateData: {
-              referral_no: referral.referral_no,
-              source_reference_no: referral.source_reference_no,
-              request_reason: ir.request_reason,
-              requested_items: ir.requested_items.map((i) => i.label).join(", "),
-              due_date: ir.due_date ?? "—",
-              response_link: `/${referral.source_module === "BENEFITS" ? "bn" : "compliance"}/legal-referrals/respond/${ir.id}`,
-              organization_name: ent.organization_name,
-              department_name: ent.department_name,
-              sender_email: ent.sender_email,
-              reply_to_email: ent.reply_to_email,
-              email_signature_html: ent.email_signature_html,
-              email_signature_text: ent.email_signature_text,
-              email_footer: ent.email_footer,
-              disclaimer: ent.disclaimer,
-              logo_url: ent.org_logo_url,
-            },
-          },
-        }).catch(() => null);
-      }
+      await emitLegalInfoRequested({
+        infoRequestId: ir.id,
+        legalReferralId: referral.id,
+        referralNo: referral.referral_no,
+        requestNo: ir.request_no,
+        sourceModule: referral.source_module,
+        sourceReferenceNo: referral.source_reference_no,
+        requestReason: ir.request_reason,
+        requestedItems: ir.requested_items.map((i) => i.label).join(", "),
+        dueDate: ir.due_date ?? null,
+        responseLink: `/${referral.source_module === "BENEFITS" ? "bn" : "compliance"}/legal-referrals/respond/${ir.id}`,
+        recipient: {
+          userId,
+          displayName: prof?.full_name ?? null,
+          email: prof?.email ?? null,
+        },
+        organizationId: enterprise.metadata.organization_id ?? null,
+        departmentId: enterprise.metadata.department_id ?? null,
+      });
     }
   } catch (e) {
     console.warn("Notification dispatch failed (non-blocking):", e);
@@ -447,31 +445,20 @@ export async function respondInfoRequest(input: RespondInfoRequestInput) {
           },
         });
       }
-      if (prof?.email) {
-        await sb.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "legal-info-response",
-            recipientEmail: prof.email,
-            replyTo: ent.reply_to_email || undefined,
-            idempotencyKey: `lir-resp-${input.info_request_id}`,
-            templateData: {
-              referral_no: ir.referral.referral_no,
-              source_module: ir.referral.source_module,
-              response_notes: input.response_notes,
-              review_link: `/legal/intake/${ir.referral.lg_intake_id ?? ir.legal_referral_id}`,
-              organization_name: ent.organization_name,
-              department_name: ent.department_name,
-              sender_email: ent.sender_email,
-              reply_to_email: ent.reply_to_email,
-              email_signature_html: ent.email_signature_html,
-              email_signature_text: ent.email_signature_text,
-              email_footer: ent.email_footer,
-              disclaimer: ent.disclaimer,
-              logo_url: ent.org_logo_url,
-            },
-          },
-        }).catch(() => null);
-      }
+      await emitLegalInfoResponded({
+        infoRequestId: input.info_request_id,
+        legalReferralId: ir.legal_referral_id,
+        referralNo: ir.referral.referral_no,
+        sourceModule: ir.referral.source_module,
+        responseNotes: input.response_notes,
+        reviewLink: `/legal/intake/${ir.referral.lg_intake_id ?? ir.legal_referral_id}`,
+        recipient: {
+          userId: prof?.user_id ?? null,
+          email: prof?.email ?? null,
+        },
+        organizationId: enterprise.metadata.organization_id ?? null,
+        departmentId: enterprise.metadata.department_id ?? null,
+      });
     }
   } catch (e) {
     console.warn("Response notification failed:", e);

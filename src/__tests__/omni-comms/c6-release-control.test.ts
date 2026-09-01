@@ -475,7 +475,12 @@ describe('C6 closure — SQL artefact evidence', () => {
       // Every later dispatch claim/deliver migration (WhatsApp, Push, Webhook,
       // Voice, generic) references Release Control as a gate; none of them is
       // part of the C6 Release Control artefact set.
-      && !/omni_comms_priv_dispatch_(claim|deliver)_/i.test(s))
+      && !/omni_comms_priv_dispatch_(claim|deliver)_/i.test(s)
+      // The post-C6 held-job reevaluation worker also reads and stamps the
+      // Release Control snapshot. It is a dispatch-lifecycle worker, not part
+      // of the C6 Release Control artefact set.
+      && !/omni_comms_priv_reevaluate_held_jobs/i.test(s))
+
     .join('\n');
 
   const verifier = readOnce('scripts/omni-comms/verify-c6-release-control.sql');

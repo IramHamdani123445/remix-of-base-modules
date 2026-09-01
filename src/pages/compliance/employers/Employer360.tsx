@@ -23,7 +23,7 @@ import {
 } from '@/services/employer360Service';
 import {
   fetchEmployerCases, fetchEmployerPaymentHistory, fetchEmployerCommunications,
-  fetchEmployerDocuments, fetchEmployerArrangements,
+  fetchEmployerDocuments, fetchEmployerArrangements, fetchEmployerBreaches,
 } from '@/services/employer360ExtendedService';
 import {
   useEmployerStatement, useEmployerArrears as useLedgerArrears,
@@ -34,6 +34,7 @@ import {
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
+import RiskExplainabilityPanel from '@/components/compliance/risk/RiskExplainabilityPanel';
 
 
 const RISK_BAND_COLORS: Record<string, string> = {
@@ -108,6 +109,7 @@ export default function Employer360() {
   const { data: communications = [] } = useQuery({ queryKey: ['employer360_comms', employerId], queryFn: () => fetchEmployerCommunications(employerId!), enabled: !!employerId });
   const { data: documents = [] } = useQuery({ queryKey: ['employer360_docs', employerId], queryFn: () => fetchEmployerDocuments(employerId!), enabled: !!employerId });
   const { data: arrangements = [] } = useQuery({ queryKey: ['employer360_arrangements', employerId], queryFn: () => fetchEmployerArrangements(employerId!), enabled: !!employerId });
+  const { data: breaches = [] } = useQuery({ queryKey: ['employer360_breaches', employerId], queryFn: () => fetchEmployerBreaches(employerId!), enabled: !!employerId });
 
   // ── Ledger statement for embedded view ──
   const { data: ledgerStatement = [] } = useEmployerStatement(employerId);
@@ -173,9 +175,9 @@ export default function Employer360() {
             <Button size="sm" variant="outline" onClick={() => navigate(`/compliance/field/employer-risk/${employerId}`)}>
               <TrendingUp className="h-4 w-4 mr-1" />Risk Profile
             </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate(`/employer/${employerId}/ledger`)}>
-              <DollarSign className="h-4 w-4 mr-1" />Ledger
-            </Button>
+            {/* Ledger is reachable via the Ledger tab below — the duplicate
+                header shortcut was removed. */}
+
           </div>
         }
       />
@@ -330,7 +332,9 @@ export default function Employer360() {
               </CardContent>
             </Card>
           </div>
+          {employerId && <RiskExplainabilityPanel employerId={employerId} />}
         </TabsContent>
+
 
         {/* ═══ FINANCIAL TAB ═══ */}
         <TabsContent value="financial" className="space-y-4">
@@ -405,6 +409,53 @@ export default function Employer360() {
               </CardContent>
             </Card>
           )}
+          {/* Breach Monitoring — arrangement breaches recorded for this employer */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4" />Breach Monitoring ({breaches.length})
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/compliance/enforcement/breaches')}>
+                Open Register
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {breaches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No arrangement breaches recorded for this employer.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Breach</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Missed</TableHead>
+                      <TableHead className="text-center">Consecutive</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Detection</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {breaches.map((b: any) => (
+                      <TableRow key={b.id}>
+                        <TableCell className="font-mono text-xs">{b.breach_id}</TableCell>
+                        <TableCell>{b.breach_type}</TableCell>
+                        <TableCell>{formatDate(b.breach_date)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(b.missed_amount)}</TableCell>
+                        <TableCell className="text-center">{b.consecutive_misses ?? 0}x</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={b.status === 'Active' ? 'destructive' : b.status === 'Resolved' ? 'default' : 'secondary'} className="text-[10px]">{b.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-[10px]">{b.auto_detected ? 'Auto' : 'Manual'}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
           <Button variant="outline" onClick={() => navigate(`/compliance/field/employer-statement/${employerId}`)}>
             <FileText className="h-4 w-4 mr-2" />View Full Financial Statement
           </Button>

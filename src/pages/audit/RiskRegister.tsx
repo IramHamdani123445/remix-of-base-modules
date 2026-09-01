@@ -36,7 +36,7 @@ const exportColumns = toExportColumns(RISK_REGISTER_SCHEMA);
 const RISK_LEVELS = ['Critical', 'High', 'Medium', 'Low'];
 
 const emptyRisk = {
-  audit_universe_id: '',
+  department_id: '',
   risk_title: '',
   risk_description: '',
   risk_category: 'Operational',
@@ -94,7 +94,7 @@ export default function RiskRegister() {
   const [closeComment, setCloseComment] = useState('');
 
   // Duplicate check
-  const { data: dupes = [] } = useDuplicateRiskCheck(form.audit_universe_id, form.risk_title, form.risk_category);
+  const { data: dupes = [] } = useDuplicateRiskCheck(form.department_id, form.risk_title, form.risk_category);
   const showDupeWarning = !editingId && dupes.length > 0;
 
   // Unique owners for filter
@@ -108,7 +108,7 @@ export default function RiskRegister() {
 
   const filtered = useMemo(() => {
     return risks.filter((r: any) => {
-      if (entityFilter !== 'all' && r.audit_universe_id !== entityFilter) return false;
+      if (entityFilter !== 'all' && r.department_id !== entityFilter) return false;
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
       if (categoryFilter !== 'all' && r.risk_category !== categoryFilter) return false;
       if (ownerFilter !== 'all' && r.risk_owner !== ownerFilter) return false;
@@ -121,7 +121,7 @@ export default function RiskRegister() {
       }
       if (search) {
         const s = search.toLowerCase();
-        return (r.risk_title?.toLowerCase().includes(s) || r.risk_owner?.toLowerCase().includes(s) || r.ia_audit_universe?.entity_name?.toLowerCase().includes(s));
+        return (r.risk_title?.toLowerCase().includes(s) || r.risk_owner?.toLowerCase().includes(s) || r.ia_departments?.name?.toLowerCase().includes(s));
       }
       return true;
     });
@@ -135,7 +135,7 @@ export default function RiskRegister() {
   const openCreate = () => { setForm(emptyRisk); setEditingId(null); setModalOpen(true); };
   const openEdit = (row: any) => {
     setForm({
-      audit_universe_id: row.audit_universe_id || '',
+      department_id: row.department_id || '',
       risk_title: row.risk_title || '',
       risk_description: row.risk_description || '',
       risk_category: row.risk_category || 'Operational',
@@ -158,7 +158,7 @@ export default function RiskRegister() {
   };
 
   const handleSave = () => {
-    if (!form.risk_title.trim() || !form.audit_universe_id) return;
+    if (!form.risk_title.trim() || !form.department_id) return;
     const payload = { ...form, linked_risk_id: form.linked_risk_id || null, risk_source: form.risk_source || null };
     if (editingId) {
       update.mutate({ id: editingId, ...payload }, { onSuccess: () => setModalOpen(false) });
@@ -200,7 +200,7 @@ export default function RiskRegister() {
     { key: 'risk_title', header: 'Risk Title', render: (row: any) => (
       <button className="text-left text-primary hover:underline font-medium" onClick={() => setDetailRisk(row)}>{row.risk_title}</button>
     )},
-    { key: 'ia_audit_universe', header: 'Entity', render: (row: any) => row.ia_audit_universe?.entity_name || '—' },
+    { key: 'ia_departments', header: 'Department', render: (row: any) => row.ia_departments?.name || '—' },
     { key: 'risk_category', header: 'Category', render: (row: any) => <Badge variant="outline">{row.risk_category}</Badge> },
     { key: 'risk_source', header: 'Source', render: (row: any) => row.risk_source || '—' },
     { key: 'inherent_risk_score', header: 'Inherent', render: (row: any) => (
@@ -263,14 +263,14 @@ export default function RiskRegister() {
         <MetricCard title="Total Risks" value={risks.length} icon={Shield} />
         <MetricCard title="Open Risks" value={openCount} icon={AlertTriangle} />
         <MetricCard title="Critical" value={criticalCount} icon={AlertTriangle} />
-        <MetricCard title="Departments Covered" value={new Set(risks.map((r: any) => r.audit_universe_id).filter(Boolean)).size} icon={Eye} />
+        <MetricCard title="Departments Covered" value={new Set(risks.map((r: any) => r.department_id).filter(Boolean)).size} icon={Eye} />
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Risk Register</CardTitle>
           <div className="flex gap-2">
-            <ExportDropdown data={filtered.map((r: any) => ({ ...r, entity_name: r.ia_audit_universe?.entity_name || '', risk_source: r.risk_source || '' }))} columns={exportColumns} fileName="risk-register" title="Risk Register" metadata={rrMetadata} groupByOptions={rrGroupByOptions} />
+            <ExportDropdown data={filtered.map((r: any) => ({ ...r, entity_name: r.ia_departments?.name || '', risk_source: r.risk_source || '' }))} columns={exportColumns} fileName="risk-register" title="Risk Register" metadata={rrMetadata} groupByOptions={rrGroupByOptions} />
             <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Add Risk</Button>
           </div>
         </CardHeader>
@@ -322,7 +322,7 @@ export default function RiskRegister() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2 md:col-span-2">
             <Label>Department *</Label>
-            <Select value={form.audit_universe_id} onValueChange={v => setForm(f => ({ ...f, audit_universe_id: v }))}>
+            <Select value={form.department_id} onValueChange={v => setForm(f => ({ ...f, department_id: v }))}>
               <SelectTrigger><SelectValue placeholder="Select department..." /></SelectTrigger>
               <SelectContent>{departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{formatDepartmentLabel(d)}</SelectItem>)}</SelectContent>
             </Select>
@@ -597,7 +597,7 @@ function RiskDetailPanel({ risk, allRisks, onClose }: { risk: any; allRisks: any
           </DialogHeader>
 
         <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-          <div><span className="text-muted-foreground">Entity:</span> {risk.ia_audit_universe?.entity_name || '—'}</div>
+          <div><span className="text-muted-foreground">Entity:</span> {risk.ia_departments?.name || '—'}</div>
           <div><span className="text-muted-foreground">Category:</span> {risk.risk_category}</div>
           <div><span className="text-muted-foreground">Owner:</span> {risk.risk_owner || '—'}</div>
           <div><span className="text-muted-foreground">Status:</span> <StatusBadge status={risk.status} /></div>

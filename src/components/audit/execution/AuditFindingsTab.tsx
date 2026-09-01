@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
+import { FindingLifecycleControls } from './FindingLifecycleControls';
+
 
 const RISK_RATINGS = ['Critical', 'High', 'Medium', 'Low'];
 const FINDING_STATUSES = ['Draft', 'Open', 'In Review', 'Submitted for Response', 'Responded', 'Closed', 'Resolved'];
@@ -182,7 +184,9 @@ export function AuditFindingsTab({ auditId, auditFindings, auditResponses, audit
                   {/* Expanded Detail */}
                   {isExpanded && (
                     <div className="mt-4 space-y-4 pt-3 border-t border-border/30">
+                      <FindingLifecycleControls finding={finding} />
                       <div className="grid grid-cols-2 gap-3">
+
                         {finding.criteria && <DetailBlock label="Criteria" value={finding.criteria} />}
                         {finding.condition && <DetailBlock label="Condition" value={finding.condition} />}
                         {finding.cause && <DetailBlock label="Cause" value={finding.cause} />}

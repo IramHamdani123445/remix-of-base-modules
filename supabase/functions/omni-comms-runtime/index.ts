@@ -46,6 +46,7 @@ import { runProviderDomainStatus, runProviderVerification } from "./providerVeri
 import { runSendingDomainVerification } from "./domainDnsVerification.ts";
 
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
+import { resolveDeployedRevision } from "../_shared/omni-comms/adapterRegistry.ts";
 
 
 const corsHeaders = {
@@ -60,22 +61,33 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
 const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
-// Source revision this deployment was built from. Set as a function secret at
-// deploy time. `OMNI_COMMS_DEPLOYED_REVISION` is the SINGLE platform-wide
-// deployment identity — the dispatcher and the release-control boundary read
-// exactly the same secret, so all three surfaces report one revision and the
-// certification comparison can never disagree with itself. The historic
-// `OMNI_COMMS_EDGE_REVISION` remains a fallback only. When absent, shortened
-// or malformed the deployment is UNVERIFIED and is never treated as certified.
-const OMNI_COMMS_REVISION_PATTERN = /^[0-9a-fA-F]{40}$/;
-const DEPLOYED_REVISION = (() => {
-  const platform = (Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "").trim();
-  if (platform !== "") return platform;
-  const raw = (Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? "").trim();
-  return raw === "" ? null : raw;
-})();
-const REVISION_VERIFIED = DEPLOYED_REVISION !== null &&
-  OMNI_COMMS_REVISION_PATTERN.test(DEPLOYED_REVISION);
+// DEF-13 — deployment identity truth.
+//
+// The COMMITTED BUILD ARTIFACT is the default deployment truth: a content hash
+// of every runtime, dispatcher and shared adapter source file, so a deployed
+// function can always state exactly which build is running.
+//
+// `OMNI_COMMS_DEPLOYED_REVISION` may only ever be injected by deployment
+// automation as part of the same immutable deployment; it must never be a
+// manually maintained long-lived secret. When present it must equal the build
+// revision — otherwise `revisionStale` is true and certification fails.
+//
+// The historic `OMNI_COMMS_EDGE_REVISION` fallback is REMOVED: a long-lived
+// legacy stamp could survive a code change and silently mask a build mismatch.
+
+const REVISION_REPORT = resolveDeployedRevision(
+  (Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "").trim() || undefined,
+);
+
+const DEPLOYED_REVISION = REVISION_REPORT.revision;
+const REVISION_VERIFIED = REVISION_REPORT.revisionVerified;
+
+/** Project ref of the backend this runtime is actually writing to. */
+function projectRefFromUrl(url: string): string | null {
+  const match = /^https?:\/\/([a-z0-9-]+)\.supabase\.(co|in|net)/i.exec((url ?? "").trim());
+  return match ? match[1].toLowerCase() : null;
+}
+
 /**
  * Certification is NOT read from a function secret. The database certification
  * record is the single authoritative source; this runtime only reports the
@@ -231,6 +243,11 @@ Deno.serve(async (req: Request) => {
         runtimeVersion: "2c-iii",
         revision: DEPLOYED_REVISION,
         revisionVerified: REVISION_VERIFIED,
+        // DEF-13 deployment identity truth.
+        revisionSource: REVISION_REPORT.revisionSource,
+        buildRevision: REVISION_REPORT.buildRevision,
+        environmentRevision: REVISION_REPORT.environmentRevision,
+        revisionStale: REVISION_REPORT.revisionStale,
         available: true,
         // Certification comes from the authoritative database record read via
         // a service-role-only, read-only RPC. This function never decides.
@@ -576,6 +593,38 @@ Deno.serve(async (req: Request) => {
 
   if (!row?.request_id) return blocked(input, "runtime_persistence_failed");
 
+  // 3b. DEF-3 — pin governed attachments onto the accepted request.
+  //     The caller only names registry identifiers; the checksum, byte size and
+  //     file name are pinned server-side from the governed register, so the
+  //     approved bytes are the only bytes that can ever be delivered. The RPC is
+  //     replay-safe: an already-pinned request keeps its original manifest.
+  if (canonical.attachments.length > 0) {
+    const { data: attachData, error: attachErr } = await admin.rpc(
+      "omni_comms_priv_attach_request_attachments",
+      {
+        p_request_id: row.request_id,
+        p_organization_id: canonical.organizationId,
+        p_attachments: canonical.attachments.map((a) => ({
+          attachment_id: a.attachmentId,
+          disposition: a.disposition,
+          required_for_delivery: a.requiredForDelivery,
+        })),
+      },
+    );
+    const attachResult = (attachData ?? {}) as { ok?: boolean; code?: string };
+    if (attachErr || attachResult.ok !== true) {
+      const attachCode = attachErr
+        ? mapRpcErrorToCode(attachErr)
+        : (attachResult.code ?? "attachment_not_available");
+      await abandonAbortedRequest(
+        admin, userId, row.request_id, canonical.organizationId, attachCode,
+      );
+      return blocked(input, attachCode);
+    }
+  }
+
+
+
   // 4. Replay path: load persisted resolution + return.
   if (row.replayed === true) {
     const { data: loaded, error: loadErr } = await admin.rpc(
@@ -882,7 +931,12 @@ Deno.serve(async (req: Request) => {
         userId,
         row.request_id,
         canonical.organizationId,
+        {
+          deployedRevision: REVISION_VERIFIED ? DEPLOYED_REVISION : null,
+          currentProjectRef: projectRefFromUrl(SUPABASE_URL),
+        },
       );
+
       const base = buildResolvedResponse(row, finData, persistedRecipients, requestBlockers);
       return json({
         ...buildResult({

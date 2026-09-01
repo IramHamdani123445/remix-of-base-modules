@@ -5,6 +5,11 @@ import { Settings, User, LogOut, CalendarDays } from "lucide-react";
 import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
 import { useSystemSettingsContext } from "@/contexts/SystemSettingsContext";
 import { InAppNotificationBell } from "@/components/notifications/InAppNotificationBell";
+import { OmniCommsHeaderShortcut } from "@/platform/omni-comms/admin/components/OmniCommsHeaderShortcut";
+import { MyCommunicationsHeaderButton } from "@/components/communications/MyCommunicationsHeaderButton";
+import { MyTasksHeaderButton } from "@/components/tasks/MyTasksHeaderButton";
+
+
 import { MeetingCalendarModal } from "@/components/meetings/MeetingCalendarModal";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { useTodayMeetingCount } from "@/hooks/useTodayMeetingCount";
@@ -80,8 +85,21 @@ export const Header = () => {
         {/* Theme Switcher */}
         <ThemeSwitcher />
 
-        {/* Notifications */}
+        {/* My Communications (messages addressed to the signed-in user) */}
+        <MyCommunicationsHeaderButton />
+
+        {/* My Tasks (work awaiting the signed-in user's decision) */}
+        <MyTasksHeaderButton />
+
+
+
+        {/* Omni-Comms operations attention indicator (administrators) */}
+        <OmniCommsHeaderShortcut />
+
+        {/* Notifications & workflow approvals (legacy bell) */}
         <InAppNotificationBell />
+
+
 
         {/* User Menu */}
         <DropdownMenu>

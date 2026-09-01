@@ -329,7 +329,7 @@ export function InAppNotificationBell() {
                 className="p-4 bg-accent/20 cursor-pointer hover:bg-accent/30 transition-colors"
                 onClick={() => {
                   setOpen(false);
-                  navigate('/workflow/approvals');
+                  navigate('/my-tasks');
                 }}
               >
                 <div className="flex items-center gap-3">

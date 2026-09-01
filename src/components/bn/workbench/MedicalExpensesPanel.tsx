@@ -162,7 +162,7 @@ export const MedicalExpensesPanel: React.FC<Props> = ({ claimId, userCode }) => 
             </div>
             <div>
               <Label className="text-xs">Jurisdiction</Label>
-              <Select value={form.jurisdiction} onValueChange={v => setForm(f => ({ ...f, jurisdiction: v }))}>
+              <Select value={form.jurisdiction} onValueChange={v => setForm(f => ({ ...f, jurisdiction: v as typeof f.jurisdiction }))}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {JURISDICTION_LEVELS.map(j => (

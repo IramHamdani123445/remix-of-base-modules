@@ -61,8 +61,9 @@ export function calculateChangedFields(
 
 async function getActorContext() {
   try {
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
+    // Local session only — audit logging must never be able to sign the user out.
+    const { data } = await supabase.auth.getSession();
+    const user = data?.session?.user;
     return {
       actor_user_id: user?.id ?? null,
       actor_email: user?.email ?? null,

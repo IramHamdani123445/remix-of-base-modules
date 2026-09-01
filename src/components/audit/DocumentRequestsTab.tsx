@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { emitInternalAuditCommunication } from '@/platform/omni-comms/integrations/business/internal-audit/internalAuditCommunicationProducer';
 import { useToast } from '@/hooks/use-toast';
 import { formatDepartmentLabel } from '@/lib/audit/departmentLabel';
 
@@ -125,27 +126,25 @@ export function DocumentRequestsTab({ engagementId, departmentId, engagementName
 
   const sendAllReceivedNotification = async () => {
     if (!defaultEmail) return;
-    try {
-      await supabase.functions.invoke('send-notification', {
-        body: {
-          recipient_email: defaultEmail,
-          subject: `All Documents Received — ${engagementName || 'Audit Engagement'}`,
-          body: `
-            <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
-              <p>Dear ${defaultHead || 'Department Head'},</p>
-              <p>We are pleased to confirm that <strong>all requested documents</strong> for the audit engagement — <strong>${engagementName || 'Internal Audit'}</strong> — have been received by the Internal Audit team.</p>
-              <p>Thank you for your prompt cooperation and support.</p>
-              <p style="margin-top: 24px;">Regards,<br/><strong>SSBM Internal Audit</strong></p>
-            </div>`,
-          from_name: 'SSBM Internal Audit',
-          from_email: 'Audit@secureserve.biz',
-        },
-      });
-      toast({ title: 'All Documents Received', description: 'Confirmation notification sent to Department Head.' });
-    } catch (err) {
-      console.error('Failed to send completion notification:', err);
+    const result = await emitInternalAuditCommunication({
+      eventCode: 'INTERNAL_AUDIT.REQUEST.FULFILLED',
+      entityId: engagementId,
+      occurrence: `fulfilled:${new Date().toISOString().slice(0, 10)}`,
+      recipientName: defaultHead || 'Department Head',
+      recipientEmail: defaultEmail,
+      reference: engagementName || engagementId,
+      values: {
+        engagementTitle: engagementName || '',
+        requestSummary: 'All requested documents have been received by the Internal Audit team.',
+      },
+    });
+    if (result.outcome === 'blocked') {
+      console.error('Failed to raise completion communication:', result.blockers);
+      return;
     }
+    toast({ title: 'All Documents Received', description: 'Confirmation notification raised for the Department Head.' });
   };
+
 
   // Email send logic
   const openEmailDialog = () => {
@@ -179,42 +178,58 @@ export function DocumentRequestsTab({ engagementId, departmentId, engagementName
     setIsSending(true);
     try {
       if (emailMode === 'consolidated') {
-        // Single email with all documents listed
-        const body = buildEmailBody(selectedDocs, engagementName || '', recipientName);
-        await supabase.functions.invoke('send-notification', {
-          body: {
-            recipient_email: recipientEmail,
-            subject: `Document Request — ${engagementName || 'Audit Engagement'} (${selectedDocs.length} document${selectedDocs.length > 1 ? 's' : ''})`,
-            body,
-            from_name: 'SSBM Internal Audit',
-            from_email: 'Audit@secureserve.biz',
+        // One consolidated obligation covering every selected document.
+        const summary = selectedDocs
+          .map((d: any) => `${d.document_title}${d.due_date ? ` (due ${formatDateForDisplay(d.due_date)})` : ''}`)
+          .join('; ');
+        // DEF-S1B-51 / §22: issuance is owned by the database when the request
+        // row is created. An operator "send" is a governed reminder, never a
+        // second issuance producer for the same business act.
+        const result = await emitInternalAuditCommunication({
+          eventCode: 'INTERNAL_AUDIT.REQUEST.REMINDER',
+          entityId: engagementId,
+          occurrence: `consolidated:${selectedDocIds.slice().sort().join(',')}`,
+          recipientName: recipientName || 'Department Head',
+          recipientEmail,
+          reference: engagementName || engagementId,
+          values: {
+            engagementTitle: engagementName || '',
+            requestSummary: summary,
+            dueDate: selectedDocs[0]?.due_date || '',
           },
         });
-        toast({ title: 'Email Sent', description: `Consolidated request for ${selectedDocs.length} document(s) sent to ${recipientEmail}.` });
+        if (result.outcome === 'blocked') {
+          throw new Error(result.blockers.join(', '));
+        }
+        toast({ title: 'Request Raised', description: `Consolidated request for ${selectedDocs.length} document(s) raised for ${recipientEmail}.` });
       } else {
-        // Individual emails per document
+        // One obligation per document.
         let successCount = 0;
         for (const doc of selectedDocs) {
           const docEmail = doc.requested_from_email || recipientEmail;
           const docName = doc.requested_from || recipientName;
-          const body = buildEmailBody([doc], engagementName || '', docName);
-          try {
-            await supabase.functions.invoke('send-notification', {
-              body: {
-                recipient_email: docEmail,
-                subject: `Document Request: ${doc.document_title} — ${engagementName || 'Audit Engagement'}`,
-                body,
-                from_name: 'SSBM Internal Audit',
-                from_email: 'Audit@secureserve.biz',
-              },
-            });
+          const result = await emitInternalAuditCommunication({
+            eventCode: 'INTERNAL_AUDIT.REQUEST.REMINDER',
+            entityId: String(doc.id),
+            occurrence: `reminder:${new Date().toISOString().slice(0, 10)}`,
+            recipientName: docName || 'Department Head',
+            recipientEmail: docEmail,
+            reference: engagementName || engagementId,
+            values: {
+              engagementTitle: engagementName || '',
+              requestSummary: doc.document_title,
+              dueDate: doc.due_date || '',
+            },
+          });
+          if (result.outcome === 'blocked') {
+            console.error(`Failed to raise request for ${doc.document_title}:`, result.blockers);
+          } else {
             successCount++;
-          } catch (err) {
-            console.error(`Failed to send email for ${doc.document_title}:`, err);
           }
         }
-        toast({ title: 'Emails Sent', description: `${successCount}/${selectedDocs.length} individual document request email(s) sent.` });
+        toast({ title: 'Requests Raised', description: `${successCount}/${selectedDocs.length} individual document request(s) raised.` });
       }
+
       setShowEmailDialog(false);
     } catch (err: any) {
       toast({ title: 'Send Failed', description: err.message || 'Failed to send email.', variant: 'destructive' });

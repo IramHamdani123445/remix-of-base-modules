@@ -29,6 +29,7 @@ import {
 } from '@/services/plannerCandidateActionsService';
 import { plannerApprovalService } from '@/services/plannerApprovalService';
 import { CandidateCardV3 } from '@/components/compliance/weekly-plan/v3/CandidateCardV3';
+import { CandidateCardBoundary } from '@/components/compliance/weekly-plan/v3/CandidateCardBoundary';
 import {
   PlannerExceptionDialog,
   type PlannerExceptionPayload,
@@ -297,24 +298,28 @@ export default function WeeklyPlanBuilderV3() {
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {candidatesByBucket[b.key].map((c) => (
-                              <CandidateCardV3
+                              <CandidateCardBoundary
                                 key={`${c.employer_id}-${c.audit_program ?? '_'}`}
-                                candidate={c}
-                                actions={actionsByEmployer.get(c.employer_id) ?? []}
-                                canPin={canPin}
-                                canGovern={canGovern}
-                                isAdded={builder.addedSourceIds.has(c.employer_id)}
-                                onAddToPlan={handleAddToPlan}
-                                onPin={handlePin}
-                                onUnpin={handleUnpin}
-                                onSuppress={handleSuppress}
-                                onDemote={handleDemote}
-                                onConvertException={(cand) =>
-                                  setExcDialog({ open: true, candidate: cand })
-                                }
-                                onMerge={handleMerge}
-                                onRecalc={handleRecalc}
-                              />
+                                label={c.employer_name || c.employer_id}
+                              >
+                                <CandidateCardV3
+                                  candidate={c}
+                                  actions={actionsByEmployer.get(c.employer_id) ?? []}
+                                  canPin={canPin}
+                                  canGovern={canGovern}
+                                  isAdded={builder.addedSourceIds.has(c.employer_id)}
+                                  onAddToPlan={handleAddToPlan}
+                                  onPin={handlePin}
+                                  onUnpin={handleUnpin}
+                                  onSuppress={handleSuppress}
+                                  onDemote={handleDemote}
+                                  onConvertException={(cand) =>
+                                    setExcDialog({ open: true, candidate: cand })
+                                  }
+                                  onMerge={handleMerge}
+                                  onRecalc={handleRecalc}
+                                />
+                              </CandidateCardBoundary>
                             ))}
                           </div>
                         )}

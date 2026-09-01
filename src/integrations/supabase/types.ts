@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -33097,6 +33097,69 @@ export type Database = {
           },
         ]
       }
+      ce_allocation_policies: {
+        Row: {
+          allow_cross_fund_transfer: boolean
+          class_order: string[]
+          created_at: string
+          created_by: string
+          cross_fund_transfer_approved_at: string | null
+          cross_fund_transfer_approved_by: string | null
+          id: string
+          interest_settlement: string
+          is_active: boolean
+          notes: string | null
+          over_payment_creates_credit: boolean
+          policy_code: string
+          policy_name: string
+          policy_version: string
+          respect_partial_payment_authority: boolean
+          updated_at: string
+          updated_by: string | null
+          within_class: string
+        }
+        Insert: {
+          allow_cross_fund_transfer?: boolean
+          class_order?: string[]
+          created_at?: string
+          created_by?: string
+          cross_fund_transfer_approved_at?: string | null
+          cross_fund_transfer_approved_by?: string | null
+          id?: string
+          interest_settlement?: string
+          is_active?: boolean
+          notes?: string | null
+          over_payment_creates_credit?: boolean
+          policy_code: string
+          policy_name: string
+          policy_version?: string
+          respect_partial_payment_authority?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          within_class?: string
+        }
+        Update: {
+          allow_cross_fund_transfer?: boolean
+          class_order?: string[]
+          created_at?: string
+          created_by?: string
+          cross_fund_transfer_approved_at?: string | null
+          cross_fund_transfer_approved_by?: string | null
+          id?: string
+          interest_settlement?: string
+          is_active?: boolean
+          notes?: string | null
+          over_payment_creates_credit?: boolean
+          policy_code?: string
+          policy_name?: string
+          policy_version?: string
+          respect_partial_payment_authority?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          within_class?: string
+        }
+        Relationships: []
+      }
       ce_arrangement_breaches: {
         Row: {
           amount_outstanding_at_breach: number | null
@@ -33223,6 +33286,54 @@ export type Database = {
           },
         ]
       }
+      ce_arrangement_installment_reminders: {
+        Row: {
+          arrangement_id: string
+          created_at: string
+          dispatch_reference: string | null
+          dispatched_at: string | null
+          employer_id: string
+          failure_reason: string | null
+          id: string
+          installment_due_date: string
+          installment_id: string
+          lead_days: number
+          reminder_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          arrangement_id: string
+          created_at?: string
+          dispatch_reference?: string | null
+          dispatched_at?: string | null
+          employer_id: string
+          failure_reason?: string | null
+          id?: string
+          installment_due_date: string
+          installment_id: string
+          lead_days: number
+          reminder_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          arrangement_id?: string
+          created_at?: string
+          dispatch_reference?: string | null
+          dispatched_at?: string | null
+          employer_id?: string
+          failure_reason?: string | null
+          id?: string
+          installment_due_date?: string
+          installment_id?: string
+          lead_days?: number
+          reminder_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_arrangement_policies: {
         Row: {
           arrangement_interest_rate: number
@@ -33239,6 +33350,7 @@ export type Database = {
           notes: string | null
           policy_code: string
           policy_name: string
+          scope_key: string
           updated_at: string
           updated_by: string | null
         }
@@ -33257,6 +33369,7 @@ export type Database = {
           notes?: string | null
           policy_code: string
           policy_name: string
+          scope_key?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -33275,6 +33388,7 @@ export type Database = {
           notes?: string | null
           policy_code?: string
           policy_name?: string
+          scope_key?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -33355,6 +33469,57 @@ export type Database = {
           total_arrears?: number | null
           trend?: string | null
           zone?: string | null
+        }
+        Relationships: []
+      }
+      ce_arrears_threshold_evaluations: {
+        Row: {
+          average_monthly_liability: number
+          created_at: string
+          employer_id: string
+          evaluated_by: string | null
+          evaluation_notes: string | null
+          id: string
+          monthly_liabilities: Json
+          multiplier: number
+          policy_code: string
+          policy_snapshot: Json
+          qualifying_arrears: number
+          source_periods: Json
+          threshold_amount: number
+          threshold_breached: boolean
+        }
+        Insert: {
+          average_monthly_liability: number
+          created_at?: string
+          employer_id: string
+          evaluated_by?: string | null
+          evaluation_notes?: string | null
+          id?: string
+          monthly_liabilities: Json
+          multiplier: number
+          policy_code: string
+          policy_snapshot: Json
+          qualifying_arrears: number
+          source_periods: Json
+          threshold_amount: number
+          threshold_breached: boolean
+        }
+        Update: {
+          average_monthly_liability?: number
+          created_at?: string
+          employer_id?: string
+          evaluated_by?: string | null
+          evaluation_notes?: string | null
+          id?: string
+          monthly_liabilities?: Json
+          multiplier?: number
+          policy_code?: string
+          policy_snapshot?: Json
+          qualifying_arrears?: number
+          source_periods?: Json
+          threshold_amount?: number
+          threshold_breached?: boolean
         }
         Relationships: []
       }
@@ -35433,6 +35598,13 @@ export type Database = {
             referencedRelation: "ce_automation_jobs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_automation_job_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_automation_job_schedule_truth"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ce_automation_jobs: {
@@ -35547,10 +35719,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_automation_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_automation_job_schedule_truth"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_ce_automation_runs_job"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "ce_automation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_automation_runs_job"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_automation_job_schedule_truth"
             referencedColumns: ["id"]
           },
         ]
@@ -35665,6 +35851,174 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ce_calculation_audit: {
+        Row: {
+          allocation_basis: string | null
+          amount: number
+          calculated_by: string
+          component: string
+          compounding_basis: string | null
+          created_at: string
+          employer_id: string | null
+          fund_code: string | null
+          id: string
+          idempotency_key: string | null
+          inputs: Json
+          multiplier: number | null
+          period_count: number
+          person_ssn: string | null
+          policy_version: string
+          principal: number
+          rate: number | null
+          rate_basis: string | null
+          raw_amount: number
+          reference_id: string | null
+          reference_type: string | null
+          rounding: string
+          rule_code: string
+          source_periods: string[]
+          steps: Json
+          suppressed_reason: string | null
+          wage_period: string | null
+        }
+        Insert: {
+          allocation_basis?: string | null
+          amount?: number
+          calculated_by?: string
+          component: string
+          compounding_basis?: string | null
+          created_at?: string
+          employer_id?: string | null
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inputs?: Json
+          multiplier?: number | null
+          period_count?: number
+          person_ssn?: string | null
+          policy_version: string
+          principal?: number
+          rate?: number | null
+          rate_basis?: string | null
+          raw_amount?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          rounding?: string
+          rule_code: string
+          source_periods?: string[]
+          steps?: Json
+          suppressed_reason?: string | null
+          wage_period?: string | null
+        }
+        Update: {
+          allocation_basis?: string | null
+          amount?: number
+          calculated_by?: string
+          component?: string
+          compounding_basis?: string | null
+          created_at?: string
+          employer_id?: string | null
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string | null
+          inputs?: Json
+          multiplier?: number | null
+          period_count?: number
+          person_ssn?: string | null
+          policy_version?: string
+          principal?: number
+          rate?: number | null
+          rate_basis?: string | null
+          raw_amount?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          rounding?: string
+          rule_code?: string
+          source_periods?: string[]
+          steps?: Json
+          suppressed_reason?: string | null
+          wage_period?: string | null
+        }
+        Relationships: []
+      }
+      ce_calculation_exceptions: {
+        Row: {
+          assessment_id: string | null
+          calculation_audit_id: string | null
+          created_at: string
+          detail: string
+          employer_id: string | null
+          exception_type: string
+          id: string
+          idempotency_key: string
+          indicative_amount: number
+          person_ssn: string | null
+          reason_code: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          rule_code: string
+          status: string
+          updated_at: string
+          wage_period: string | null
+        }
+        Insert: {
+          assessment_id?: string | null
+          calculation_audit_id?: string | null
+          created_at?: string
+          detail: string
+          employer_id?: string | null
+          exception_type: string
+          id?: string
+          idempotency_key: string
+          indicative_amount?: number
+          person_ssn?: string | null
+          reason_code: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_code: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Update: {
+          assessment_id?: string | null
+          calculation_audit_id?: string | null
+          created_at?: string
+          detail?: string
+          employer_id?: string | null
+          exception_type?: string
+          id?: string
+          idempotency_key?: string
+          indicative_amount?: number
+          person_ssn?: string | null
+          reason_code?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_code?: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_calculation_exceptions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_estimated_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_calculation_exceptions_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_calculation_rules: {
         Row: {
@@ -37391,6 +37745,8 @@ export type Database = {
           created_by: string | null
           deactivated_at: string | null
           deactivated_by: string | null
+          deadline_basis: string
+          deadline_fixed_day: number | null
           effective_from: string
           effective_to: string | null
           id: string
@@ -37399,10 +37755,12 @@ export type Database = {
           min_audit_frequency_months: number
           notes: string | null
           payment_due_date_day: number
+          payment_grace_period_days: number
           penalty_calc_frequency: string
           penalty_rate_percent: number
           policy_code: string
           policy_version: string
+          reporting_offset_months: number
           updated_at: string
           updated_by: string | null
           violation_prefix_config: Json
@@ -37418,6 +37776,8 @@ export type Database = {
           created_by?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
+          deadline_basis?: string
+          deadline_fixed_day?: number | null
           effective_from: string
           effective_to?: string | null
           id?: string
@@ -37426,10 +37786,12 @@ export type Database = {
           min_audit_frequency_months?: number
           notes?: string | null
           payment_due_date_day?: number
+          payment_grace_period_days?: number
           penalty_calc_frequency?: string
           penalty_rate_percent?: number
           policy_code: string
           policy_version: string
+          reporting_offset_months?: number
           updated_at?: string
           updated_by?: string | null
           violation_prefix_config?: Json
@@ -37445,6 +37807,8 @@ export type Database = {
           created_by?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
+          deadline_basis?: string
+          deadline_fixed_day?: number | null
           effective_from?: string
           effective_to?: string | null
           id?: string
@@ -37453,13 +37817,252 @@ export type Database = {
           min_audit_frequency_months?: number
           notes?: string | null
           payment_due_date_day?: number
+          payment_grace_period_days?: number
           penalty_calc_frequency?: string
           penalty_rate_percent?: number
           policy_code?: string
           policy_version?: string
+          reporting_offset_months?: number
           updated_at?: string
           updated_by?: string | null
           violation_prefix_config?: Json
+        }
+        Relationships: []
+      }
+      ce_compliance_review_flags: {
+        Row: {
+          assigned_at: string | null
+          assigned_to_name: string | null
+          assigned_to_user_id: string | null
+          converted_violation_id: string | null
+          created_at: string
+          dedupe_key: string
+          disposition: string | null
+          disposition_notes: string | null
+          employer_id: string | null
+          evidence: Json
+          excluded_from_risk: boolean
+          flag_number: string
+          flag_type: string
+          id: string
+          period_key: string | null
+          required_review_capability: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rule_code: string | null
+          rule_id: string | null
+          run_id: string | null
+          severity: string
+          status: string
+          subject_id: string
+          subject_name: string | null
+          subject_type: string
+          summary: string
+          triggering_violation_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to_name?: string | null
+          assigned_to_user_id?: string | null
+          converted_violation_id?: string | null
+          created_at?: string
+          dedupe_key: string
+          disposition?: string | null
+          disposition_notes?: string | null
+          employer_id?: string | null
+          evidence?: Json
+          excluded_from_risk?: boolean
+          flag_number: string
+          flag_type: string
+          id?: string
+          period_key?: string | null
+          required_review_capability?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_code?: string | null
+          rule_id?: string | null
+          run_id?: string | null
+          severity?: string
+          status?: string
+          subject_id: string
+          subject_name?: string | null
+          subject_type?: string
+          summary: string
+          triggering_violation_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to_name?: string | null
+          assigned_to_user_id?: string | null
+          converted_violation_id?: string | null
+          created_at?: string
+          dedupe_key?: string
+          disposition?: string | null
+          disposition_notes?: string | null
+          employer_id?: string | null
+          evidence?: Json
+          excluded_from_risk?: boolean
+          flag_number?: string
+          flag_type?: string
+          id?: string
+          period_key?: string | null
+          required_review_capability?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_code?: string | null
+          rule_id?: string | null
+          run_id?: string | null
+          severity?: string
+          status?: string
+          subject_id?: string
+          subject_name?: string | null
+          subject_type?: string
+          summary?: string
+          triggering_violation_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_contribution_credits: {
+        Row: {
+          amount: number
+          applied_amount: number
+          calculation_audit_id: string | null
+          created_at: string
+          credit_type: string
+          employer_id: string | null
+          finance_handoff_at: string | null
+          finance_handoff_reference: string | null
+          fund_code: string | null
+          id: string
+          idempotency_key: string | null
+          notes: string | null
+          person_ssn: string
+          source_assessment_id: string | null
+          source_reference: string | null
+          source_type: string
+          status: string
+          updated_at: string
+          wage_period: string | null
+        }
+        Insert: {
+          amount: number
+          applied_amount?: number
+          calculation_audit_id?: string | null
+          created_at?: string
+          credit_type?: string
+          employer_id?: string | null
+          finance_handoff_at?: string | null
+          finance_handoff_reference?: string | null
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string | null
+          notes?: string | null
+          person_ssn: string
+          source_assessment_id?: string | null
+          source_reference?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Update: {
+          amount?: number
+          applied_amount?: number
+          calculation_audit_id?: string | null
+          created_at?: string
+          credit_type?: string
+          employer_id?: string | null
+          finance_handoff_at?: string | null
+          finance_handoff_reference?: string | null
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string | null
+          notes?: string | null
+          person_ssn?: string
+          source_assessment_id?: string | null
+          source_reference?: string | null
+          source_type?: string
+          status?: string
+          updated_at?: string
+          wage_period?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_contribution_credits_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_contribution_credits_source_assessment_id_fkey"
+            columns: ["source_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_estimated_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_contribution_exemptions: {
+        Row: {
+          authority_reference: string | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          employer_id: string
+          evidence_reference: string | null
+          fund_code: string
+          granting_authority: string
+          id: string
+          notes: string | null
+          person_name: string | null
+          person_ssn: string
+          recorded_by: string | null
+          status: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          authority_reference?: string | null
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          employer_id: string
+          evidence_reference?: string | null
+          fund_code: string
+          granting_authority: string
+          id?: string
+          notes?: string | null
+          person_name?: string | null
+          person_ssn: string
+          recorded_by?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          authority_reference?: string | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employer_id?: string
+          evidence_reference?: string | null
+          fund_code?: string
+          granting_authority?: string
+          id?: string
+          notes?: string | null
+          person_name?: string | null
+          person_ssn?: string
+          recorded_by?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: []
       }
@@ -39070,6 +39673,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_employer_status_states: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_user_id: string | null
+          clearance_certificate_reference: string | null
+          created_at: string
+          effective_date: string
+          employer_id: string
+          evidence_document_url: string | null
+          evidence_reference: string | null
+          evidence_type: string
+          reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_user_id?: string | null
+          clearance_certificate_reference?: string | null
+          created_at?: string
+          effective_date?: string
+          employer_id: string
+          evidence_document_url?: string | null
+          evidence_reference?: string | null
+          evidence_type: string
+          reason?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_user_id?: string | null
+          clearance_certificate_reference?: string | null
+          created_at?: string
+          effective_date?: string
+          employer_id?: string
+          evidence_document_url?: string | null
+          evidence_reference?: string | null
+          evidence_type?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_employer_watchlist: {
         Row: {
           added_by: string | null
@@ -39382,6 +40033,239 @@ export type Database = {
             columns: ["violation_type_id"]
             isOneToOne: false
             referencedRelation: "ce_violation_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_escalation_stage_config: {
+        Row: {
+          applicable_funds: string[]
+          applicable_violation_type_ids: string[]
+          created_at: string
+          created_by: string | null
+          delay_basis: string
+          delay_days: number | null
+          id: string
+          is_enabled: boolean
+          min_outstanding_amount: number
+          notes: string | null
+          notice_template_code: string | null
+          open_decision_code: string | null
+          prerequisite_stage_code: string | null
+          requires_approval: boolean
+          retired_at: string | null
+          retired_reason: string | null
+          stage_code: string
+          stage_name: string
+          stage_order: number
+          target_state: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          applicable_funds?: string[]
+          applicable_violation_type_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          delay_basis?: string
+          delay_days?: number | null
+          id?: string
+          is_enabled?: boolean
+          min_outstanding_amount?: number
+          notes?: string | null
+          notice_template_code?: string | null
+          open_decision_code?: string | null
+          prerequisite_stage_code?: string | null
+          requires_approval?: boolean
+          retired_at?: string | null
+          retired_reason?: string | null
+          stage_code: string
+          stage_name: string
+          stage_order: number
+          target_state?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          applicable_funds?: string[]
+          applicable_violation_type_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          delay_basis?: string
+          delay_days?: number | null
+          id?: string
+          is_enabled?: boolean
+          min_outstanding_amount?: number
+          notes?: string | null
+          notice_template_code?: string | null
+          open_decision_code?: string | null
+          prerequisite_stage_code?: string | null
+          requires_approval?: boolean
+          retired_at?: string | null
+          retired_reason?: string | null
+          stage_code?: string
+          stage_name?: string
+          stage_order?: number
+          target_state?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_estimated_assessment_lines: {
+        Row: {
+          allocated_amount: number
+          allocation_ratio: number
+          assessment_id: string
+          basis_periods: string[]
+          basis_wage_total: number
+          calculation_audit_id: string | null
+          capped_amount: number
+          created_at: string
+          id: string
+          periods_present: number
+          person_ssn: string
+          record_marker: string
+          wage_period: string
+        }
+        Insert: {
+          allocated_amount?: number
+          allocation_ratio?: number
+          assessment_id: string
+          basis_periods?: string[]
+          basis_wage_total?: number
+          calculation_audit_id?: string | null
+          capped_amount?: number
+          created_at?: string
+          id?: string
+          periods_present?: number
+          person_ssn: string
+          record_marker?: string
+          wage_period: string
+        }
+        Update: {
+          allocated_amount?: number
+          allocation_ratio?: number
+          assessment_id?: string
+          basis_periods?: string[]
+          basis_wage_total?: number
+          calculation_audit_id?: string | null
+          capped_amount?: number
+          created_at?: string
+          id?: string
+          periods_present?: number
+          person_ssn?: string
+          record_marker?: string
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_estimated_assessment_lines_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_estimated_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_estimated_assessment_lines_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_estimated_assessments: {
+        Row: {
+          actual_amount: number | null
+          additional_liability: number
+          average_liability: number | null
+          basis_periods: string[]
+          calculation_audit_id: string | null
+          created_at: string
+          created_by: string
+          credit_amount: number
+          difference_amount: number | null
+          employer_id: string
+          estimate_multiplier: number | null
+          estimated_amount: number
+          excluded_periods: Json
+          fund_code: string | null
+          history_period_count: number | null
+          id: string
+          idempotency_key: string
+          ledger_entry_id: string | null
+          paid_amount: number
+          policy_version: string
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_outcome: string | null
+          status: string
+          updated_at: string
+          wage_period: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          additional_liability?: number
+          average_liability?: number | null
+          basis_periods?: string[]
+          calculation_audit_id?: string | null
+          created_at?: string
+          created_by?: string
+          credit_amount?: number
+          difference_amount?: number | null
+          employer_id: string
+          estimate_multiplier?: number | null
+          estimated_amount?: number
+          excluded_periods?: Json
+          fund_code?: string | null
+          history_period_count?: number | null
+          id?: string
+          idempotency_key: string
+          ledger_entry_id?: string | null
+          paid_amount?: number
+          policy_version: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_outcome?: string | null
+          status?: string
+          updated_at?: string
+          wage_period: string
+        }
+        Update: {
+          actual_amount?: number | null
+          additional_liability?: number
+          average_liability?: number | null
+          basis_periods?: string[]
+          calculation_audit_id?: string | null
+          created_at?: string
+          created_by?: string
+          credit_amount?: number
+          difference_amount?: number | null
+          employer_id?: string
+          estimate_multiplier?: number | null
+          estimated_amount?: number
+          excluded_periods?: Json
+          fund_code?: string | null
+          history_period_count?: number | null
+          id?: string
+          idempotency_key?: string
+          ledger_entry_id?: string | null
+          paid_amount?: number
+          policy_version?: string
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_outcome?: string | null
+          status?: string
+          updated_at?: string
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_estimated_assessments_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
             referencedColumns: ["id"]
           },
         ]
@@ -39704,6 +40588,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_headcount_tiers: {
+        Row: {
+          allowed_absolute_change: number
+          created_at: string
+          id: string
+          is_enabled: boolean
+          max_employer_size: number | null
+          min_employer_size: number
+          notes: string | null
+          percentage_threshold: number | null
+          requires_client_confirmation: boolean
+          sort_order: number
+          tier_code: string
+          tier_label: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_absolute_change: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          max_employer_size?: number | null
+          min_employer_size?: number
+          notes?: string | null
+          percentage_threshold?: number | null
+          requires_client_confirmation?: boolean
+          sort_order?: number
+          tier_code: string
+          tier_label: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_absolute_change?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          max_employer_size?: number | null
+          min_employer_size?: number
+          notes?: string | null
+          percentage_threshold?: number | null
+          requires_client_confirmation?: boolean
+          sort_order?: number
+          tier_code?: string
+          tier_label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_inspection_employer_interactions: {
         Row: {
           authorization_status: string
@@ -39793,62 +40725,107 @@ export type Database = {
         Row: {
           captured_at: string
           captured_by: string | null
+          captured_by_user_id: string | null
           checklist_response_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           evidence_type: string
+          file_ext: string | null
           file_name: string
           file_size: number | null
+          file_state: string
           file_url: string
           finding_id: string | null
           gps_lat: number | null
           gps_lng: number | null
           id: string
-          inspection_id: string
+          inspection_id: string | null
+          mime_type: string | null
           plan_item_id: string | null
+          replacement_reason: string | null
+          status: string
+          storage_bucket: string | null
+          storage_path: string | null
+          superseded_at: string | null
+          superseded_by_id: string | null
+          supersedes_id: string | null
           updated_at: string
           updated_by: string | null
+          version_no: number
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+          withdrawn_reason: string | null
         }
         Insert: {
           captured_at?: string
           captured_by?: string | null
+          captured_by_user_id?: string | null
           checklist_response_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           evidence_type?: string
+          file_ext?: string | null
           file_name: string
           file_size?: number | null
+          file_state?: string
           file_url: string
           finding_id?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
-          inspection_id: string
+          inspection_id?: string | null
+          mime_type?: string | null
           plan_item_id?: string | null
+          replacement_reason?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          superseded_at?: string | null
+          superseded_by_id?: string | null
+          supersedes_id?: string | null
           updated_at?: string
           updated_by?: string | null
+          version_no?: number
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Update: {
           captured_at?: string
           captured_by?: string | null
+          captured_by_user_id?: string | null
           checklist_response_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           evidence_type?: string
+          file_ext?: string | null
           file_name?: string
           file_size?: number | null
+          file_state?: string
           file_url?: string
           finding_id?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
-          inspection_id?: string
+          inspection_id?: string | null
+          mime_type?: string | null
           plan_item_id?: string | null
+          replacement_reason?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          superseded_at?: string | null
+          superseded_by_id?: string | null
+          supersedes_id?: string | null
           updated_at?: string
           updated_by?: string | null
+          version_no?: number
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Relationships: [
           {
@@ -39886,7 +40863,47 @@ export type Database = {
             referencedRelation: "ce_weekly_plan_items"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_inspection_evidence_supersedes_fk"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "ce_inspection_evidence"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      ce_inspection_evidence_audit: {
+        Row: {
+          action: string
+          actor_code: string | null
+          actor_id: string | null
+          created_at: string
+          details: Json
+          evidence_id: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_code?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          evidence_id: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_code?: string | null
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          evidence_id?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
       }
       ce_inspection_findings: {
         Row: {
@@ -39987,48 +41004,6 @@ export type Database = {
           },
           {
             foreignKeyName: "ce_inspection_findings_inspection_id_fkey"
-            columns: ["inspection_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_visit_execution_metrics"
-            referencedColumns: ["inspection_id"]
-          },
-          {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_violation_financials"
-            referencedColumns: ["violation_id"]
-          },
-          {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_violation_ownership"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_v_violation_routing_eligibility"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
-            columns: ["violation_id"]
-            isOneToOne: false
-            referencedRelation: "ce_violations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ce_inspection_findings_inspection"
-            columns: ["inspection_id"]
-            isOneToOne: false
-            referencedRelation: "ce_inspections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ce_inspection_findings_inspection"
             columns: ["inspection_id"]
             isOneToOne: false
             referencedRelation: "ce_v_visit_execution_metrics"
@@ -40632,6 +41607,83 @@ export type Database = {
           },
         ]
       }
+      ce_interest_accruals: {
+        Row: {
+          accrual_start_date: string
+          annual_rate_percent: number
+          as_of_date: string
+          calculation_audit_id: string | null
+          classification: string
+          compounding_basis: string
+          created_at: string
+          cumulative_interest: number
+          elapsed_months: number
+          employer_id: string
+          fund_code: string | null
+          id: string
+          idempotency_key: string
+          is_simulation: boolean
+          ledger_entry_id: string | null
+          policy_version: string
+          posted_interest: number
+          principal: number
+          suppressed_reason: string | null
+          wage_period: string
+        }
+        Insert: {
+          accrual_start_date: string
+          annual_rate_percent: number
+          as_of_date: string
+          calculation_audit_id?: string | null
+          classification?: string
+          compounding_basis: string
+          created_at?: string
+          cumulative_interest?: number
+          elapsed_months?: number
+          employer_id: string
+          fund_code?: string | null
+          id?: string
+          idempotency_key: string
+          is_simulation?: boolean
+          ledger_entry_id?: string | null
+          policy_version: string
+          posted_interest?: number
+          principal?: number
+          suppressed_reason?: string | null
+          wage_period: string
+        }
+        Update: {
+          accrual_start_date?: string
+          annual_rate_percent?: number
+          as_of_date?: string
+          calculation_audit_id?: string | null
+          classification?: string
+          compounding_basis?: string
+          created_at?: string
+          cumulative_interest?: number
+          elapsed_months?: number
+          employer_id?: string
+          fund_code?: string | null
+          id?: string
+          idempotency_key?: string
+          is_simulation?: boolean
+          ledger_entry_id?: string | null
+          policy_version?: string
+          posted_interest?: number
+          principal?: number
+          suppressed_reason?: string | null
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_interest_accruals_calculation_audit_id_fkey"
+            columns: ["calculation_audit_id"]
+            isOneToOne: false
+            referencedRelation: "ce_calculation_audit"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_job_run_log: {
         Row: {
           created_at: string
@@ -40683,6 +41735,51 @@ export type Database = {
           status?: string
           summary_message?: string | null
           triggered_by?: string
+        }
+        Relationships: []
+      }
+      ce_ledger_balance_reconciliation_log: {
+        Row: {
+          balance_after: number
+          balance_before: number
+          cause: string
+          components_after: Json
+          components_before: Json
+          created_at: string
+          employer_id: string
+          fund_type: Database["public"]["Enums"]["ce_fund_type"]
+          id: string
+          period: string
+          reconciled_by: string
+          run_id: string
+        }
+        Insert: {
+          balance_after: number
+          balance_before: number
+          cause: string
+          components_after: Json
+          components_before: Json
+          created_at?: string
+          employer_id: string
+          fund_type: Database["public"]["Enums"]["ce_fund_type"]
+          id?: string
+          period: string
+          reconciled_by?: string
+          run_id: string
+        }
+        Update: {
+          balance_after?: number
+          balance_before?: number
+          cause?: string
+          components_after?: Json
+          components_before?: Json
+          created_at?: string
+          employer_id?: string
+          fund_type?: Database["public"]["Enums"]["ce_fund_type"]
+          id?: string
+          period?: string
+          reconciled_by?: string
+          run_id?: string
         }
         Relationships: []
       }
@@ -41047,6 +42144,51 @@ export type Database = {
           },
         ]
       }
+      ce_legal_handoff_overrides: {
+        Row: {
+          authorised_by: string
+          authorised_by_user_id: string
+          authorised_role: string | null
+          case_id: string | null
+          created_at: string
+          employer_id: string | null
+          evaluation_snapshot: Json
+          id: string
+          reason: string
+          referral_id: string | null
+          rule_codes: string[]
+          updated_at: string
+        }
+        Insert: {
+          authorised_by: string
+          authorised_by_user_id: string
+          authorised_role?: string | null
+          case_id?: string | null
+          created_at?: string
+          employer_id?: string | null
+          evaluation_snapshot?: Json
+          id?: string
+          reason: string
+          referral_id?: string | null
+          rule_codes?: string[]
+          updated_at?: string
+        }
+        Update: {
+          authorised_by?: string
+          authorised_by_user_id?: string
+          authorised_role?: string | null
+          case_id?: string | null
+          created_at?: string
+          employer_id?: string | null
+          evaluation_snapshot?: Json
+          id?: string
+          reason?: string
+          referral_id?: string | null
+          rule_codes?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_legal_handoff_rules: {
         Row: {
           applicable_funds: string[]
@@ -41231,21 +42373,32 @@ export type Database = {
       }
       ce_legal_recommendations: {
         Row: {
+          approval_capability: string | null
           created_at: string
           created_by: string | null
+          early_rule_code: string | null
+          eligibility_snapshot: Json | null
           employer_id: string
           employer_name: string
           employer_zone: string | null
+          entry_path: string | null
+          financial_snapshot: Json | null
           grand_total: number | null
           id: string
           legal_referral_id: string | null
+          policy_snapshot: Json | null
           qualifying_case_ids: Json | null
+          recommendation_reason: string | null
+          recommendation_type: string
+          recommended_at: string | null
+          recommended_by: string | null
           recommended_date: string
           review_notes: string | null
           reviewed_by: string | null
           reviewed_date: string | null
           risk_band: string | null
           risk_score: number | null
+          source_case_id: string | null
           status: string
           subcase_summary: Json | null
           total_interest: number | null
@@ -41256,21 +42409,32 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          approval_capability?: string | null
           created_at?: string
           created_by?: string | null
+          early_rule_code?: string | null
+          eligibility_snapshot?: Json | null
           employer_id: string
           employer_name: string
           employer_zone?: string | null
+          entry_path?: string | null
+          financial_snapshot?: Json | null
           grand_total?: number | null
           id?: string
           legal_referral_id?: string | null
+          policy_snapshot?: Json | null
           qualifying_case_ids?: Json | null
+          recommendation_reason?: string | null
+          recommendation_type?: string
+          recommended_at?: string | null
+          recommended_by?: string | null
           recommended_date?: string
           review_notes?: string | null
           reviewed_by?: string | null
           reviewed_date?: string | null
           risk_band?: string | null
           risk_score?: number | null
+          source_case_id?: string | null
           status?: string
           subcase_summary?: Json | null
           total_interest?: number | null
@@ -41281,21 +42445,32 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          approval_capability?: string | null
           created_at?: string
           created_by?: string | null
+          early_rule_code?: string | null
+          eligibility_snapshot?: Json | null
           employer_id?: string
           employer_name?: string
           employer_zone?: string | null
+          entry_path?: string | null
+          financial_snapshot?: Json | null
           grand_total?: number | null
           id?: string
           legal_referral_id?: string | null
+          policy_snapshot?: Json | null
           qualifying_case_ids?: Json | null
+          recommendation_reason?: string | null
+          recommendation_type?: string
+          recommended_at?: string | null
+          recommended_by?: string | null
           recommended_date?: string
           review_notes?: string | null
           reviewed_by?: string | null
           reviewed_date?: string | null
           risk_band?: string | null
           risk_score?: number | null
+          source_case_id?: string | null
           status?: string
           subcase_summary?: Json | null
           total_interest?: number | null
@@ -41609,6 +42784,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ce_management_escalation_policy: {
+        Row: {
+          action_on_breach: string
+          created_at: string
+          created_by: string | null
+          history_period_count: number
+          id: string
+          include_interest_in_arrears: boolean
+          include_penalties_in_arrears: boolean
+          is_active: boolean
+          liability_basis: string
+          min_valid_periods: number
+          multiplier: number
+          notes: string | null
+          policy_code: string
+          policy_name: string
+          retired_at: string | null
+          retired_reason: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_on_breach?: string
+          created_at?: string
+          created_by?: string | null
+          history_period_count?: number
+          id?: string
+          include_interest_in_arrears?: boolean
+          include_penalties_in_arrears?: boolean
+          is_active?: boolean
+          liability_basis?: string
+          min_valid_periods?: number
+          multiplier?: number
+          notes?: string | null
+          policy_code: string
+          policy_name: string
+          retired_at?: string | null
+          retired_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_on_breach?: string
+          created_at?: string
+          created_by?: string | null
+          history_period_count?: number
+          id?: string
+          include_interest_in_arrears?: boolean
+          include_penalties_in_arrears?: boolean
+          is_active?: boolean
+          liability_basis?: string
+          min_valid_periods?: number
+          multiplier?: number
+          notes?: string | null
+          policy_code?: string
+          policy_name?: string
+          retired_at?: string | null
+          retired_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       ce_manual_rebuild_request: {
         Row: {
@@ -42087,13 +43325,18 @@ export type Database = {
           acknowledged_at: string | null
           body: string | null
           case_id: string | null
+          covered_periods: Json | null
           created_at: string | null
           created_by: string | null
           delivered_at: string | null
           delivery_method: string | null
+          dms_document_ref: string | null
           due_response_date: string | null
+          effective_date: string | null
           employer_id: string
           employer_name: string | null
+          financial_snapshot: Json | null
+          generation_idempotency_key: string | null
           id: string
           notice_number: string
           notice_type: string
@@ -42101,6 +43344,8 @@ export type Database = {
           response_notes: string | null
           response_received: boolean | null
           sent_at: string | null
+          stage_code: string | null
+          stage_config_snapshot: Json | null
           status: string | null
           subject: string | null
           template_id: string | null
@@ -42112,13 +43357,18 @@ export type Database = {
           acknowledged_at?: string | null
           body?: string | null
           case_id?: string | null
+          covered_periods?: Json | null
           created_at?: string | null
           created_by?: string | null
           delivered_at?: string | null
           delivery_method?: string | null
+          dms_document_ref?: string | null
           due_response_date?: string | null
+          effective_date?: string | null
           employer_id: string
           employer_name?: string | null
+          financial_snapshot?: Json | null
+          generation_idempotency_key?: string | null
           id?: string
           notice_number: string
           notice_type: string
@@ -42126,6 +43376,8 @@ export type Database = {
           response_notes?: string | null
           response_received?: boolean | null
           sent_at?: string | null
+          stage_code?: string | null
+          stage_config_snapshot?: Json | null
           status?: string | null
           subject?: string | null
           template_id?: string | null
@@ -42137,13 +43389,18 @@ export type Database = {
           acknowledged_at?: string | null
           body?: string | null
           case_id?: string | null
+          covered_periods?: Json | null
           created_at?: string | null
           created_by?: string | null
           delivered_at?: string | null
           delivery_method?: string | null
+          dms_document_ref?: string | null
           due_response_date?: string | null
+          effective_date?: string | null
           employer_id?: string
           employer_name?: string | null
+          financial_snapshot?: Json | null
+          generation_idempotency_key?: string | null
           id?: string
           notice_number?: string
           notice_type?: string
@@ -42151,6 +43408,8 @@ export type Database = {
           response_notes?: string | null
           response_received?: boolean | null
           sent_at?: string | null
+          stage_code?: string | null
+          stage_config_snapshot?: Json | null
           status?: string | null
           subject?: string | null
           template_id?: string | null
@@ -42331,6 +43590,270 @@ export type Database = {
           reset_frequency?: string | null
           template_pattern?: string
           updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_obligation_notice_periods: {
+        Row: {
+          created_at: string
+          id: string
+          notice_id: string
+          obligation_period_id: string
+          obligation_type: string
+          outstanding_state: string | null
+          wage_period: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notice_id: string
+          obligation_period_id: string
+          obligation_type: string
+          outstanding_state?: string | null
+          wage_period: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notice_id?: string
+          obligation_period_id?: string
+          obligation_type?: string
+          outstanding_state?: string | null
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_obligation_notice_periods_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_obligation_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_obligation_notice_periods_obligation_period_id_fkey"
+            columns: ["obligation_period_id"]
+            isOneToOne: false
+            referencedRelation: "ce_obligation_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_obligation_notices: {
+        Row: {
+          audience: string
+          business_event_id: string | null
+          channels: string[]
+          communication_request_id: string | null
+          created_at: string
+          cycle_key: string
+          delivery_detail: Json
+          delivery_status: string
+          document_reference: string | null
+          employer_id: string
+          employer_name: string | null
+          generated_at: string
+          id: string
+          notice_number: string
+          notice_stage: string
+          obligation_type: string
+          period_count: number
+          reminder_rule_code: string
+          template_code: string
+          template_version: string | null
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          business_event_id?: string | null
+          channels?: string[]
+          communication_request_id?: string | null
+          created_at?: string
+          cycle_key: string
+          delivery_detail?: Json
+          delivery_status?: string
+          document_reference?: string | null
+          employer_id: string
+          employer_name?: string | null
+          generated_at?: string
+          id?: string
+          notice_number: string
+          notice_stage: string
+          obligation_type: string
+          period_count?: number
+          reminder_rule_code: string
+          template_code: string
+          template_version?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          business_event_id?: string | null
+          channels?: string[]
+          communication_request_id?: string | null
+          created_at?: string
+          cycle_key?: string
+          delivery_detail?: Json
+          delivery_status?: string
+          document_reference?: string | null
+          employer_id?: string
+          employer_name?: string | null
+          generated_at?: string
+          id?: string
+          notice_number?: string
+          notice_stage?: string
+          obligation_type?: string
+          period_count?: number
+          reminder_rule_code?: string
+          template_code?: string
+          template_version?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_obligation_periods: {
+        Row: {
+          created_at: string
+          deadline_basis: string
+          declared_amount: number
+          due_date: string
+          employer_id: string
+          employer_name: string | null
+          filing_is_nil: boolean
+          filing_received_date: string | null
+          filing_status: string
+          grace_days: number
+          grace_end_date: string
+          id: string
+          is_outstanding: boolean
+          last_evaluated_at: string
+          last_payment_date: string | null
+          obligation_type: string
+          paid_amount: number
+          payment_status: string
+          reminder_schedule: Json
+          reporting_period: string
+          resolution_reason: string | null
+          resolved_at: string | null
+          updated_at: string
+          violation_effective_date: string
+          violation_id: string | null
+          wage_period: string
+        }
+        Insert: {
+          created_at?: string
+          deadline_basis: string
+          declared_amount?: number
+          due_date: string
+          employer_id: string
+          employer_name?: string | null
+          filing_is_nil?: boolean
+          filing_received_date?: string | null
+          filing_status?: string
+          grace_days?: number
+          grace_end_date: string
+          id?: string
+          is_outstanding?: boolean
+          last_evaluated_at?: string
+          last_payment_date?: string | null
+          obligation_type: string
+          paid_amount?: number
+          payment_status?: string
+          reminder_schedule?: Json
+          reporting_period: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          updated_at?: string
+          violation_effective_date: string
+          violation_id?: string | null
+          wage_period: string
+        }
+        Update: {
+          created_at?: string
+          deadline_basis?: string
+          declared_amount?: number
+          due_date?: string
+          employer_id?: string
+          employer_name?: string | null
+          filing_is_nil?: boolean
+          filing_received_date?: string | null
+          filing_status?: string
+          grace_days?: number
+          grace_end_date?: string
+          id?: string
+          is_outstanding?: boolean
+          last_evaluated_at?: string
+          last_payment_date?: string | null
+          obligation_type?: string
+          paid_amount?: number
+          payment_status?: string
+          reminder_schedule?: Json
+          reporting_period?: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          updated_at?: string
+          violation_effective_date?: string
+          violation_id?: string | null
+          wage_period?: string
+        }
+        Relationships: []
+      }
+      ce_obligation_reminder_rules: {
+        Row: {
+          audience: string
+          channels: string[]
+          consolidate_periods: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          is_enabled: boolean
+          label: string
+          notes: string | null
+          obligation_type: string
+          offset_type: string
+          offset_value: number
+          rule_code: string
+          sequence: number
+          template_code: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          audience?: string
+          channels?: string[]
+          consolidate_periods?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          label: string
+          notes?: string | null
+          obligation_type?: string
+          offset_type?: string
+          offset_value: number
+          rule_code: string
+          sequence?: number
+          template_code: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          audience?: string
+          channels?: string[]
+          consolidate_periods?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          label?: string
+          notes?: string | null
+          obligation_type?: string
+          offset_type?: string
+          offset_value?: number
+          rule_code?: string
+          sequence?: number
+          template_code?: string
+          updated_at?: string
           updated_by?: string | null
         }
         Relationships: []
@@ -42547,6 +44070,72 @@ export type Database = {
           },
         ]
       }
+      ce_open_business_decision: {
+        Row: {
+          blocker_class: string
+          client_answer_required: string | null
+          confirmed_basis: string | null
+          created_at: string
+          current_safe_behaviour: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_code: string
+          decision_notes: string | null
+          demo_blocker: boolean
+          id: string
+          production_blocker: boolean
+          raised_by: string
+          rule_code: string | null
+          runtime_guard: string | null
+          status: string
+          title: string
+          unconfirmed_items: Json
+          updated_at: string
+        }
+        Insert: {
+          blocker_class?: string
+          client_answer_required?: string | null
+          confirmed_basis?: string | null
+          created_at?: string
+          current_safe_behaviour?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_code: string
+          decision_notes?: string | null
+          demo_blocker?: boolean
+          id?: string
+          production_blocker?: boolean
+          raised_by?: string
+          rule_code?: string | null
+          runtime_guard?: string | null
+          status?: string
+          title: string
+          unconfirmed_items?: Json
+          updated_at?: string
+        }
+        Update: {
+          blocker_class?: string
+          client_answer_required?: string | null
+          confirmed_basis?: string | null
+          created_at?: string
+          current_safe_behaviour?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_code?: string
+          decision_notes?: string | null
+          demo_blocker?: boolean
+          id?: string
+          production_blocker?: boolean
+          raised_by?: string
+          rule_code?: string | null
+          runtime_guard?: string | null
+          status?: string
+          title?: string
+          unconfirmed_items?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_org_document_foundation: {
         Row: {
           branding: Json
@@ -42594,6 +44183,323 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      ce_partial_payment_allocations: {
+        Row: {
+          allocation_sequence: number
+          approved_amount: number | null
+          bucket_label: string | null
+          created_at: string
+          fund_code: string | null
+          id: string
+          outstanding_amount: number
+          payment_code: string
+          request_id: string
+          requested_amount: number
+          updated_at: string
+        }
+        Insert: {
+          allocation_sequence?: number
+          approved_amount?: number | null
+          bucket_label?: string | null
+          created_at?: string
+          fund_code?: string | null
+          id?: string
+          outstanding_amount?: number
+          payment_code: string
+          request_id: string
+          requested_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          allocation_sequence?: number
+          approved_amount?: number | null
+          bucket_label?: string | null
+          created_at?: string
+          fund_code?: string | null
+          id?: string
+          outstanding_amount?: number
+          payment_code?: string
+          request_id?: string
+          requested_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_partial_payment_allocations_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ce_partial_payment_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_partial_payment_events: {
+        Row: {
+          acted_at: string
+          acted_by: string | null
+          acted_by_user_id: string | null
+          action: string
+          allocation_snapshot: Json | null
+          amount: number | null
+          comments: string | null
+          from_status: string | null
+          id: string
+          reason: string | null
+          request_id: string
+          to_status: string | null
+        }
+        Insert: {
+          acted_at?: string
+          acted_by?: string | null
+          acted_by_user_id?: string | null
+          action: string
+          allocation_snapshot?: Json | null
+          amount?: number | null
+          comments?: string | null
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          request_id: string
+          to_status?: string | null
+        }
+        Update: {
+          acted_at?: string
+          acted_by?: string | null
+          acted_by_user_id?: string | null
+          action?: string
+          allocation_snapshot?: Json | null
+          amount?: number | null
+          comments?: string | null
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          request_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_partial_payment_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ce_partial_payment_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_partial_payment_policies: {
+        Row: {
+          allocation_order: string[]
+          allow_allocation_override: boolean
+          authority_validity_days: number
+          block_when_arrangement_active: boolean
+          created_at: string
+          created_by: string | null
+          escalated_approval_role: string
+          escalation_threshold_amount: number | null
+          id: string
+          is_active: boolean
+          minimum_acceptable_amount: number
+          minimum_acceptable_percent: number
+          notes: string | null
+          policy_code: string
+          policy_name: string
+          require_separate_approver: boolean
+          required_approval_role: string
+          scope_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allocation_order?: string[]
+          allow_allocation_override?: boolean
+          authority_validity_days?: number
+          block_when_arrangement_active?: boolean
+          created_at?: string
+          created_by?: string | null
+          escalated_approval_role?: string
+          escalation_threshold_amount?: number | null
+          id?: string
+          is_active?: boolean
+          minimum_acceptable_amount?: number
+          minimum_acceptable_percent?: number
+          notes?: string | null
+          policy_code: string
+          policy_name: string
+          require_separate_approver?: boolean
+          required_approval_role?: string
+          scope_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allocation_order?: string[]
+          allow_allocation_override?: boolean
+          authority_validity_days?: number
+          block_when_arrangement_active?: boolean
+          created_at?: string
+          created_by?: string | null
+          escalated_approval_role?: string
+          escalation_threshold_amount?: number | null
+          id?: string
+          is_active?: boolean
+          minimum_acceptable_amount?: number
+          minimum_acceptable_percent?: number
+          notes?: string | null
+          policy_code?: string
+          policy_name?: string
+          require_separate_approver?: boolean
+          required_approval_role?: string
+          scope_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_partial_payment_requests: {
+        Row: {
+          approved_amount: number | null
+          arrangement_id: string | null
+          authority_expires_on: string | null
+          authority_invoice_id: number | null
+          authority_issued_at: string | null
+          authority_number: string | null
+          case_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_user_id: string | null
+          decision_comments: string | null
+          decision_context: Json | null
+          employer_id: string
+          employer_name: string | null
+          id: string
+          justification: string
+          obligation_period_id: string | null
+          obligation_type: string
+          payment_reference: string | null
+          policy_id: string | null
+          policy_snapshot: Json | null
+          reason_code: string | null
+          request_number: string
+          requested_amount: number
+          requested_at: string
+          requested_by: string | null
+          requested_by_user_id: string | null
+          row_version: number
+          settled_amount: number
+          settled_at: string | null
+          source: string
+          status: string
+          supporting_documents: Json
+          total_liability: number
+          updated_at: string
+          violation_id: string | null
+          wage_period: string
+        }
+        Insert: {
+          approved_amount?: number | null
+          arrangement_id?: string | null
+          authority_expires_on?: string | null
+          authority_invoice_id?: number | null
+          authority_issued_at?: string | null
+          authority_number?: string | null
+          case_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_user_id?: string | null
+          decision_comments?: string | null
+          decision_context?: Json | null
+          employer_id: string
+          employer_name?: string | null
+          id?: string
+          justification: string
+          obligation_period_id?: string | null
+          obligation_type?: string
+          payment_reference?: string | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          reason_code?: string | null
+          request_number: string
+          requested_amount: number
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_user_id?: string | null
+          row_version?: number
+          settled_amount?: number
+          settled_at?: string | null
+          source?: string
+          status?: string
+          supporting_documents?: Json
+          total_liability?: number
+          updated_at?: string
+          violation_id?: string | null
+          wage_period: string
+        }
+        Update: {
+          approved_amount?: number | null
+          arrangement_id?: string | null
+          authority_expires_on?: string | null
+          authority_invoice_id?: number | null
+          authority_issued_at?: string | null
+          authority_number?: string | null
+          case_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_user_id?: string | null
+          decision_comments?: string | null
+          decision_context?: Json | null
+          employer_id?: string
+          employer_name?: string | null
+          id?: string
+          justification?: string
+          obligation_period_id?: string | null
+          obligation_type?: string
+          payment_reference?: string | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          reason_code?: string | null
+          request_number?: string
+          requested_amount?: number
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_user_id?: string | null
+          row_version?: number
+          settled_amount?: number
+          settled_at?: string | null
+          source?: string
+          status?: string
+          supporting_documents?: Json
+          total_liability?: number
+          updated_at?: string
+          violation_id?: string | null
+          wage_period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_partial_payment_requests_authority_invoice_id_fkey"
+            columns: ["authority_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "cn_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_partial_payment_requests_obligation_period_id_fkey"
+            columns: ["obligation_period_id"]
+            isOneToOne: false
+            referencedRelation: "ce_obligation_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_partial_payment_requests_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "ce_partial_payment_policies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_payment_allocations: {
         Row: {
@@ -42718,6 +44624,7 @@ export type Database = {
           agreement_signed: boolean | null
           approved_at: string | null
           approved_by: string | null
+          approved_by_user: string | null
           arrangement_number: string
           breach_date: string | null
           breach_detected: boolean | null
@@ -42726,6 +44633,7 @@ export type Database = {
           conditions: Json | null
           created_at: string | null
           created_by: string | null
+          created_by_user: string | null
           down_payment: number | null
           employer_id: string
           employer_name: string | null
@@ -42738,10 +44646,14 @@ export type Database = {
           missed_payments: number | null
           next_due_date: string | null
           number_of_installments: number
+          rejection_reason: string | null
           signature_data: string | null
           signed_at: string | null
           start_date: string
           status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
           terms_text: string | null
           total_debt: number
           total_paid: number | null
@@ -42753,6 +44665,7 @@ export type Database = {
           agreement_signed?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_by_user?: string | null
           arrangement_number: string
           breach_date?: string | null
           breach_detected?: boolean | null
@@ -42761,6 +44674,7 @@ export type Database = {
           conditions?: Json | null
           created_at?: string | null
           created_by?: string | null
+          created_by_user?: string | null
           down_payment?: number | null
           employer_id: string
           employer_name?: string | null
@@ -42773,10 +44687,14 @@ export type Database = {
           missed_payments?: number | null
           next_due_date?: string | null
           number_of_installments: number
+          rejection_reason?: string | null
           signature_data?: string | null
           signed_at?: string | null
           start_date: string
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_user?: string | null
           terms_text?: string | null
           total_debt: number
           total_paid?: number | null
@@ -42788,6 +44706,7 @@ export type Database = {
           agreement_signed?: boolean | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_by_user?: string | null
           arrangement_number?: string
           breach_date?: string | null
           breach_detected?: boolean | null
@@ -42796,6 +44715,7 @@ export type Database = {
           conditions?: Json | null
           created_at?: string | null
           created_by?: string | null
+          created_by_user?: string | null
           down_payment?: number | null
           employer_id?: string
           employer_name?: string | null
@@ -42808,10 +44728,14 @@ export type Database = {
           missed_payments?: number | null
           next_due_date?: string | null
           number_of_installments?: number
+          rejection_reason?: string | null
           signature_data?: string | null
           signed_at?: string | null
           start_date?: string
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_user?: string | null
           terms_text?: string | null
           total_debt?: number
           total_paid?: number | null
@@ -43815,6 +45739,53 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_review_flag_events: {
+        Row: {
+          actor: string | null
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          flag_id: string
+          from_status: string | null
+          id: string
+          notes: string | null
+          payload: Json
+          to_status: string | null
+        }
+        Insert: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          flag_id: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          payload?: Json
+          to_status?: string | null
+        }
+        Update: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          flag_id?: string
+          from_status?: string | null
+          id?: string
+          notes?: string | null
+          payload?: Json
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_review_flag_events_flag_id_fkey"
+            columns: ["flag_id"]
+            isOneToOne: false
+            referencedRelation: "ce_compliance_review_flags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_review_queue: {
         Row: {
           assigned_to: string | null
@@ -43956,6 +45927,7 @@ export type Database = {
       ce_risk_config: {
         Row: {
           calculation_formula: string | null
+          canonical_factor: string | null
           category: string | null
           created_at: string | null
           created_by: string | null
@@ -43965,7 +45937,10 @@ export type Database = {
           factor_name: string
           id: string
           is_enabled: boolean | null
+          lifecycle_status: string
           max_score: number | null
+          measurement_code: string | null
+          measurement_params: Json
           scoring_method: string | null
           thresholds: Json | null
           updated_at: string | null
@@ -43974,6 +45949,7 @@ export type Database = {
         }
         Insert: {
           calculation_formula?: string | null
+          canonical_factor?: string | null
           category?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -43983,7 +45959,10 @@ export type Database = {
           factor_name: string
           id?: string
           is_enabled?: boolean | null
+          lifecycle_status?: string
           max_score?: number | null
+          measurement_code?: string | null
+          measurement_params?: Json
           scoring_method?: string | null
           thresholds?: Json | null
           updated_at?: string | null
@@ -43992,6 +45971,7 @@ export type Database = {
         }
         Update: {
           calculation_formula?: string | null
+          canonical_factor?: string | null
           category?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -44001,7 +45981,10 @@ export type Database = {
           factor_name?: string
           id?: string
           is_enabled?: boolean | null
+          lifecycle_status?: string
           max_score?: number | null
+          measurement_code?: string | null
+          measurement_params?: Json
           scoring_method?: string | null
           thresholds?: Json | null
           updated_at?: string | null
@@ -44024,10 +46007,13 @@ export type Database = {
           id: string
           policy_code: string
           policy_name: string
+          source_policy: Json
           status: string
           update_frequency: string
           updated_at: string | null
           updated_by: string | null
+          version_no: number
+          weights_confirmation: string
         }
         Insert: {
           activated_at?: string | null
@@ -44042,10 +46028,13 @@ export type Database = {
           id?: string
           policy_code: string
           policy_name: string
+          source_policy?: Json
           status?: string
           update_frequency?: string
           updated_at?: string | null
           updated_by?: string | null
+          version_no?: number
+          weights_confirmation?: string
         }
         Update: {
           activated_at?: string | null
@@ -44060,10 +46049,13 @@ export type Database = {
           id?: string
           policy_code?: string
           policy_name?: string
+          source_policy?: Json
           status?: string
           update_frequency?: string
           updated_at?: string | null
           updated_by?: string | null
+          version_no?: number
+          weights_confirmation?: string
         }
         Relationships: []
       }
@@ -44116,20 +46108,6 @@ export type Database = {
             referencedRelation: "ce_risk_policies"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_ce_risk_policy_factors_factor"
-            columns: ["factor_id"]
-            isOneToOne: false
-            referencedRelation: "ce_risk_config"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_ce_risk_policy_factors_policy"
-            columns: ["policy_id"]
-            isOneToOne: false
-            referencedRelation: "ce_risk_policies"
-            referencedColumns: ["id"]
-          },
         ]
       }
       ce_risk_profiles: {
@@ -44143,12 +46121,15 @@ export type Database = {
           audit_priority_score: number | null
           audit_priority_why: string | null
           audit_program: string | null
+          calculation_status: string | null
           consecutive_cycles_skipped: number | null
           created_at: string | null
           created_by: string | null
           employer_id: string
           employer_name: string | null
           enforcement_risk_score: number | null
+          engine_version: string | null
+          factor_breakdown: Json | null
           filing_score: number | null
           id: string
           inherent_band: string | null
@@ -44168,7 +46149,10 @@ export type Database = {
           override_by: string | null
           override_reason: string | null
           payment_behavior_score: number | null
+          policy_id: string | null
+          policy_version: number | null
           risk_band: string | null
+          score_hash: string | null
           scoring_version: string | null
           territory: string | null
           total_score: number | null
@@ -44187,12 +46171,15 @@ export type Database = {
           audit_priority_score?: number | null
           audit_priority_why?: string | null
           audit_program?: string | null
+          calculation_status?: string | null
           consecutive_cycles_skipped?: number | null
           created_at?: string | null
           created_by?: string | null
           employer_id: string
           employer_name?: string | null
           enforcement_risk_score?: number | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           filing_score?: number | null
           id?: string
           inherent_band?: string | null
@@ -44212,7 +46199,10 @@ export type Database = {
           override_by?: string | null
           override_reason?: string | null
           payment_behavior_score?: number | null
+          policy_id?: string | null
+          policy_version?: number | null
           risk_band?: string | null
+          score_hash?: string | null
           scoring_version?: string | null
           territory?: string | null
           total_score?: number | null
@@ -44231,12 +46221,15 @@ export type Database = {
           audit_priority_score?: number | null
           audit_priority_why?: string | null
           audit_program?: string | null
+          calculation_status?: string | null
           consecutive_cycles_skipped?: number | null
           created_at?: string | null
           created_by?: string | null
           employer_id?: string
           employer_name?: string | null
           enforcement_risk_score?: number | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           filing_score?: number | null
           id?: string
           inherent_band?: string | null
@@ -44256,7 +46249,10 @@ export type Database = {
           override_by?: string | null
           override_reason?: string | null
           payment_behavior_score?: number | null
+          policy_id?: string | null
+          policy_version?: number | null
           risk_band?: string | null
+          score_hash?: string | null
           scoring_version?: string | null
           territory?: string | null
           total_score?: number | null
@@ -44280,34 +46276,61 @@ export type Database = {
           calculated_at: string | null
           calculated_by: string | null
           calculation_details: Json | null
+          engine_version: string | null
+          factor_breakdown: Json | null
           id: string
           new_band: string | null
           new_score: number | null
+          policy_id: string | null
+          policy_snapshot: Json | null
+          policy_version: number | null
           previous_band: string | null
           previous_score: number | null
           risk_profile_id: string | null
+          run_id: string | null
+          score_hash: string | null
+          source_period_from: string | null
+          source_period_to: string | null
         }
         Insert: {
           calculated_at?: string | null
           calculated_by?: string | null
           calculation_details?: Json | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           id?: string
           new_band?: string | null
           new_score?: number | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          policy_version?: number | null
           previous_band?: string | null
           previous_score?: number | null
           risk_profile_id?: string | null
+          run_id?: string | null
+          score_hash?: string | null
+          source_period_from?: string | null
+          source_period_to?: string | null
         }
         Update: {
           calculated_at?: string | null
           calculated_by?: string | null
           calculation_details?: Json | null
+          engine_version?: string | null
+          factor_breakdown?: Json | null
           id?: string
           new_band?: string | null
           new_score?: number | null
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          policy_version?: number | null
           previous_band?: string | null
           previous_score?: number | null
           risk_profile_id?: string | null
+          run_id?: string | null
+          score_hash?: string | null
+          source_period_from?: string | null
+          source_period_to?: string | null
         }
         Relationships: [
           {
@@ -44383,39 +46406,48 @@ export type Database = {
       ce_rule_history: {
         Row: {
           action: string
+          actor_user_id: string | null
           after_value: Json | null
           before_value: Json | null
           changed_at: string
           changed_by: string | null
           id: string
           notes: string | null
+          reason: string | null
           rule_code: string | null
           rule_id: string
           rule_table: string
+          scope: Json | null
         }
         Insert: {
           action: string
+          actor_user_id?: string | null
           after_value?: Json | null
           before_value?: Json | null
           changed_at?: string
           changed_by?: string | null
           id?: string
           notes?: string | null
+          reason?: string | null
           rule_code?: string | null
           rule_id: string
           rule_table: string
+          scope?: Json | null
         }
         Update: {
           action?: string
+          actor_user_id?: string | null
           after_value?: Json | null
           before_value?: Json | null
           changed_at?: string
           changed_by?: string | null
           id?: string
           notes?: string | null
+          reason?: string | null
           rule_code?: string | null
           rule_id?: string
           rule_table?: string
+          scope?: Json | null
         }
         Relationships: []
       }
@@ -44688,6 +46720,141 @@ export type Database = {
           },
         ]
       }
+      ce_sector_wage_benchmarks: {
+        Row: {
+          calculated_average: number | null
+          calculated_minimum: number | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_enabled: boolean
+          overridden_at: string | null
+          overridden_by: string | null
+          override_average: number | null
+          override_minimum: number | null
+          override_reason: string | null
+          recalculated_at: string | null
+          sample_count: number
+          sector_code: string
+          sector_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          calculated_average?: number | null
+          calculated_minimum?: number | null
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          is_enabled?: boolean
+          overridden_at?: string | null
+          overridden_by?: string | null
+          override_average?: number | null
+          override_minimum?: number | null
+          override_reason?: string | null
+          recalculated_at?: string | null
+          sample_count?: number
+          sector_code: string
+          sector_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calculated_average?: number | null
+          calculated_minimum?: number | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_enabled?: boolean
+          overridden_at?: string | null
+          overridden_by?: string | null
+          override_average?: number | null
+          override_minimum?: number | null
+          override_reason?: string | null
+          recalculated_at?: string | null
+          sample_count?: number
+          sector_code?: string
+          sector_label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_self_employed_obligations: {
+        Row: {
+          contributor_type: string
+          created_at: string
+          declared_amount: number
+          due_date: string | null
+          employer_reported: boolean
+          employer_reported_by: string | null
+          expected_amount: number
+          filing_received_date: string | null
+          grace_end_date: string | null
+          id: string
+          obligation_type: string
+          paid_amount: number
+          payment_received_date: string | null
+          person_name: string | null
+          person_ssn: string
+          status: string
+          suppressed: boolean
+          suppressed_at: string | null
+          suppressed_by: string | null
+          suppressed_reason: string | null
+          updated_at: string
+          wage_period: string
+        }
+        Insert: {
+          contributor_type?: string
+          created_at?: string
+          declared_amount?: number
+          due_date?: string | null
+          employer_reported?: boolean
+          employer_reported_by?: string | null
+          expected_amount?: number
+          filing_received_date?: string | null
+          grace_end_date?: string | null
+          id?: string
+          obligation_type?: string
+          paid_amount?: number
+          payment_received_date?: string | null
+          person_name?: string | null
+          person_ssn: string
+          status?: string
+          suppressed?: boolean
+          suppressed_at?: string | null
+          suppressed_by?: string | null
+          suppressed_reason?: string | null
+          updated_at?: string
+          wage_period: string
+        }
+        Update: {
+          contributor_type?: string
+          created_at?: string
+          declared_amount?: number
+          due_date?: string | null
+          employer_reported?: boolean
+          employer_reported_by?: string | null
+          expected_amount?: number
+          filing_received_date?: string | null
+          grace_end_date?: string | null
+          id?: string
+          obligation_type?: string
+          paid_amount?: number
+          payment_received_date?: string | null
+          person_name?: string | null
+          person_ssn?: string
+          status?: string
+          suppressed?: boolean
+          suppressed_at?: string | null
+          suppressed_by?: string | null
+          suppressed_reason?: string | null
+          updated_at?: string
+          wage_period?: string
+        }
+        Relationships: []
+      }
       ce_settings: {
         Row: {
           category: string | null
@@ -44726,6 +46893,161 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      ce_unregistered_employer_leads: {
+        Row: {
+          activity_type: string | null
+          business_address: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          discovered_date: string
+          escalated_at: string | null
+          escalated_to: string | null
+          estimated_employees: number | null
+          id: string
+          inspection_id: string | null
+          instructed_at: string | null
+          lead_number: string
+          legal_approved_at: string | null
+          legal_approved_by: string | null
+          legal_recommended: boolean
+          legal_recommended_at: string | null
+          legal_recommended_by: string | null
+          management_escalation_due: string | null
+          match_confidence: number | null
+          match_method: string | null
+          matched_employer_id: string | null
+          parish: string | null
+          register_by_date: string | null
+          registered_employer_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          review_flag_id: string | null
+          source_reference: string | null
+          source_type: string
+          status: string
+          trade_name: string
+          updated_at: string
+        }
+        Insert: {
+          activity_type?: string | null
+          business_address?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          discovered_date?: string
+          escalated_at?: string | null
+          escalated_to?: string | null
+          estimated_employees?: number | null
+          id?: string
+          inspection_id?: string | null
+          instructed_at?: string | null
+          lead_number: string
+          legal_approved_at?: string | null
+          legal_approved_by?: string | null
+          legal_recommended?: boolean
+          legal_recommended_at?: string | null
+          legal_recommended_by?: string | null
+          management_escalation_due?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_employer_id?: string | null
+          parish?: string | null
+          register_by_date?: string | null
+          registered_employer_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          review_flag_id?: string | null
+          source_reference?: string | null
+          source_type?: string
+          status?: string
+          trade_name: string
+          updated_at?: string
+        }
+        Update: {
+          activity_type?: string | null
+          business_address?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          discovered_date?: string
+          escalated_at?: string | null
+          escalated_to?: string | null
+          estimated_employees?: number | null
+          id?: string
+          inspection_id?: string | null
+          instructed_at?: string | null
+          lead_number?: string
+          legal_approved_at?: string | null
+          legal_approved_by?: string | null
+          legal_recommended?: boolean
+          legal_recommended_at?: string | null
+          legal_recommended_by?: string | null
+          management_escalation_due?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_employer_id?: string | null
+          parish?: string | null
+          register_by_date?: string | null
+          registered_employer_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          review_flag_id?: string | null
+          source_reference?: string | null
+          source_type?: string
+          status?: string
+          trade_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_unregistered_lead_events: {
+        Row: {
+          actor: string | null
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          from_status: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          from_status?: string | null
+          id?: string
+          lead_id: string
+          notes?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          from_status?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_unregistered_lead_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "ce_unregistered_employer_leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_village_zone_mapping: {
         Row: {
@@ -45211,6 +47533,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_violation_resolution_types: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          excluded_from_risk_scoring: boolean
+          id: string
+          is_enabled: boolean
+          is_payment_resolution: boolean
+          label: string
+          requires_management_authorization: boolean
+          requires_note: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          excluded_from_risk_scoring?: boolean
+          id?: string
+          is_enabled?: boolean
+          is_payment_resolution?: boolean
+          label: string
+          requires_management_authorization?: boolean
+          requires_note?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          excluded_from_risk_scoring?: boolean
+          id?: string
+          is_enabled?: boolean
+          is_payment_resolution?: boolean
+          label?: string
+          requires_management_authorization?: boolean
+          requires_note?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_violation_routing_backfill_log: {
         Row: {
           batch_no: number
@@ -45345,6 +47712,7 @@ export type Database = {
           escalated_at: string | null
           escalated_to: string | null
           estimated_employees: number | null
+          excluded_from_risk: boolean
           fund_type: string | null
           id: string
           inspection_id: string | null
@@ -45365,7 +47733,10 @@ export type Database = {
           priority: string | null
           related_arrangement_id: string | null
           related_prior_violation_id: string | null
+          resolution_authorized_at: string | null
+          resolution_authorized_by: string | null
           resolution_notes: string | null
+          resolution_type_code: string | null
           resolved_at: string | null
           resolved_by: string | null
           severity: string | null
@@ -45415,6 +47786,7 @@ export type Database = {
           escalated_at?: string | null
           escalated_to?: string | null
           estimated_employees?: number | null
+          excluded_from_risk?: boolean
           fund_type?: string | null
           id?: string
           inspection_id?: string | null
@@ -45435,7 +47807,10 @@ export type Database = {
           priority?: string | null
           related_arrangement_id?: string | null
           related_prior_violation_id?: string | null
+          resolution_authorized_at?: string | null
+          resolution_authorized_by?: string | null
           resolution_notes?: string | null
+          resolution_type_code?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
@@ -45485,6 +47860,7 @@ export type Database = {
           escalated_at?: string | null
           escalated_to?: string | null
           estimated_employees?: number | null
+          excluded_from_risk?: boolean
           fund_type?: string | null
           id?: string
           inspection_id?: string | null
@@ -45505,7 +47881,10 @@ export type Database = {
           priority?: string | null
           related_arrangement_id?: string | null
           related_prior_violation_id?: string | null
+          resolution_authorized_at?: string | null
+          resolution_authorized_by?: string | null
           resolution_notes?: string | null
+          resolution_type_code?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
@@ -45753,10 +48132,12 @@ export type Database = {
           created_by: string | null
           description: string | null
           enabled: boolean
+          escalated_approval_role: string
           id: string
           max_percentage: number | null
           name: string
           notes: string | null
+          required_approval_role: string
           required_documents: Json
           sort_order: number
           updated_at: string
@@ -45775,10 +48156,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           enabled?: boolean
+          escalated_approval_role?: string
           id?: string
           max_percentage?: number | null
           name: string
           notes?: string | null
+          required_approval_role?: string
           required_documents?: Json
           sort_order?: number
           updated_at?: string
@@ -45797,10 +48180,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           enabled?: boolean
+          escalated_approval_role?: string
           id?: string
           max_percentage?: number | null
           name?: string
           notes?: string | null
+          required_approval_role?: string
           required_documents?: Json
           sort_order?: number
           updated_at?: string
@@ -45819,9 +48204,11 @@ export type Database = {
           approver_comments: string | null
           approver_decision: string | null
           approver_id: string | null
+          approver_user_id: string | null
           case_id: string | null
           created_at: string | null
           created_by: string | null
+          decision_context: Json | null
           employer_id: string
           id: string
           justification: string
@@ -45833,6 +48220,7 @@ export type Database = {
           reviewer_comments: string | null
           reviewer_decision: string | null
           reviewer_id: string | null
+          rule_snapshot: Json | null
           source: string | null
           status: string | null
           supporting_documents: Json | null
@@ -45852,9 +48240,11 @@ export type Database = {
           approver_comments?: string | null
           approver_decision?: string | null
           approver_id?: string | null
+          approver_user_id?: string | null
           case_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          decision_context?: Json | null
           employer_id: string
           id?: string
           justification: string
@@ -45866,6 +48256,7 @@ export type Database = {
           reviewer_comments?: string | null
           reviewer_decision?: string | null
           reviewer_id?: string | null
+          rule_snapshot?: Json | null
           source?: string | null
           status?: string | null
           supporting_documents?: Json | null
@@ -45885,9 +48276,11 @@ export type Database = {
           approver_comments?: string | null
           approver_decision?: string | null
           approver_id?: string | null
+          approver_user_id?: string | null
           case_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          decision_context?: Json | null
           employer_id?: string
           id?: string
           justification?: string
@@ -45899,6 +48292,7 @@ export type Database = {
           reviewer_comments?: string | null
           reviewer_decision?: string | null
           reviewer_id?: string | null
+          rule_snapshot?: Json | null
           source?: string | null
           status?: string | null
           supporting_documents?: Json | null
@@ -60377,6 +62771,13 @@ export type Database = {
             foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_employer_arrears_summary"
             referencedColumns: ["regno"]
           },
@@ -60476,6 +62877,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_compliance_monitoring"
             referencedColumns: ["employer_regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
@@ -60654,6 +63062,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_compliance_monitoring"
             referencedColumns: ["employer_regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
@@ -61182,6 +63597,13 @@ export type Database = {
             foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_employer_arrears_summary"
             referencedColumns: ["regno"]
           },
@@ -61300,6 +63722,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_compliance_monitoring"
             referencedColumns: ["employer_regno"]
+          },
+          {
+            foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_employer_arrears_report"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
@@ -70325,6 +72754,80 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_action_extensions: {
+        Row: {
+          action_id: string
+          approved_at: string
+          approved_by: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by_profile: string | null
+          decision_comments: string | null
+          engagement_id: string | null
+          id: string
+          new_target_date: string
+          previous_target_date: string | null
+          proposed_date: string | null
+          reason: string
+          requested_at: string
+          requested_by: string | null
+          requested_by_profile: string | null
+          sequence_no: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          action_id: string
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by_profile?: string | null
+          decision_comments?: string | null
+          engagement_id?: string | null
+          id?: string
+          new_target_date: string
+          previous_target_date?: string | null
+          proposed_date?: string | null
+          reason: string
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_profile?: string | null
+          sequence_no?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          action_id?: string
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by_profile?: string | null
+          decision_comments?: string | null
+          engagement_id?: string | null
+          id?: string
+          new_target_date?: string
+          previous_target_date?: string | null
+          proposed_date?: string | null
+          reason?: string
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_profile?: string | null
+          sequence_no?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_action_extensions_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "ia_action_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_action_plan_milestones: {
         Row: {
           action_id: string | null
@@ -70406,65 +72909,208 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_action_progress_log: {
+        Row: {
+          action_id: string
+          actor_label: string | null
+          actor_profile_id: string | null
+          created_at: string
+          engagement_id: string | null
+          entry_type: string
+          evidence_ids: string[] | null
+          id: string
+          note: string
+          progress_pct: number | null
+          updated_at: string
+        }
+        Insert: {
+          action_id: string
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entry_type?: string
+          evidence_ids?: string[] | null
+          id?: string
+          note: string
+          progress_pct?: number | null
+          updated_at?: string
+        }
+        Update: {
+          action_id?: string
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entry_type?: string
+          evidence_ids?: string[] | null
+          id?: string
+          note?: string
+          progress_pct?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_action_progress_log_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "ia_action_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_action_tracking: {
         Row: {
+          accountable_department_id: string | null
           action_description: string | null
+          action_ref: string | null
           action_status: string | null
+          annual_plan_id: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
+          closure_date: string | null
+          closure_notes: string | null
+          closure_verified_at: string | null
+          closure_verified_by: string | null
           created_at: string | null
           created_by: string | null
+          current_target_date: string | null
+          department_id: string | null
           engagement_id: string | null
+          evidence_ids: string[]
           evidence_of_implementation: string[] | null
+          extension_count: number
           finding_id: string
+          function_id: string | null
           id: string
+          latest_update: string | null
+          latest_update_at: string | null
+          latest_update_by: string | null
+          lifecycle_status: string
+          management_completion_by: string | null
+          management_completion_date: string | null
           notes: string | null
+          original_target_date: string | null
+          progress_pct: number
+          recommendation_id: string | null
+          reopen_count: number
+          requires_ia_verification: boolean
           response_id: string | null
           responsible_person: string | null
+          responsible_profile_id: string | null
           status: string | null
           target_date: string | null
           updated_at: string | null
           updated_by: string | null
           verification_date: string | null
+          verification_notes: string | null
+          verification_status: string
+          verified_at: string | null
           verified_by: string | null
+          verified_by_profile: string | null
           verified_date: string | null
         }
         Insert: {
+          accountable_department_id?: string | null
           action_description?: string | null
+          action_ref?: string | null
           action_status?: string | null
+          annual_plan_id?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          closure_date?: string | null
+          closure_notes?: string | null
+          closure_verified_at?: string | null
+          closure_verified_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_target_date?: string | null
+          department_id?: string | null
           engagement_id?: string | null
+          evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
+          extension_count?: number
           finding_id: string
+          function_id?: string | null
           id?: string
+          latest_update?: string | null
+          latest_update_at?: string | null
+          latest_update_by?: string | null
+          lifecycle_status?: string
+          management_completion_by?: string | null
+          management_completion_date?: string | null
           notes?: string | null
+          original_target_date?: string | null
+          progress_pct?: number
+          recommendation_id?: string | null
+          reopen_count?: number
+          requires_ia_verification?: boolean
           response_id?: string | null
           responsible_person?: string | null
+          responsible_profile_id?: string | null
           status?: string | null
           target_date?: string | null
           updated_at?: string | null
           updated_by?: string | null
           verification_date?: string | null
+          verification_notes?: string | null
+          verification_status?: string
+          verified_at?: string | null
           verified_by?: string | null
+          verified_by_profile?: string | null
           verified_date?: string | null
         }
         Update: {
+          accountable_department_id?: string | null
           action_description?: string | null
+          action_ref?: string | null
           action_status?: string | null
+          annual_plan_id?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          closure_date?: string | null
+          closure_notes?: string | null
+          closure_verified_at?: string | null
+          closure_verified_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_target_date?: string | null
+          department_id?: string | null
           engagement_id?: string | null
+          evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
+          extension_count?: number
           finding_id?: string
+          function_id?: string | null
           id?: string
+          latest_update?: string | null
+          latest_update_at?: string | null
+          latest_update_by?: string | null
+          lifecycle_status?: string
+          management_completion_by?: string | null
+          management_completion_date?: string | null
           notes?: string | null
+          original_target_date?: string | null
+          progress_pct?: number
+          recommendation_id?: string | null
+          reopen_count?: number
+          requires_ia_verification?: boolean
           response_id?: string | null
           responsible_person?: string | null
+          responsible_profile_id?: string | null
           status?: string | null
           target_date?: string | null
           updated_at?: string | null
           updated_by?: string | null
           verification_date?: string | null
+          verification_notes?: string | null
+          verification_status?: string
+          verified_at?: string | null
           verified_by?: string | null
+          verified_by_profile?: string | null
           verified_date?: string | null
         }
         Relationships: [
@@ -70483,6 +73129,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ia_action_tracking_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ia_recommendations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ia_action_tracking_response_id_fkey"
             columns: ["response_id"]
             isOneToOne: false
@@ -70496,10 +73149,14 @@ export type Database = {
           activity_type: string | null
           actual_date_from: string | null
           actual_date_to: string | null
+          actual_hours: number | null
           annual_plan_id: string | null
           assigned_auditor_ids: string[] | null
           auditor_id: string | null
           auditor_name: string | null
+          completed_at: string | null
+          completed_by: string | null
+          completion_notes: string | null
           control_area: string | null
           created_at: string | null
           created_by: string | null
@@ -70512,9 +73169,13 @@ export type Database = {
           id: string
           location: string | null
           name: string
+          owner_auditor_id: string | null
           planned_date_from: string | null
           planned_date_to: string | null
+          planned_hours: number | null
           priority: string | null
+          review_status: string
+          reviewer_auditor_id: string | null
           start_date: string | null
           status: string | null
           title: string | null
@@ -70525,10 +73186,14 @@ export type Database = {
           activity_type?: string | null
           actual_date_from?: string | null
           actual_date_to?: string | null
+          actual_hours?: number | null
           annual_plan_id?: string | null
           assigned_auditor_ids?: string[] | null
           auditor_id?: string | null
           auditor_name?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_notes?: string | null
           control_area?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -70541,9 +73206,13 @@ export type Database = {
           id?: string
           location?: string | null
           name: string
+          owner_auditor_id?: string | null
           planned_date_from?: string | null
           planned_date_to?: string | null
+          planned_hours?: number | null
           priority?: string | null
+          review_status?: string
+          reviewer_auditor_id?: string | null
           start_date?: string | null
           status?: string | null
           title?: string | null
@@ -70554,10 +73223,14 @@ export type Database = {
           activity_type?: string | null
           actual_date_from?: string | null
           actual_date_to?: string | null
+          actual_hours?: number | null
           annual_plan_id?: string | null
           assigned_auditor_ids?: string[] | null
           auditor_id?: string | null
           auditor_name?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_notes?: string | null
           control_area?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -70570,9 +73243,13 @@ export type Database = {
           id?: string
           location?: string | null
           name?: string
+          owner_auditor_id?: string | null
           planned_date_from?: string | null
           planned_date_to?: string | null
+          planned_hours?: number | null
           priority?: string | null
+          review_status?: string
+          reviewer_auditor_id?: string | null
           start_date?: string | null
           status?: string | null
           title?: string | null
@@ -70679,6 +73356,7 @@ export type Database = {
           buffer_pct: number | null
           closed_by: string | null
           closed_date: string | null
+          closure_summary: Json | null
           committee_email_proof_url: string | null
           committee_minutes_url: string | null
           committee_noted: boolean | null
@@ -70752,6 +73430,7 @@ export type Database = {
           buffer_pct?: number | null
           closed_by?: string | null
           closed_date?: string | null
+          closure_summary?: Json | null
           committee_email_proof_url?: string | null
           committee_minutes_url?: string | null
           committee_noted?: boolean | null
@@ -70825,6 +73504,7 @@ export type Database = {
           buffer_pct?: number | null
           closed_by?: string | null
           closed_date?: string | null
+          closure_summary?: Json | null
           committee_email_proof_url?: string | null
           committee_minutes_url?: string | null
           committee_noted?: boolean | null
@@ -71145,6 +73825,7 @@ export type Database = {
           inclusion_rationale: string | null
           inclusion_reason_codes: Json | null
           inclusion_reason_notes: string | null
+          intimation_issued_at: string | null
           is_active: boolean | null
           is_adhoc: boolean | null
           launched_at: string | null
@@ -71155,9 +73836,16 @@ export type Database = {
           objectives: string | null
           planned_end_date: string | null
           planned_start_date: string | null
+          preparation_completed_at: string | null
+          preparation_completed_by: string | null
+          preparation_notes: string | null
+          preparation_status: string
           primary_auditee_contact_id: string | null
           quarter: string | null
           reviewer_id: string | null
+          schedule_version: number
+          scheduled_at: string | null
+          scheduled_by: string | null
           scheduling_notes: string | null
           scope: string | null
           secondary_auditee_contact_ids: Json | null
@@ -71209,6 +73897,7 @@ export type Database = {
           inclusion_rationale?: string | null
           inclusion_reason_codes?: Json | null
           inclusion_reason_notes?: string | null
+          intimation_issued_at?: string | null
           is_active?: boolean | null
           is_adhoc?: boolean | null
           launched_at?: string | null
@@ -71219,9 +73908,16 @@ export type Database = {
           objectives?: string | null
           planned_end_date?: string | null
           planned_start_date?: string | null
+          preparation_completed_at?: string | null
+          preparation_completed_by?: string | null
+          preparation_notes?: string | null
+          preparation_status?: string
           primary_auditee_contact_id?: string | null
           quarter?: string | null
           reviewer_id?: string | null
+          schedule_version?: number
+          scheduled_at?: string | null
+          scheduled_by?: string | null
           scheduling_notes?: string | null
           scope?: string | null
           secondary_auditee_contact_ids?: Json | null
@@ -71273,6 +73969,7 @@ export type Database = {
           inclusion_rationale?: string | null
           inclusion_reason_codes?: Json | null
           inclusion_reason_notes?: string | null
+          intimation_issued_at?: string | null
           is_active?: boolean | null
           is_adhoc?: boolean | null
           launched_at?: string | null
@@ -71283,9 +73980,16 @@ export type Database = {
           objectives?: string | null
           planned_end_date?: string | null
           planned_start_date?: string | null
+          preparation_completed_at?: string | null
+          preparation_completed_by?: string | null
+          preparation_notes?: string | null
+          preparation_status?: string
           primary_auditee_contact_id?: string | null
           quarter?: string | null
           reviewer_id?: string | null
+          schedule_version?: number
+          scheduled_at?: string | null
+          scheduled_by?: string | null
           scheduling_notes?: string | null
           scope?: string | null
           secondary_auditee_contact_ids?: Json | null
@@ -71320,6 +74024,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ia_audit_event: {
+        Row: {
+          actor_label: string | null
+          actor_profile_id: string | null
+          annual_plan_id: string | null
+          correlation_id: string | null
+          created_at: string
+          engagement_id: string | null
+          entity_id: string | null
+          entity_type: string
+          event_code: string
+          id: string
+          new_value: Json | null
+          occurred_at: string
+          old_value: Json | null
+          reason: string | null
+          source_command: string
+        }
+        Insert: {
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          annual_plan_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entity_id?: string | null
+          entity_type: string
+          event_code: string
+          id?: string
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          reason?: string | null
+          source_command: string
+        }
+        Update: {
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          annual_plan_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          event_code?: string
+          id?: string
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          reason?: string | null
+          source_command?: string
+        }
+        Relationships: []
       }
       ia_audit_plan_functions: {
         Row: {
@@ -71678,6 +74436,7 @@ export type Database = {
           conclusion: string | null
           created_at: string | null
           created_by: string | null
+          current_version_number: number
           department_id: string | null
           distribution_list: string | null
           engagement_id: string | null
@@ -71696,6 +74455,7 @@ export type Database = {
           period: string | null
           plan_id: string | null
           prepared_by: string | null
+          qa_review_id: string | null
           recommendations: string | null
           report_number: string | null
           report_type: string
@@ -71717,6 +74477,7 @@ export type Database = {
           conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_version_number?: number
           department_id?: string | null
           distribution_list?: string | null
           engagement_id?: string | null
@@ -71735,6 +74496,7 @@ export type Database = {
           period?: string | null
           plan_id?: string | null
           prepared_by?: string | null
+          qa_review_id?: string | null
           recommendations?: string | null
           report_number?: string | null
           report_type?: string
@@ -71756,6 +74518,7 @@ export type Database = {
           conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_version_number?: number
           department_id?: string | null
           distribution_list?: string | null
           engagement_id?: string | null
@@ -71774,6 +74537,7 @@ export type Database = {
           period?: string | null
           plan_id?: string | null
           prepared_by?: string | null
+          qa_review_id?: string | null
           recommendations?: string | null
           report_number?: string | null
           report_type?: string
@@ -72437,17 +75201,277 @@ export type Database = {
           },
         ]
       }
+      ia_comms_obligation_policy: {
+        Row: {
+          created_at: string
+          days: number
+          description: string | null
+          id: string
+          is_enabled: boolean
+          policy_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days: number
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          policy_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days?: number
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          policy_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ia_comms_payload_alias: {
+        Row: {
+          canonical_key: string
+          created_at: string
+          event_code: string | null
+          id: string
+          legacy_key: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_key: string
+          created_at?: string
+          event_code?: string | null
+          id?: string
+          legacy_key: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_key?: string
+          created_at?: string
+          event_code?: string | null
+          id?: string
+          legacy_key?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ia_comms_pre_release_quarantine: {
+        Row: {
+          correlation_id: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          id: string
+          occurrence: string | null
+          outbox_id: string
+          previous_status: string
+          quarantined_at: string
+          reason_code: string
+          recipient_digest: Json
+        }
+        Insert: {
+          correlation_id?: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          id?: string
+          occurrence?: string | null
+          outbox_id: string
+          previous_status: string
+          quarantined_at?: string
+          reason_code?: string
+          recipient_digest: Json
+        }
+        Update: {
+          correlation_id?: string | null
+          entity_id?: string
+          entity_type?: string
+          event_code?: string
+          id?: string
+          occurrence?: string | null
+          outbox_id?: string
+          previous_status?: string
+          quarantined_at?: string
+          reason_code?: string
+          recipient_digest?: Json
+        }
+        Relationships: []
+      }
+      ia_comms_recovery_probe: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          label: string
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
+      ia_comms_reminder_policy: {
+        Row: {
+          created_at: string
+          days_relative_to_due: number
+          escalation_roles: string[]
+          event_code: string
+          id: string
+          is_active: boolean
+          label: string
+          obligation_kind: string
+          occurrence_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_relative_to_due: number
+          escalation_roles?: string[]
+          event_code: string
+          id?: string
+          is_active?: boolean
+          label: string
+          obligation_kind: string
+          occurrence_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_relative_to_due?: number
+          escalation_roles?: string[]
+          event_code?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          obligation_kind?: string
+          occurrence_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ia_comms_reminder_run_log: {
+        Row: {
+          department_id: string | null
+          engagement_id: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          event_outbox_id: string | null
+          id: string
+          obligation_kind: string
+          occurrence: string
+          outcome: string
+          policy_id: string | null
+          reason: string | null
+          recipient_profile_id: string | null
+          required_role: string | null
+          resolution_source: string | null
+          run_at: string
+          run_id: string | null
+          run_outcome: string | null
+        }
+        Insert: {
+          department_id?: string | null
+          engagement_id?: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          event_outbox_id?: string | null
+          id?: string
+          obligation_kind: string
+          occurrence: string
+          outcome: string
+          policy_id?: string | null
+          reason?: string | null
+          recipient_profile_id?: string | null
+          required_role?: string | null
+          resolution_source?: string | null
+          run_at?: string
+          run_id?: string | null
+          run_outcome?: string | null
+        }
+        Update: {
+          department_id?: string | null
+          engagement_id?: string | null
+          entity_id?: string
+          entity_type?: string
+          event_code?: string
+          event_outbox_id?: string | null
+          id?: string
+          obligation_kind?: string
+          occurrence?: string
+          outcome?: string
+          policy_id?: string | null
+          reason?: string | null
+          recipient_profile_id?: string | null
+          required_role?: string | null
+          resolution_source?: string | null
+          run_at?: string
+          run_id?: string | null
+          run_outcome?: string | null
+        }
+        Relationships: []
+      }
+      ia_comms_role_designation: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          profile_id: string
+          role_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          profile_id: string
+          role_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          profile_id?: string
+          role_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ia_communication_stages: {
         Row: {
           acknowledged_at: string | null
           acknowledgment_required: boolean | null
           communication_id: string | null
+          communication_state: string | null
           created_at: string | null
           created_by: string | null
           delivery_status: string | null
           engagement_id: string
+          event_code: string | null
+          event_outbox_id: string | null
           id: string
           notes: string | null
+          occurrence: string | null
+          omni_comms_request_id: string | null
           recipient_email: string | null
           recipient_name: string | null
           sent_at: string | null
@@ -72461,12 +75485,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledgment_required?: boolean | null
           communication_id?: string | null
+          communication_state?: string | null
           created_at?: string | null
           created_by?: string | null
           delivery_status?: string | null
           engagement_id: string
+          event_code?: string | null
+          event_outbox_id?: string | null
           id?: string
           notes?: string | null
+          occurrence?: string | null
+          omni_comms_request_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
           sent_at?: string | null
@@ -72480,12 +75509,17 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledgment_required?: boolean | null
           communication_id?: string | null
+          communication_state?: string | null
           created_at?: string | null
           created_by?: string | null
           delivery_status?: string | null
           engagement_id?: string
+          event_code?: string | null
+          event_outbox_id?: string | null
           id?: string
           notes?: string | null
+          occurrence?: string | null
+          omni_comms_request_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
           sent_at?: string | null
@@ -72726,6 +75760,9 @@ export type Database = {
       }
       ia_control_tests: {
         Row: {
+          concluded_at: string | null
+          concluded_by: string | null
+          conclusion: string | null
           created_at: string | null
           created_by: string | null
           engagement_id: string | null
@@ -72733,18 +75770,23 @@ export type Database = {
           id: string
           is_active: boolean | null
           linked_evidence_ids: Json | null
+          no_finding_rationale: string | null
           rcm_control_id: string | null
           remarks: string | null
           result: string | null
           reviewed_at: string | null
           reviewer_id: string | null
           sample_size: number | null
+          status: string
           test_date: string | null
           tested_by: string | null
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
+          concluded_at?: string | null
+          concluded_by?: string | null
+          conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -72752,18 +75794,23 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           linked_evidence_ids?: Json | null
+          no_finding_rationale?: string | null
           rcm_control_id?: string | null
           remarks?: string | null
           result?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
           sample_size?: number | null
+          status?: string
           test_date?: string | null
           tested_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
+          concluded_at?: string | null
+          concluded_by?: string | null
+          conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -72771,12 +75818,14 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           linked_evidence_ids?: Json | null
+          no_finding_rationale?: string | null
           rcm_control_id?: string | null
           remarks?: string | null
           result?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
           sample_size?: number | null
+          status?: string
           test_date?: string | null
           tested_by?: string | null
           updated_at?: string | null
@@ -73584,6 +76633,83 @@ export type Database = {
           },
         ]
       }
+      ia_engagement_schedule_history: {
+        Row: {
+          created_at: string
+          engagement_id: string
+          id: string
+          new_end_date: string | null
+          new_start_date: string | null
+          operation: string
+          performed_at: string
+          performed_by: string | null
+          previous_end_date: string | null
+          previous_start_date: string | null
+          reason: string | null
+          schedule_version: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          engagement_id: string
+          id?: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          operation: string
+          performed_at?: string
+          performed_by?: string | null
+          previous_end_date?: string | null
+          previous_start_date?: string | null
+          reason?: string | null
+          schedule_version: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          engagement_id?: string
+          id?: string
+          new_end_date?: string | null
+          new_start_date?: string | null
+          operation?: string
+          performed_at?: string
+          performed_by?: string | null
+          previous_end_date?: string | null
+          previous_start_date?: string | null
+          reason?: string | null
+          schedule_version?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_engagement_schedule_history_engagement_id_fkey"
+            columns: ["engagement_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_escalation_cert_log: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: string
+          scenario: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          scenario: string
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          scenario?: string
+        }
+        Relationships: []
+      }
       ia_escalation_rules: {
         Row: {
           action_type: string | null
@@ -73765,6 +76891,53 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_finding_severity_history: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          created_at: string
+          engagement_id: string | null
+          finding_id: string
+          id: string
+          new_severity: string
+          old_severity: string | null
+          reason: string
+          updated_at: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          created_at?: string
+          engagement_id?: string | null
+          finding_id: string
+          id?: string
+          new_severity: string
+          old_severity?: string | null
+          reason: string
+          updated_at?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          created_at?: string
+          engagement_id?: string | null
+          finding_id?: string
+          id?: string
+          new_severity?: string
+          old_severity?: string | null
+          reason?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_finding_severity_history_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_findings: {
         Row: {
           activity_id: string | null
@@ -73772,6 +76945,9 @@ export type Database = {
           cause: string | null
           checklist_id: string | null
           condition: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          control_test_id: string | null
           corrective_action_description: string | null
           created_at: string | null
           created_by: string | null
@@ -73787,16 +76963,28 @@ export type Database = {
           function_area: string | null
           id: string
           impact_area: string | null
+          lifecycle_status: string
           owner_role: string | null
           preventive_action: string | null
           recommendation: string | null
+          released_at: string | null
+          released_by: string | null
+          response_due_date: string | null
+          response_requested_at: string | null
+          response_requested_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           risk_rating: string | null
           root_cause_category: string | null
+          severity: string | null
           status: string | null
           submitted_for_response_date: string | null
           title: string
           updated_at: string | null
           updated_by: string | null
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+          withdrawn_reason: string | null
         }
         Insert: {
           activity_id?: string | null
@@ -73804,6 +76992,9 @@ export type Database = {
           cause?: string | null
           checklist_id?: string | null
           condition?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          control_test_id?: string | null
           corrective_action_description?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -73819,16 +77010,28 @@ export type Database = {
           function_area?: string | null
           id?: string
           impact_area?: string | null
+          lifecycle_status?: string
           owner_role?: string | null
           preventive_action?: string | null
           recommendation?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          response_due_date?: string | null
+          response_requested_at?: string | null
+          response_requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           risk_rating?: string | null
           root_cause_category?: string | null
+          severity?: string | null
           status?: string | null
           submitted_for_response_date?: string | null
           title: string
           updated_at?: string | null
           updated_by?: string | null
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Update: {
           activity_id?: string | null
@@ -73836,6 +77039,9 @@ export type Database = {
           cause?: string | null
           checklist_id?: string | null
           condition?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          control_test_id?: string | null
           corrective_action_description?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -73851,16 +77057,28 @@ export type Database = {
           function_area?: string | null
           id?: string
           impact_area?: string | null
+          lifecycle_status?: string
           owner_role?: string | null
           preventive_action?: string | null
           recommendation?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          response_due_date?: string | null
+          response_requested_at?: string | null
+          response_requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           risk_rating?: string | null
           root_cause_category?: string | null
+          severity?: string | null
           status?: string | null
           submitted_for_response_date?: string | null
           title?: string
           updated_at?: string | null
           updated_by?: string | null
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Relationships: [
           {
@@ -73916,6 +77134,7 @@ export type Database = {
       }
       ia_follow_ups: {
         Row: {
+          action_id: string | null
           action_required: string
           activity_id: string | null
           annual_plan_id: string | null
@@ -73928,8 +77147,12 @@ export type Database = {
           due_date: string
           engagement_id: string | null
           finding_id: string | null
+          fiscal_year: string | null
           follow_up_type: string | null
           id: string
+          lifecycle_status: string
+          outcome: string | null
+          outcome_notes: string | null
           priority: string | null
           resolution: string | null
           resolved_date: string | null
@@ -73939,8 +77162,11 @@ export type Database = {
           status: string | null
           updated_at: string | null
           updated_by: string | null
+          verified_at: string | null
+          verified_by_profile: string | null
         }
         Insert: {
+          action_id?: string | null
           action_required: string
           activity_id?: string | null
           annual_plan_id?: string | null
@@ -73953,8 +77179,12 @@ export type Database = {
           due_date: string
           engagement_id?: string | null
           finding_id?: string | null
+          fiscal_year?: string | null
           follow_up_type?: string | null
           id?: string
+          lifecycle_status?: string
+          outcome?: string | null
+          outcome_notes?: string | null
           priority?: string | null
           resolution?: string | null
           resolved_date?: string | null
@@ -73964,8 +77194,11 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          verified_at?: string | null
+          verified_by_profile?: string | null
         }
         Update: {
+          action_id?: string | null
           action_required?: string
           activity_id?: string | null
           annual_plan_id?: string | null
@@ -73978,8 +77211,12 @@ export type Database = {
           due_date?: string
           engagement_id?: string | null
           finding_id?: string | null
+          fiscal_year?: string | null
           follow_up_type?: string | null
           id?: string
+          lifecycle_status?: string
+          outcome?: string | null
+          outcome_notes?: string | null
           priority?: string | null
           resolution?: string | null
           resolved_date?: string | null
@@ -73989,6 +77226,8 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          verified_at?: string | null
+          verified_by_profile?: string | null
         }
         Relationships: [
           {
@@ -74161,66 +77400,144 @@ export type Database = {
       }
       ia_management_responses: {
         Row: {
+          accepted_at: string | null
           action_plan: string | null
+          audit_concluded_at: string | null
+          audit_concluded_by: string | null
+          audit_conclusion: string | null
+          clarification_request: string | null
+          clarification_requested_at: string | null
+          clarification_requested_by: string | null
           created_at: string | null
           created_by: string | null
+          dispute_disposed_at: string | null
+          dispute_disposed_by: string | null
+          dispute_disposition: string | null
+          dispute_disposition_notes: string | null
+          dispute_state: string
           due_date: string | null
           engagement_id: string | null
+          escalated_at: string | null
+          escalated_by: string | null
+          escalation_authority: string | null
+          escalation_reason: string | null
+          escalation_reference: string | null
           finding_id: string
           id: string
+          is_current: boolean
           is_overdue: boolean | null
           last_reminder_date: string | null
+          management_position: string | null
           official_target_date: string | null
+          rejection_rationale: string | null
           reminder_sent: boolean | null
           response_text: string | null
+          response_version: number
           responsible_person: string | null
+          review_outcome: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
           submitted_by: string | null
           submitted_date: string | null
+          superseded_by_response_id: string | null
+          supersedes_response_id: string | null
           supporting_docs: string[] | null
           target_date: string | null
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
+          accepted_at?: string | null
           action_plan?: string | null
+          audit_concluded_at?: string | null
+          audit_concluded_by?: string | null
+          audit_conclusion?: string | null
+          clarification_request?: string | null
+          clarification_requested_at?: string | null
+          clarification_requested_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          dispute_disposed_at?: string | null
+          dispute_disposed_by?: string | null
+          dispute_disposition?: string | null
+          dispute_disposition_notes?: string | null
+          dispute_state?: string
           due_date?: string | null
           engagement_id?: string | null
+          escalated_at?: string | null
+          escalated_by?: string | null
+          escalation_authority?: string | null
+          escalation_reason?: string | null
+          escalation_reference?: string | null
           finding_id: string
           id?: string
+          is_current?: boolean
           is_overdue?: boolean | null
           last_reminder_date?: string | null
+          management_position?: string | null
           official_target_date?: string | null
+          rejection_rationale?: string | null
           reminder_sent?: boolean | null
           response_text?: string | null
+          response_version?: number
           responsible_person?: string | null
+          review_outcome?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           submitted_by?: string | null
           submitted_date?: string | null
+          superseded_by_response_id?: string | null
+          supersedes_response_id?: string | null
           supporting_docs?: string[] | null
           target_date?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
+          accepted_at?: string | null
           action_plan?: string | null
+          audit_concluded_at?: string | null
+          audit_concluded_by?: string | null
+          audit_conclusion?: string | null
+          clarification_request?: string | null
+          clarification_requested_at?: string | null
+          clarification_requested_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          dispute_disposed_at?: string | null
+          dispute_disposed_by?: string | null
+          dispute_disposition?: string | null
+          dispute_disposition_notes?: string | null
+          dispute_state?: string
           due_date?: string | null
           engagement_id?: string | null
+          escalated_at?: string | null
+          escalated_by?: string | null
+          escalation_authority?: string | null
+          escalation_reason?: string | null
+          escalation_reference?: string | null
           finding_id?: string
           id?: string
+          is_current?: boolean
           is_overdue?: boolean | null
           last_reminder_date?: string | null
+          management_position?: string | null
           official_target_date?: string | null
+          rejection_rationale?: string | null
           reminder_sent?: boolean | null
           response_text?: string | null
+          response_version?: number
           responsible_person?: string | null
+          review_outcome?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           submitted_by?: string | null
           submitted_date?: string | null
+          superseded_by_response_id?: string | null
+          supersedes_response_id?: string | null
           supporting_docs?: string[] | null
           target_date?: string | null
           updated_at?: string | null
@@ -74239,6 +77556,20 @@ export type Database = {
             columns: ["finding_id"]
             isOneToOne: false
             referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_management_responses_superseded_by_response_id_fkey"
+            columns: ["superseded_by_response_id"]
+            isOneToOne: false
+            referencedRelation: "ia_management_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_management_responses_supersedes_response_id_fkey"
+            columns: ["supersedes_response_id"]
+            isOneToOne: false
+            referencedRelation: "ia_management_responses"
             referencedColumns: ["id"]
           },
         ]
@@ -74421,6 +77752,118 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_office_holder: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          department_id: string | null
+          effective_from: string
+          effective_to: string | null
+          fixture_tag: string | null
+          function_code: string
+          id: string
+          is_certification_fixture: boolean
+          is_primary: boolean
+          profile_id: string
+          reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          scope_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          department_id?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          fixture_tag?: string | null
+          function_code: string
+          id?: string
+          is_certification_fixture?: boolean
+          is_primary?: boolean
+          profile_id: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          department_id?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          fixture_tag?: string | null
+          function_code?: string
+          id?: string
+          is_certification_fixture?: boolean
+          is_primary?: boolean
+          profile_id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_office_holder_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "v_ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "ce_inspector_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "core_user_profiles_v"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "core_user_profiles_v"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_org_document_foundation: {
         Row: {
           branding: Json
@@ -74578,6 +78021,10 @@ export type Database = {
       }
       ia_plan_carry_forward: {
         Row: {
+          acceptance_notes: string | null
+          accepted_at: string | null
+          accepted_by: string | null
+          accepted_by_profile: string | null
           annual_plan_id: string | null
           carried_by: string | null
           created_at: string | null
@@ -74594,10 +78041,16 @@ export type Database = {
           source_reference: string | null
           source_type: string
           status: string | null
+          target_engagement_id: string | null
           target_fiscal_year: string | null
+          target_plan_id: string | null
           target_resolution_date: string | null
         }
         Insert: {
+          acceptance_notes?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          accepted_by_profile?: string | null
           annual_plan_id?: string | null
           carried_by?: string | null
           created_at?: string | null
@@ -74614,10 +78067,16 @@ export type Database = {
           source_reference?: string | null
           source_type: string
           status?: string | null
+          target_engagement_id?: string | null
           target_fiscal_year?: string | null
+          target_plan_id?: string | null
           target_resolution_date?: string | null
         }
         Update: {
+          acceptance_notes?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          accepted_by_profile?: string | null
           annual_plan_id?: string | null
           carried_by?: string | null
           created_at?: string | null
@@ -74634,7 +78093,9 @@ export type Database = {
           source_reference?: string | null
           source_type?: string
           status?: string | null
+          target_engagement_id?: string | null
           target_fiscal_year?: string | null
+          target_plan_id?: string | null
           target_resolution_date?: string | null
         }
         Relationships: [
@@ -74650,6 +78111,20 @@ export type Database = {
             columns: ["original_finding_id"]
             isOneToOne: false
             referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_plan_carry_forward_target_engagement_id_fkey"
+            columns: ["target_engagement_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_plan_carry_forward_target_plan_id_fkey"
+            columns: ["target_plan_id"]
+            isOneToOne: false
+            referencedRelation: "ia_annual_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -75180,7 +78655,7 @@ export type Database = {
           category: string | null
           created_at: string
           created_by: string | null
-          department_audit_id: string
+          department_audit_id: string | null
           engagement_id: string | null
           id: string
           is_completed: boolean | null
@@ -75193,7 +78668,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
-          department_audit_id: string
+          department_audit_id?: string | null
           engagement_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -75206,7 +78681,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
-          department_audit_id?: string
+          department_audit_id?: string | null
           engagement_id?: string | null
           id?: string
           is_completed?: boolean | null
@@ -75234,7 +78709,7 @@ export type Database = {
       ia_preparation_documents: {
         Row: {
           created_at: string
-          department_audit_id: string
+          department_audit_id: string | null
           document_type: string | null
           engagement_id: string | null
           file_name: string
@@ -75244,7 +78719,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          department_audit_id: string
+          department_audit_id?: string | null
           document_type?: string | null
           engagement_id?: string | null
           file_name: string
@@ -75254,7 +78729,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          department_audit_id?: string
+          department_audit_id?: string | null
           document_type?: string | null
           engagement_id?: string | null
           file_name?: string
@@ -75323,6 +78798,8 @@ export type Database = {
       ia_quality_reviews: {
         Row: {
           checklist_results: Json | null
+          cleared_at: string | null
+          cleared_by: string | null
           created_at: string | null
           created_by: string | null
           engagement_id: string | null
@@ -75335,11 +78812,15 @@ export type Database = {
           review_date: string | null
           review_type: string | null
           reviewer_id: string | null
+          rework_notes: string | null
+          status: string
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
           checklist_results?: Json | null
+          cleared_at?: string | null
+          cleared_by?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -75352,11 +78833,15 @@ export type Database = {
           review_date?: string | null
           review_type?: string | null
           reviewer_id?: string | null
+          rework_notes?: string | null
+          status?: string
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
           checklist_results?: Json | null
+          cleared_at?: string | null
+          cleared_by?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -75369,6 +78854,8 @@ export type Database = {
           review_date?: string | null
           review_type?: string | null
           reviewer_id?: string | null
+          rework_notes?: string | null
+          status?: string
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -75660,6 +79147,71 @@ export type Database = {
             columns: ["finding_id"]
             isOneToOne: false
             referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_report_versions: {
+        Row: {
+          change_summary: string | null
+          content: Json
+          content_hash: string | null
+          created_at: string
+          created_by: string | null
+          engagement_id: string | null
+          id: string
+          is_issued: boolean
+          issued_at: string | null
+          issued_by: string | null
+          report_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version_label: string | null
+          version_number: number
+        }
+        Insert: {
+          change_summary?: string | null
+          content?: Json
+          content_hash?: string | null
+          created_at?: string
+          created_by?: string | null
+          engagement_id?: string | null
+          id?: string
+          is_issued?: boolean
+          issued_at?: string | null
+          issued_by?: string | null
+          report_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_label?: string | null
+          version_number: number
+        }
+        Update: {
+          change_summary?: string | null
+          content?: Json
+          content_hash?: string | null
+          created_at?: string
+          created_by?: string | null
+          engagement_id?: string | null
+          id?: string
+          is_issued?: boolean
+          issued_at?: string | null
+          issued_by?: string | null
+          report_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_label?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_report_versions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_reports"
             referencedColumns: ["id"]
           },
         ]
@@ -76253,8 +79805,10 @@ export type Database = {
           control_effectiveness: string | null
           created_at: string
           created_by: string | null
+          department_id: string | null
           due_date: string | null
           fiscal_year: string | null
+          function_id: string | null
           id: string
           inherent_impact: number | null
           inherent_likelihood: number | null
@@ -76288,8 +79842,10 @@ export type Database = {
           control_effectiveness?: string | null
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           due_date?: string | null
           fiscal_year?: string | null
+          function_id?: string | null
           id?: string
           inherent_impact?: number | null
           inherent_likelihood?: number | null
@@ -76323,8 +79879,10 @@ export type Database = {
           control_effectiveness?: string | null
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           due_date?: string | null
           fiscal_year?: string | null
+          function_id?: string | null
           id?: string
           inherent_impact?: number | null
           inherent_likelihood?: number | null
@@ -76355,10 +79913,24 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ia_risk_register_audit_universe_id_fkey"
-            columns: ["audit_universe_id"]
+            foreignKeyName: "ia_risk_register_department_id_fkey"
+            columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "ia_audit_universe"
+            referencedRelation: "ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_risk_register_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "v_ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_risk_register_function_id_fkey"
+            columns: ["function_id"]
+            isOneToOne: false
+            referencedRelation: "ia_department_functions"
             referencedColumns: ["id"]
           },
           {
@@ -94742,6 +98314,120 @@ export type Database = {
           },
         ]
       }
+      omni_comms_attachment: {
+        Row: {
+          byte_size: number
+          checksum_sha256: string
+          classification: string
+          content_type: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          file_name: string
+          id: string
+          organization_id: string
+          owner_module_code: string
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          source_entity_id: string
+          source_entity_type: string
+          status: string
+          storage_bucket: string
+          storage_path: string
+          supersedes_attachment_id: string | null
+          version_number: number
+        }
+        Insert: {
+          byte_size: number
+          checksum_sha256: string
+          classification?: string
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          file_name: string
+          id?: string
+          organization_id: string
+          owner_module_code: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          source_entity_id: string
+          source_entity_type: string
+          status?: string
+          storage_bucket: string
+          storage_path: string
+          supersedes_attachment_id?: string | null
+          version_number?: number
+        }
+        Update: {
+          byte_size?: number
+          checksum_sha256?: string
+          classification?: string
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          file_name?: string
+          id?: string
+          organization_id?: string
+          owner_module_code?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          source_entity_id?: string
+          source_entity_type?: string
+          status?: string
+          storage_bucket?: string
+          storage_path?: string
+          supersedes_attachment_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_attachment_storage_bucket_fkey"
+            columns: ["storage_bucket"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment_bucket_policy"
+            referencedColumns: ["storage_bucket"]
+          },
+          {
+            foreignKeyName: "omni_comms_attachment_supersedes_attachment_id_fkey"
+            columns: ["supersedes_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_attachment_bucket_policy: {
+        Row: {
+          allowed_content_types: string[]
+          created_at: string
+          is_enabled: boolean
+          max_byte_size: number
+          notes: string | null
+          storage_bucket: string
+        }
+        Insert: {
+          allowed_content_types?: string[]
+          created_at?: string
+          is_enabled?: boolean
+          max_byte_size?: number
+          notes?: string | null
+          storage_bucket: string
+        }
+        Update: {
+          allowed_content_types?: string[]
+          created_at?: string
+          is_enabled?: boolean
+          max_byte_size?: number
+          notes?: string | null
+          storage_bucket?: string
+        }
+        Relationships: []
+      }
       omni_comms_business_event_outbox: {
         Row: {
           attempt_count: number
@@ -94892,6 +98578,81 @@ export type Database = {
           permission_action?: string
           permission_module?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      omni_comms_channel_adapter_capability: {
+        Row: {
+          adapter_code: string
+          certification_safe: boolean
+          channel: string
+          contacts_external_provider: boolean
+          created_at: string
+          display_name: string
+          enabled: boolean
+          notes: string | null
+          requires_external_credentials: boolean
+          requires_verified_sender_domain: boolean
+          secret_ref_pattern: string | null
+          supports_attachments: boolean
+          supports_callbacks: boolean
+          updated_at: string
+        }
+        Insert: {
+          adapter_code: string
+          certification_safe?: boolean
+          channel: string
+          contacts_external_provider?: boolean
+          created_at?: string
+          display_name: string
+          enabled?: boolean
+          notes?: string | null
+          requires_external_credentials?: boolean
+          requires_verified_sender_domain?: boolean
+          secret_ref_pattern?: string | null
+          supports_attachments?: boolean
+          supports_callbacks?: boolean
+          updated_at?: string
+        }
+        Update: {
+          adapter_code?: string
+          certification_safe?: boolean
+          channel?: string
+          contacts_external_provider?: boolean
+          created_at?: string
+          display_name?: string
+          enabled?: boolean
+          notes?: string | null
+          requires_external_credentials?: boolean
+          requires_verified_sender_domain?: boolean
+          secret_ref_pattern?: string | null
+          supports_attachments?: boolean
+          supports_callbacks?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      omni_comms_channel_attachment_policy: {
+        Row: {
+          channel: string
+          created_at: string
+          max_attachments: number
+          max_total_bytes: number
+          supports_attachments: boolean
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          max_attachments?: number
+          max_total_bytes?: number
+          supports_attachments?: boolean
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          max_attachments?: number
+          max_total_bytes?: number
+          supports_attachments?: boolean
         }
         Relationships: []
       }
@@ -96030,9 +99791,49 @@ export type Database = {
           },
         ]
       }
+      omni_comms_dispatch_activation: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          certified_from: string | null
+          certified_revision: string | null
+          environment_kind: string | null
+          note: string | null
+          project_ref: string | null
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          certified_from?: string | null
+          certified_revision?: string | null
+          environment_kind?: string | null
+          note?: string | null
+          project_ref?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          certified_from?: string | null
+          certified_revision?: string | null
+          environment_kind?: string | null
+          note?: string | null
+          project_ref?: string | null
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_dispatch_job: {
         Row: {
           attempt_count: number
+          authorization_evaluated_at: string | null
+          authorization_evaluation_count: number
+          authorization_outcome: string | null
+          authorization_outcome_at: string | null
           cancelled_at: string | null
           channel: string
           completed_at: string | null
@@ -96065,6 +99866,10 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
+          authorization_evaluated_at?: string | null
+          authorization_evaluation_count?: number
+          authorization_outcome?: string | null
+          authorization_outcome_at?: string | null
           cancelled_at?: string | null
           channel: string
           completed_at?: string | null
@@ -96097,6 +99902,10 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
+          authorization_evaluated_at?: string | null
+          authorization_evaluation_count?: number
+          authorization_outcome?: string | null
+          authorization_outcome_at?: string | null
           cancelled_at?: string | null
           channel?: string
           completed_at?: string | null
@@ -96750,6 +100559,76 @@ export type Database = {
             columns: ["template_version_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_template_version"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_message_attachment: {
+        Row: {
+          attachment_id: string
+          byte_size: number
+          channel: string
+          checksum_sha256: string
+          content_type: string
+          created_at: string
+          file_name: string
+          id: string
+          message_id: string
+          ordinal: number
+          outcome: string
+          outcome_reason: string | null
+          request_attachment_id: string
+        }
+        Insert: {
+          attachment_id: string
+          byte_size: number
+          channel: string
+          checksum_sha256: string
+          content_type: string
+          created_at?: string
+          file_name: string
+          id?: string
+          message_id: string
+          ordinal: number
+          outcome: string
+          outcome_reason?: string | null
+          request_attachment_id: string
+        }
+        Update: {
+          attachment_id?: string
+          byte_size?: number
+          channel?: string
+          checksum_sha256?: string
+          content_type?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          message_id?: string
+          ordinal?: number
+          outcome?: string
+          outcome_reason?: string | null
+          request_attachment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_message_attachment_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_attachment_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_attachment_request_attachment_id_fkey"
+            columns: ["request_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request_attachment"
             referencedColumns: ["id"]
           },
         ]
@@ -98448,6 +102327,60 @@ export type Database = {
           },
         ]
       }
+      omni_comms_request_attachment: {
+        Row: {
+          attachment_id: string
+          created_at: string
+          disposition: string
+          id: string
+          ordinal: number
+          pinned_byte_size: number
+          pinned_checksum_sha256: string
+          pinned_file_name: string
+          request_id: string
+          required_for_delivery: boolean
+        }
+        Insert: {
+          attachment_id: string
+          created_at?: string
+          disposition?: string
+          id?: string
+          ordinal: number
+          pinned_byte_size: number
+          pinned_checksum_sha256: string
+          pinned_file_name: string
+          request_id: string
+          required_for_delivery?: boolean
+        }
+        Update: {
+          attachment_id?: string
+          created_at?: string
+          disposition?: string
+          id?: string
+          ordinal?: number
+          pinned_byte_size?: number
+          pinned_checksum_sha256?: string
+          pinned_file_name?: string
+          request_id?: string
+          required_for_delivery?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_request_attachment_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_request_attachment_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_runtime_certification: {
         Row: {
           certification_state: string
@@ -100009,6 +103942,36 @@ export type Database = {
           notes?: string | null
           project_ref?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_environment_marker_event: {
+        Row: {
+          actor_id: string | null
+          correlation_id: string | null
+          from_state: Json | null
+          id: string
+          occurred_at: string
+          reason: string | null
+          to_state: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          correlation_id?: string | null
+          from_state?: Json | null
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          to_state: Json
+        }
+        Update: {
+          actor_id?: string | null
+          correlation_id?: string | null
+          from_state?: Json | null
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          to_state?: Json
         }
         Relationships: []
       }
@@ -108966,6 +112929,51 @@ export type Database = {
         }
         Relationships: []
       }
+      testcustomer: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          credit_limit: number | null
+          customer_uid: string
+          email: string
+          first_name: string
+          id: number
+          is_active: boolean
+          last_name: string
+          notes: string | null
+          phone: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at: string
+          credit_limit?: number | null
+          customer_uid: string
+          email: string
+          first_name: string
+          id?: number
+          is_active: boolean
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          customer_uid?: string
+          email?: string
+          first_name?: string
+          id?: number
+          is_active?: boolean
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       tmp_cl_cheques: {
         Row: {
           batch_number: string | null
@@ -113150,6 +117158,23 @@ export type Database = {
           },
         ]
       }
+      ce_v_automation_job_schedule_truth: {
+        Row: {
+          active_cron: string | null
+          configured_cron: string | null
+          cron_active: boolean | null
+          edge_function: string | null
+          id: string | null
+          is_enabled: boolean | null
+          is_scheduled: boolean | null
+          job_code: string | null
+          last_run_at: string | null
+          last_run_status: string | null
+          name: string | null
+          sync_state: string | null
+        }
+        Relationships: []
+      }
       ce_v_c3_aggregate_stats: {
         Row: {
           total_late: number | null
@@ -113270,6 +117295,19 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_employer_arrears_report: {
+        Row: {
+          current_arrears: number | null
+          current_penalty: number | null
+          employer_name: string | null
+          has_arrears: boolean | null
+          last_payment_date: string | null
+          regno: string | null
+          total_outstanding: number | null
+          zone: string | null
+        }
+        Relationships: []
+      }
       ce_v_employer_arrears_summary: {
         Row: {
           current_arrears: number | null
@@ -113309,6 +117347,24 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_employer_outstanding: {
+        Row: {
+          credit_available: number | null
+          employer_id: string | null
+          fund_type: Database["public"]["Enums"]["ce_fund_type"] | null
+          interest_accrued: number | null
+          interest_outstanding: number | null
+          oldest_arrears_period: string | null
+          penalty_charged: number | null
+          penalty_outstanding: number | null
+          periods_in_arrears: number | null
+          principal_due: number | null
+          principal_outstanding: number | null
+          principal_paid: number | null
+          total_outstanding: number | null
+        }
+        Relationships: []
+      }
       ce_v_employer_payment_status: {
         Row: {
           employer_name: string | null
@@ -113345,6 +117401,30 @@ export type Database = {
           registered_males: number | null
           registered_total: number | null
           regno: string | null
+        }
+        Relationships: []
+      }
+      ce_v_ledger_period_balances: {
+        Row: {
+          credit_available: number | null
+          employer_id: string | null
+          fund_type: Database["public"]["Enums"]["ce_fund_type"] | null
+          interest_accrued: number | null
+          interest_outstanding: number | null
+          interest_paid: number | null
+          net_balance_signed: number | null
+          payments_received: number | null
+          penalty_charged: number | null
+          penalty_outstanding: number | null
+          penalty_paid: number | null
+          period: string | null
+          posted_entry_count: number | null
+          principal_due: number | null
+          principal_outstanding: number | null
+          principal_paid: number | null
+          total_outstanding: number | null
+          waivers_applied: number | null
+          write_offs: number | null
         }
         Relationships: []
       }
@@ -113470,6 +117550,29 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_priority_employers: {
+        Row: {
+          arrangement_status: string | null
+          assigned_officer: string | null
+          employer_id: string | null
+          employer_name: string | null
+          legal_status: string | null
+          oldest_issue: string | null
+          open_violations: number | null
+          outstanding_exposure: number | null
+          risk_band: string | null
+          risk_score: number | null
+        }
+        Relationships: []
+      }
+      ce_v_risk_band_summary: {
+        Row: {
+          avg_score: number | null
+          employer_count: number | null
+          risk_band: string | null
+        }
+        Relationships: []
+      }
       ce_v_unobserved_payment_entries: {
         Row: {
           credit_amount: number | null
@@ -113485,6 +117588,14 @@ export type Database = {
           posted_by: string | null
           reference_id: string | null
           reference_type: string | null
+        }
+        Relationships: []
+      }
+      ce_v_violation_ageing: {
+        Row: {
+          bucket: string | null
+          bucket_order: number | null
+          open_count: number | null
         }
         Relationships: []
       }
@@ -113578,6 +117689,23 @@ export type Database = {
           resolved_count: number | null
         }
         Relationships: []
+      }
+      ce_v_violation_type_mix: {
+        Row: {
+          open_count: number | null
+          type_code: string | null
+          type_name: string | null
+          violation_type_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_violations_violation_type_id_fkey"
+            columns: ["violation_type_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violation_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_v_visit_execution_metrics: {
         Row: {
@@ -120043,6 +124171,7 @@ export type Database = {
         Args: { _capability: string; _user_id: string }
         Returns: boolean
       }
+      ce_actor_code: { Args: { _user_id: string }; Returns: string }
       ce_actor_user_code: { Args: { _user_id: string }; Returns: string }
       ce_allocate_employer_payment: {
         Args: {
@@ -120068,6 +124197,78 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_approve_legal_referral_v1: {
+        Args: { p_comments?: string; p_recommendation_id: string }
+        Returns: Json
+      }
+      ce_approve_partial_payment_v1: {
+        Args: {
+          p_allocations?: Json
+          p_approved_amount: number
+          p_comments?: string
+          p_expected_version?: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      ce_approve_waiver_v1: {
+        Args: {
+          p_approved_amount: number
+          p_comments?: string
+          p_waiver_id: string
+        }
+        Returns: Json
+      }
+      ce_arrangement_approve_v1: {
+        Args: { p_arrangement_id: string; p_comments?: string }
+        Returns: {
+          agreement_document_url: string | null
+          agreement_signed: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_user: string | null
+          arrangement_number: string
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          conditions: Json | null
+          created_at: string | null
+          created_by: string | null
+          created_by_user: string | null
+          down_payment: number | null
+          employer_id: string
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          installment_amount: number
+          installments_paid: number | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          number_of_installments: number
+          rejection_reason: string | null
+          signature_data: string | null
+          signed_at: string | null
+          start_date: string
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
+          terms_text: string | null
+          total_debt: number
+          total_paid: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_payment_arrangements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ce_arrangement_blocking_lookup: {
         Args: { p_employer_id: string }
         Returns: {
@@ -120077,8 +124278,146 @@ export type Database = {
           status: string
         }[]
       }
-      ce_arrangement_grace_days: { Args: never; Returns: number }
+      ce_arrangement_grace_days:
+        | { Args: never; Returns: number }
+        | { Args: { p_scope_key?: string }; Returns: number }
+      ce_arrangement_reject_v1: {
+        Args: { p_arrangement_id: string; p_reason: string }
+        Returns: {
+          agreement_document_url: string | null
+          agreement_signed: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_user: string | null
+          arrangement_number: string
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          conditions: Json | null
+          created_at: string | null
+          created_by: string | null
+          created_by_user: string | null
+          down_payment: number | null
+          employer_id: string
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          installment_amount: number
+          installments_paid: number | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          number_of_installments: number
+          rejection_reason: string | null
+          signature_data: string | null
+          signed_at: string | null
+          start_date: string
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
+          terms_text: string | null
+          total_debt: number
+          total_paid: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_payment_arrangements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ce_arrangement_submit_v1: {
+        Args: { p_arrangement_id: string; p_note?: string }
+        Returns: {
+          agreement_document_url: string | null
+          agreement_signed: boolean | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_user: string | null
+          arrangement_number: string
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          conditions: Json | null
+          created_at: string | null
+          created_by: string | null
+          created_by_user: string | null
+          down_payment: number | null
+          employer_id: string
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          id: string
+          installment_amount: number
+          installments_paid: number | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          number_of_installments: number
+          rejection_reason: string | null
+          signature_data: string | null
+          signed_at: string | null
+          start_date: string
+          status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_user: string | null
+          terms_text: string | null
+          total_debt: number
+          total_paid: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_payment_arrangements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
+      ce_assigned_cases_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_scope?: string
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_assignment_command_active: { Args: never; Returns: boolean }
+      ce_assignment_require_authz: {
+        Args: { p_operation: string }
+        Returns: string
+      }
+      ce_audit_report_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_b2_audit: {
+        Args: {
+          p_action: string
+          p_entity: string
+          p_entity_id: string
+          p_payload: Json
+        }
+        Returns: undefined
+      }
       ce_batch_recompute_compliance: {
         Args: {
           p_employer_ids?: string[]
@@ -120113,6 +124452,18 @@ export type Database = {
           write_offs: number
         }[]
       }
+      ce_cancel_partial_payment_v1: {
+        Args: { p_reason?: string; p_request_id: string }
+        Returns: Json
+      }
+      ce_cancel_waiver_v1: {
+        Args: { p_reason?: string; p_waiver_id: string }
+        Returns: Json
+      }
+      ce_canonical_financial_snapshot: {
+        Args: { p_employer_id: string }
+        Returns: Json
+      }
       ce_case_command_audit: {
         Args: {
           _action: string
@@ -120126,7 +124477,97 @@ export type Database = {
         }
         Returns: undefined
       }
+      ce_case_intake_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_case_queue_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_case_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_case_request_claim_v1: {
+        Args: {
+          p_actor: string
+          p_approve: boolean
+          p_id: string
+          p_notes: string
+        }
+        Returns: Json
+      }
+      ce_case_request_precheck_v1: { Args: { p_id: string }; Returns: Json }
+      ce_case_request_revert_v1: {
+        Args: { p_actor: string; p_error: string; p_id: string }
+        Returns: undefined
+      }
+      ce_case_requests_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+          p_status?: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      ce_classify_finding_v1: {
+        Args: {
+          p_candidate_violation_type_id?: string
+          p_disposition: string
+          p_finding_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      ce_compliance_analytics_v1: {
+        Args: {
+          p_from?: string
+          p_risk_band?: string
+          p_sector?: string
+          p_size_tier?: string
+          p_to?: string
+          p_violation_type?: string
+          p_zone?: string
+        }
+        Returns: Json
+      }
       ce_compliance_role: { Args: { _user_id: string }; Returns: string }
+      ce_convert_finding_to_violation_v1: {
+        Args: {
+          p_duplicate_justification?: string
+          p_duplicate_of_id?: string
+          p_finding_id: string
+          p_principal_amount?: number
+          p_severity: string
+          p_summary: string
+          p_violation_type_id: string
+        }
+        Returns: Json
+      }
       ce_create_employer_snapshot: {
         Args: {
           p_employer_id: string
@@ -120137,8 +124578,13 @@ export type Database = {
         }
         Returns: string
       }
+      ce_cron_interval: { Args: { p_cron: string }; Returns: string }
       ce_detect_arrangement_breaches: {
         Args: { p_actor?: string }
+        Returns: Json
+      }
+      ce_dispose_finding_v1: {
+        Args: { p_disposition: string; p_finding_id: string; p_reason: string }
         Returns: Json
       }
       ce_e2e__activate: {
@@ -120234,9 +124680,110 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_employer_lookup_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_employer_statement_register_v1: {
+        Args: {
+          p_as_of?: string
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_evaluate_arrangement_breaches: {
         Args: { p_actor?: string; p_as_of_date?: string; p_grace_days?: number }
         Returns: Json
+      }
+      ce_evaluate_arrears_threshold_v1: {
+        Args: { p_employer_id: string; p_persist?: boolean }
+        Returns: Json
+      }
+      ce_evaluate_stage_eligibility_v1: {
+        Args: { p_stage_code: string; p_violation_id: string }
+        Returns: Json
+      }
+      ce_evidence_attach_v1: {
+        Args: {
+          p_description?: string
+          p_evidence_type: string
+          p_file_name: string
+          p_file_size?: number
+          p_finding_id?: string
+          p_gps_lat?: number
+          p_gps_lng?: number
+          p_inspection_id: string
+          p_mime_type?: string
+          p_storage_bucket?: string
+          p_storage_path?: string
+        }
+        Returns: string
+      }
+      ce_evidence_audit: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_evidence_id: string
+          p_reason?: string
+        }
+        Returns: undefined
+      }
+      ce_evidence_capability: { Args: { p_uid: string }; Returns: Json }
+      ce_evidence_detail_v1: { Args: { p_id: string }; Returns: Json }
+      ce_evidence_flag_file_state_v1: {
+        Args: { p_id: string; p_state: string }
+        Returns: undefined
+      }
+      ce_evidence_log_access_v1: {
+        Args: { p_action: string; p_id: string }
+        Returns: undefined
+      }
+      ce_evidence_register_facets_v1: { Args: never; Returns: Json }
+      ce_evidence_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_evidence_replace_v1: {
+        Args: {
+          p_file_name: string
+          p_file_size: number
+          p_id: string
+          p_mime_type: string
+          p_reason: string
+          p_storage_bucket: string
+          p_storage_path: string
+        }
+        Returns: string
+      }
+      ce_evidence_update_metadata_v1: {
+        Args: {
+          p_description: string
+          p_evidence_type: string
+          p_finding_id?: string
+          p_id: string
+        }
+        Returns: undefined
+      }
+      ce_evidence_withdraw_v1: {
+        Args: { p_id: string; p_reason: string }
+        Returns: undefined
       }
       ce_execute_automation_job: {
         Args: {
@@ -120246,6 +124793,8 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_exemption_command_active: { Args: never; Returns: boolean }
+      ce_expire_partial_payment_authorities_v1: { Args: never; Returns: number }
       ce_feature_flag_enabled: { Args: { _flag_key: string }; Returns: boolean }
       ce_fetch_unobserved_payments: {
         Args: { p_employer_id?: string; p_limit?: number }
@@ -120264,6 +124813,78 @@ export type Database = {
           reference_id: string
           reference_type: string
         }[]
+      }
+      ce_field_operations_facets_v1: { Args: never; Returns: Json }
+      ce_field_operations_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_field_ops_scope: { Args: { _user_id: string }; Returns: string }
+      ce_field_visit_add_evidence_v1: {
+        Args: {
+          p_description?: string
+          p_evidence_type: string
+          p_file_name: string
+          p_file_size?: number
+          p_file_url: string
+          p_item_id: string
+          p_lat?: number
+          p_lng?: number
+        }
+        Returns: Json
+      }
+      ce_field_visit_check_in_v1: {
+        Args: {
+          p_gps_unavailable_reason?: string
+          p_item_id: string
+          p_lat?: number
+          p_lng?: number
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      ce_field_visit_check_out_v1: {
+        Args: {
+          p_findings?: string
+          p_item_id: string
+          p_lat?: number
+          p_lng?: number
+          p_outcome_notes?: string
+        }
+        Returns: Json
+      }
+      ce_field_visit_detail_v1: { Args: { p_item_id: string }; Returns: Json }
+      ce_finding_detail_v1: { Args: { p_finding_id: string }; Returns: Json }
+      ce_finding_triage_facets_v1: { Args: never; Returns: Json }
+      ce_finding_triage_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_findings_register_facets_v1: { Args: never; Returns: Json }
+      ce_findings_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
       }
       ce_generate_audit_report_number: { Args: never; Returns: string }
       ce_generate_employer_statement: {
@@ -120290,6 +124911,31 @@ export type Database = {
           running_balance: number
           status: Database["public"]["Enums"]["ce_ledger_status"]
         }[]
+      }
+      ce_generate_stage_notice_core: {
+        Args: {
+          p_actor: string
+          p_delivery_method: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
+      }
+      ce_generate_stage_notice_system_v1: {
+        Args: {
+          p_delivery_method?: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
+      }
+      ce_generate_stage_notice_v1: {
+        Args: {
+          p_delivery_method?: string
+          p_stage_code: string
+          p_violation_id: string
+        }
+        Returns: Json
       }
       ce_get_employer_balance: {
         Args: {
@@ -120323,6 +124969,61 @@ export type Database = {
           warning_message: string
         }[]
       }
+      ce_inspection_detail_v1: {
+        Args: { p_inspection_id: string }
+        Returns: Json
+      }
+      ce_inspection_identity_tokens: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
+      ce_inspection_lifecycle: { Args: { _status: string }; Returns: string }
+      ce_inspection_register_facets_v1: { Args: never; Returns: Json }
+      ce_inspection_register_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_inspector_workboard_analytics: {
+        Args: { p_from: string; p_identities: string[]; p_to: string }
+        Returns: Json
+      }
+      ce_is_trusted_session: { Args: never; Returns: boolean }
+      ce_ledger_settlement_order: { Args: never; Returns: string[] }
+      ce_legal_referral_approve_v1: {
+        Args: { p_notes?: string; p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_referral_facets_v1: { Args: never; Returns: Json }
+      ce_legal_referral_queue_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_legal_referral_reject_v1: {
+        Args: { p_reason: string; p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_workbench_analytics: {
+        Args: {
+          p_from: string
+          p_identities?: string[]
+          p_scope_mine?: boolean
+          p_to: string
+        }
+        Returns: Json
+      }
       ce_list_case_documents: {
         Args: { p_case_id: string }
         Returns: {
@@ -120350,6 +125051,7 @@ export type Database = {
           visit_date: string
         }[]
       }
+      ce_managed_cron_jobname: { Args: { p_job_code: string }; Returns: string }
       ce_mark_payment_observed: {
         Args: {
           p_employer_id: string
@@ -120363,6 +125065,71 @@ export type Database = {
       ce_mobile_get_officer_context: {
         Args: { p_user_id: string }
         Returns: Json
+      }
+      ce_monitoring_v1: {
+        Args: { p_filters?: Json; p_window?: string }
+        Returns: Json
+      }
+      ce_next_number_v1: { Args: { p_applies_to: string }; Returns: string }
+      ce_officer_identities: { Args: { _user_id: string }; Returns: string[] }
+      ce_officer_label: { Args: { _code: string }; Returns: string }
+      ce_override_sector_benchmark_v1: {
+        Args: {
+          p_benchmark_id: string
+          p_override_average: number
+          p_override_minimum: number
+          p_reason: string
+        }
+        Returns: string
+      }
+      ce_partial_payment_authority_for: {
+        Args: { p_employer_id: string; p_wage_period: string }
+        Returns: {
+          approved_amount: number | null
+          arrangement_id: string | null
+          authority_expires_on: string | null
+          authority_invoice_id: number | null
+          authority_issued_at: string | null
+          authority_number: string | null
+          case_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_user_id: string | null
+          decision_comments: string | null
+          decision_context: Json | null
+          employer_id: string
+          employer_name: string | null
+          id: string
+          justification: string
+          obligation_period_id: string | null
+          obligation_type: string
+          payment_reference: string | null
+          policy_id: string | null
+          policy_snapshot: Json | null
+          reason_code: string | null
+          request_number: string
+          requested_amount: number
+          requested_at: string
+          requested_by: string | null
+          requested_by_user_id: string | null
+          row_version: number
+          settled_amount: number
+          settled_at: string | null
+          source: string
+          status: string
+          supporting_documents: Json
+          total_liability: number
+          updated_at: string
+          violation_id: string | null
+          wage_period: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_partial_payment_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       ce_post_financial_event: {
         Args: {
@@ -120399,12 +125166,87 @@ export type Database = {
         }
         Returns: string
       }
+      ce_pp_active_policy: {
+        Args: { p_scope?: string }
+        Returns: {
+          allocation_order: string[]
+          allow_allocation_override: boolean
+          authority_validity_days: number
+          block_when_arrangement_active: boolean
+          created_at: string
+          created_by: string | null
+          escalated_approval_role: string
+          escalation_threshold_amount: number | null
+          id: string
+          is_active: boolean
+          minimum_acceptable_amount: number
+          minimum_acceptable_percent: number
+          notes: string | null
+          policy_code: string
+          policy_name: string
+          require_separate_approver: boolean
+          required_approval_role: string
+          scope_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ce_partial_payment_policies"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ce_pp_can_approve: {
+        Args: { p_required_role: string; p_uid: string }
+        Returns: boolean
+      }
+      ce_pp_default_allocation: {
+        Args: { p_amount: number; p_liability: Json; p_order: string[] }
+        Returns: Json
+      }
+      ce_pp_deny: {
+        Args: {
+          p_code: string
+          p_detail: Json
+          p_request_id: string
+          p_uid: string
+        }
+        Returns: undefined
+      }
+      ce_pp_liability: {
+        Args: {
+          p_employer_id: string
+          p_obligation_type?: string
+          p_wage_period: string
+        }
+        Returns: Json
+      }
+      ce_pp_role_rank: { Args: { p_role: string }; Returns: number }
+      ce_progress_registration_lead_v1: {
+        Args: {
+          p_action: string
+          p_lead_id: string
+          p_notes?: string
+          p_registered_employer_id?: string
+        }
+        Returns: string
+      }
       ce_recalculate_arrangement_summary: {
         Args: { p_actor?: string; p_arrangement_id: string }
         Returns: undefined
       }
       ce_recalculate_breach_state: {
         Args: { p_actor?: string; p_arrangement_id: string }
+        Returns: Json
+      }
+      ce_recalculate_ledger_period_balances: {
+        Args: {
+          p_actor?: string
+          p_cause?: string
+          p_dry_run?: boolean
+          p_employer_id?: string
+        }
         Returns: Json
       }
       ce_recalculate_period_summary: {
@@ -120414,6 +125256,17 @@ export type Database = {
           p_period: string
         }
         Returns: undefined
+      }
+      ce_recommend_legal_v1: {
+        Args: {
+          p_case_id?: string
+          p_early_rule_code?: string
+          p_employer_id: string
+          p_entry_path?: string
+          p_reason: string
+          p_violation_id?: string
+        }
+        Returns: Json
       }
       ce_recompute_employer_compliance: {
         Args: { p_employer_id: string; p_triggered_by?: string }
@@ -120433,6 +125286,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ce_record_legal_handoff_override_v1: {
+        Args: {
+          p_case_id?: string
+          p_employer_id?: string
+          p_evaluation?: Json
+          p_reason: string
+          p_referral_id?: string
+        }
+        Returns: string
+      }
+      ce_reject_legal_referral_v1: {
+        Args: { p_reason: string; p_recommendation_id: string }
+        Returns: Json
+      }
+      ce_reject_partial_payment_v1: {
+        Args: {
+          p_comments?: string
+          p_expected_version?: number
+          p_reason: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      ce_reject_waiver_v1: {
+        Args: { p_comments?: string; p_reason: string; p_waiver_id: string }
+        Returns: Json
+      }
       ce_request_case_action: {
         Args: {
           p_case_id: string
@@ -120444,6 +125324,47 @@ export type Database = {
           p_target_case_id?: string
         }
         Returns: Json
+      }
+      ce_request_partial_payment_v1: {
+        Args: {
+          p_allocations?: Json
+          p_case_id?: string
+          p_employer_id: string
+          p_justification: string
+          p_obligation_type?: string
+          p_reason_code?: string
+          p_requested_amount: number
+          p_source?: string
+          p_supporting_documents?: Json
+          p_violation_id?: string
+          p_wage_period: string
+        }
+        Returns: string
+      }
+      ce_request_waiver_v1: {
+        Args: {
+          p_amount_requested: number
+          p_case_id?: string
+          p_employer_id: string
+          p_fund?: string
+          p_justification: string
+          p_reason_code?: string
+          p_source?: string
+          p_supporting_documents?: Json
+          p_violation_id?: string
+          p_waiver_rule_id?: string
+          p_waiver_type: string
+          p_workflow_definition_id?: string
+        }
+        Returns: string
+      }
+      ce_resolve_violation_by_agreement_v1: {
+        Args: {
+          p_notes: string
+          p_resolution_code?: string
+          p_violation_id: string
+        }
+        Returns: string
       }
       ce_reverse_financial_event: {
         Args: {
@@ -120472,6 +125393,54 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_review_flag_assign_v1: {
+        Args: {
+          p_assignee_name?: string
+          p_assignee_user_id: string
+          p_flag_id: string
+          p_notes?: string
+        }
+        Returns: string
+      }
+      ce_review_flag_convert_to_violation_v1: {
+        Args: { p_flag_id: string; p_notes: string }
+        Returns: string
+      }
+      ce_review_flag_disposition_v1: {
+        Args: { p_disposition: string; p_flag_id: string; p_notes?: string }
+        Returns: string
+      }
+      ce_review_flag_normalise_disposition: {
+        Args: { p_raw: string }
+        Returns: string
+      }
+      ce_review_partial_payment_v1: {
+        Args: { p_allocations: Json; p_comments?: string; p_request_id: string }
+        Returns: Json
+      }
+      ce_revoke_contribution_exemption_v1: {
+        Args: { p_id: string; p_reason: string }
+        Returns: string
+      }
+      ce_risk_eval_threshold: {
+        Args: {
+          p_max_score?: number
+          p_method: string
+          p_raw: number
+          p_thresholds: Json
+        }
+        Returns: Json
+      }
+      ce_risk_measure_v1: {
+        Args: {
+          p_as_of?: string
+          p_employer_id: string
+          p_measurement_code: string
+          p_params?: Json
+          p_source_policy?: Json
+        }
+        Returns: Json
+      }
       ce_run_employer_compliance_refresh: {
         Args: { p_batch_size?: number; p_dry_run?: boolean }
         Returns: Json
@@ -120496,8 +125465,29 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_tolerance?: number }
         Returns: Json
       }
+      ce_run_risk_recalculation_v1: {
+        Args: {
+          p_as_of?: string
+          p_dry_run?: boolean
+          p_employer_id?: string
+          p_limit?: number
+          p_triggered_by?: string
+        }
+        Returns: Json
+      }
       ce_run_stale_employer_review: {
         Args: { p_dry_run?: boolean; p_stale_months?: number }
+        Returns: Json
+      }
+      ce_score_employer_risk_v1: {
+        Args: {
+          p_as_of?: string
+          p_employer_id: string
+          p_persist?: boolean
+          p_policy_id?: string
+          p_run_id?: string
+          p_triggered_by?: string
+        }
         Returns: Json
       }
       ce_search_merge_candidates: {
@@ -120509,6 +125499,36 @@ export type Database = {
           status: string
         }[]
       }
+      ce_set_change_reason: { Args: { p_reason: string }; Returns: undefined }
+      ce_set_employer_status_v1: {
+        Args: {
+          p_clearance_reference?: string
+          p_effective_date?: string
+          p_employer_id: string
+          p_evidence_reference?: string
+          p_evidence_type: string
+          p_reason?: string
+          p_status: string
+        }
+        Returns: string
+      }
+      ce_setting_num: {
+        Args: { _default: number; _key: string }
+        Returns: number
+      }
+      ce_settle_partial_payment_v1: {
+        Args: {
+          p_amount: number
+          p_payment_reference?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      ce_suppress_self_employed_obligation_v1: {
+        Args: { p_obligation_id: string; p_reason: string }
+        Returns: string
+      }
+      ce_sync_automation_job_schedules: { Args: never; Returns: Json }
       ce_sync_c3_to_ledger: {
         Args: {
           p_dry_run?: boolean
@@ -120528,6 +125548,144 @@ export type Database = {
           p_payment_date_to?: string
           p_source_payment_id?: number
           p_triggered_by?: string
+        }
+        Returns: Json
+      }
+      ce_team_officer_identities: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
+      ce_upsert_contribution_exemption_v1: {
+        Args: {
+          p_authority_reference: string
+          p_effective_from: string
+          p_effective_to: string
+          p_employer_id: string
+          p_evidence_reference: string
+          p_fund_code: string
+          p_granting_authority: string
+          p_id: string
+          p_notes: string
+          p_person_name: string
+          p_person_ssn: string
+          p_status: string
+        }
+        Returns: string
+      }
+      ce_validate_risk_policy_v1: {
+        Args: { p_policy_id: string }
+        Returns: Json
+      }
+      ce_violation_assign_v1: {
+        Args: {
+          p_notes?: string
+          p_target_inspector_id: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
+      ce_violation_assignment_apply: {
+        Args: {
+          p_actor_uid: string
+          p_assignment_type: string
+          p_notes: string
+          p_reason: string
+          p_source: string
+          p_target_inspector_id: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
+      ce_violation_bulk_assign_unassigned_v1: {
+        Args: {
+          p_limit?: number
+          p_notes: string
+          p_target_inspector_id: string
+        }
+        Returns: number
+      }
+      ce_violation_bulk_reassign_v1: {
+        Args: {
+          p_from_assignment_key: string
+          p_limit?: number
+          p_notes: string
+          p_reason: string
+          p_target_inspector_id: string
+        }
+        Returns: number
+      }
+      ce_violation_history_v1: {
+        Args: {
+          p_dir?: string
+          p_export?: boolean
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_violation_reassign_v1: {
+        Args: {
+          p_notes: string
+          p_reason: string
+          p_target_inspector_id: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
+      ce_violation_report_filter_options_v1: { Args: never; Returns: Json }
+      ce_violation_report_group_v1: {
+        Args: {
+          p_dimension: string
+          p_from?: string
+          p_fund?: string
+          p_severity?: string
+          p_status?: string
+          p_to?: string
+          p_type?: string
+          p_zone?: string
+        }
+        Returns: {
+          avg_resolution_days: number
+          bucket: string
+          employer_count: number
+          max_resolution_days: number
+          median_resolution_days: number
+          min_resolution_days: number
+          resolved_count: number
+          total_amount: number
+          unresolved_count: number
+          violation_count: number
+        }[]
+      }
+      ce_violation_return_to_queue_v1: {
+        Args: {
+          p_notes?: string
+          p_queue_id?: string
+          p_reason: string
+          p_violation_id: string
+        }
+        Returns: string
+      }
+      ce_waiver_deny: {
+        Args: {
+          p_code: string
+          p_detail: Json
+          p_uid: string
+          p_waiver_id: string
+        }
+        Returns: undefined
+      }
+      ce_waiver_role_capability: { Args: { p_role: string }; Returns: string }
+      ce_work_queue_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_mode?: string
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
         }
         Returns: Json
       }
@@ -123270,6 +128428,82 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_action_assign: {
+        Args: {
+          p_accountable_department_id?: string
+          p_action_id: string
+          p_description?: string
+          p_function_id?: string
+          p_responsible_profile_id: string
+          p_target_date?: string
+        }
+        Returns: Json
+      }
+      ia_action_can_manage: { Args: { p_action_id: string }; Returns: boolean }
+      ia_action_can_verify: { Args: { p_action_id: string }; Returns: boolean }
+      ia_action_cancel: {
+        Args: { p_action_id: string; p_reason: string }
+        Returns: Json
+      }
+      ia_action_close_v2: {
+        Args: { p_action_id: string; p_closure_notes: string }
+        Returns: Json
+      }
+      ia_action_decide_extension: {
+        Args: {
+          p_comments?: string
+          p_decision: string
+          p_extension_id: string
+        }
+        Returns: Json
+      }
+      ia_action_reject_verification: {
+        Args: {
+          p_action_id: string
+          p_reason: string
+          p_request_more_evidence?: boolean
+        }
+        Returns: Json
+      }
+      ia_action_reopen: {
+        Args: {
+          p_action_id: string
+          p_new_target_date?: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      ia_action_request_extension: {
+        Args: { p_action_id: string; p_proposed_date: string; p_reason: string }
+        Returns: Json
+      }
+      ia_action_start_verification: {
+        Args: { p_action_id: string }
+        Returns: Json
+      }
+      ia_action_submit_completion: {
+        Args: { p_action_id: string; p_evidence_ids?: string[]; p_note: string }
+        Returns: Json
+      }
+      ia_action_update_progress: {
+        Args: {
+          p_action_id: string
+          p_evidence_ids?: string[]
+          p_note: string
+          p_progress_pct: number
+        }
+        Returns: Json
+      }
+      ia_action_verify: {
+        Args: { p_action_id: string; p_notes: string }
+        Returns: Json
+      }
+      ia_actor_can: {
+        Args: { _action: string; _module: string }
+        Returns: boolean
+      }
+      ia_actor_label: { Args: never; Returns: string }
+      ia_annual_plan_readiness: { Args: { p_plan_id: string }; Returns: Json }
       ia_apply_manual_override: {
         Args: {
           p_candidate_id?: string
@@ -123291,6 +128525,16 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_assign_activity: {
+        Args: {
+          p_activity_id: string
+          p_owner_auditor_id: string
+          p_planned_hours?: number
+          p_reviewer_auditor_id?: string
+        }
+        Returns: Json
+      }
+      ia_auditor_profile: { Args: { _auditor_id: string }; Returns: string }
       ia_build_followup_carry_forward: {
         Args: {
           p_carried_by?: string
@@ -123299,17 +128543,39 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_can_access_audit_object: {
+        Args: { _name: string; _write: boolean }
+        Returns: boolean
+      }
+      ia_can_access_engagement: {
+        Args: { _engagement_id: string }
+        Returns: boolean
+      }
+      ia_can_access_engagement_internal: {
+        Args: { _engagement_id: string }
+        Returns: boolean
+      }
       ia_can_close_engagement: {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_can_configure_office_holders: { Args: never; Returns: boolean }
       ia_can_issue_report: { Args: { p_report_id: string }; Returns: Json }
+      ia_can_read_all: { Args: never; Returns: boolean }
       ia_can_start_engagement: {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_cancel_engagement: {
+        Args: { p_engagement_id: string; p_reason: string }
+        Returns: Json
+      }
       ia_capacity_schedule_candidates: {
         Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_change_finding_severity: {
+        Args: { p_finding_id: string; p_new_severity: string; p_reason: string }
         Returns: Json
       }
       ia_check_data_readiness: { Args: { p_plan_id?: string }; Returns: Json }
@@ -123322,6 +128588,140 @@ export type Database = {
         Returns: Json
       }
       ia_check_overdue_actions: { Args: never; Returns: Json }
+      ia_close_action: {
+        Args: {
+          p_action_id: string
+          p_closure_notes: string
+          p_evidence_ids?: string[]
+        }
+        Returns: Json
+      }
+      ia_close_annual_plan: {
+        Args: { p_dispositions?: Json; p_notes?: string; p_plan_id: string }
+        Returns: Json
+      }
+      ia_close_engagement: {
+        Args: {
+          p_disposition?: string
+          p_engagement_id: string
+          p_final_rating?: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      ia_cmd_guard: {
+        Args: { _action: string; _engagement: string; _module: string }
+        Returns: boolean
+      }
+      ia_cmd_guard_elevated: {
+        Args: { _action: string; _engagement: string; _module: string }
+        Returns: boolean
+      }
+      ia_comms_auditee_fact: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_comms_contract_payload: {
+        Args: { p_event_code: string; p_payload: Json }
+        Returns: Json
+      }
+      ia_comms_contract_project: {
+        Args: { p_event_code: string; p_payload: Json }
+        Returns: Json
+      }
+      ia_comms_ctx: { Args: { p_engagement_id: string }; Returns: Json }
+      ia_comms_department_domain: {
+        Args: { p_department_id: string }
+        Returns: string
+      }
+      ia_comms_emit: {
+        Args: {
+          p_correlation_id?: string
+          p_department_id?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_event_code: string
+          p_occurrence: string
+          p_payload: Json
+          p_recipient_facts: Json
+        }
+        Returns: Json
+      }
+      ia_comms_emit_mandatory: {
+        Args: {
+          p_correlation_id?: string
+          p_department_id?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_event_code: string
+          p_occurrence?: string
+          p_payload?: Json
+          p_recipient_facts?: Json
+        }
+        Returns: Json
+      }
+      ia_comms_emit_role: {
+        Args: {
+          p_action_id: string
+          p_as_of: string
+          p_department_id: string
+          p_engagement_id: string
+          p_entity_id: string
+          p_entity_type: string
+          p_obligation_kind: string
+          p_payload: Json
+          p_policy: Database["public"]["Tables"]["ia_comms_reminder_policy"]["Row"]
+          p_role: string
+          p_run_id: string
+        }
+        Returns: string
+      }
+      ia_comms_escalation_fact: {
+        Args: {
+          p_department_id: string
+          p_engagement_id: string
+          p_role: string
+        }
+        Returns: Json
+      }
+      ia_comms_generate_reminders: {
+        Args: { p_limit?: number; p_today?: string }
+        Returns: Json
+      }
+      ia_comms_generate_request_reminders: {
+        Args: { p_today?: string }
+        Returns: Json
+      }
+      ia_comms_owner_department_id: { Args: never; Returns: string }
+      ia_comms_plan_recipient_fact: {
+        Args: { p_plan: Database["public"]["Tables"]["ia_annual_plans"]["Row"] }
+        Returns: Json
+      }
+      ia_comms_policy_days: {
+        Args: { p_code: string; p_default: number }
+        Returns: number
+      }
+      ia_comms_priv_quarantine_pre_release_outbox: {
+        Args: { p_correlation_id?: string; p_reason_code?: string }
+        Returns: Json
+      }
+      ia_comms_profile_fact: {
+        Args: { p_fallback_name?: string; p_profile_id: string; p_role: string }
+        Returns: Json
+      }
+      ia_comms_resolve_head_of_audit: { Args: never; Returns: string }
+      ia_complete_activity: {
+        Args: {
+          p_activity_id: string
+          p_actual_hours?: number
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      ia_complete_preparation: {
+        Args: { p_engagement_id: string; p_notes?: string }
+        Returns: Json
+      }
       ia_compute_engagement_priority_score: {
         Args: {
           p_department_id?: string
@@ -123330,8 +128730,34 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_conclude_control_test: {
+        Args: {
+          p_conclusion: string
+          p_no_finding_rationale?: string
+          p_result: string
+          p_test_id: string
+        }
+        Returns: Json
+      }
+      ia_conclude_quality_review: {
+        Args: {
+          p_notes?: string
+          p_outcome: string
+          p_quality_rating?: string
+          p_review_id: string
+        }
+        Returns: Json
+      }
       ia_convert_candidates_to_engagements: {
         Args: { p_created_by?: string; p_plan_id: string }
+        Returns: Json
+      }
+      ia_create_action_from_recommendation: {
+        Args: {
+          p_recommendation_id: string
+          p_responsible_person?: string
+          p_target_date?: string
+        }
         Returns: Json
       }
       ia_create_plan_header: {
@@ -123345,10 +128771,78 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_create_report_version: {
+        Args: {
+          p_change_summary?: string
+          p_content?: Json
+          p_report_id: string
+          p_version_label?: string
+        }
+        Returns: Json
+      }
+      ia_current_auditor_id: { Args: never; Returns: string }
+      ia_current_profile_id: { Args: never; Returns: string }
+      ia_decide_annual_plan: {
+        Args: {
+          p_comments?: string
+          p_committee_name?: string
+          p_decision: string
+          p_minutes_reference?: string
+          p_plan_id: string
+        }
+        Returns: Json
+      }
       ia_detect_material_plan_changes: {
         Args: { p_plan_id: string; p_proposed_changes: Json }
         Returns: Json
       }
+      ia_dispose_finding_dispute: {
+        Args: {
+          p_authority_reference?: string
+          p_disposition: string
+          p_notes: string
+          p_response_id: string
+        }
+        Returns: Json
+      }
+      ia_engagement_progress: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_escalate_finding_dispute: {
+        Args: {
+          p_authority: string
+          p_reason: string
+          p_reference: string
+          p_response_id: string
+        }
+        Returns: Json
+      }
+      ia_evaluate_engagement_closure: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_evaluate_engagement_closure_v2: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_evaluate_engagement_completeness: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_evaluate_plan_closure: { Args: { p_plan_id: string }; Returns: Json }
+      ia_extend_action_target: {
+        Args: {
+          p_action_id: string
+          p_approved_by?: string
+          p_new_target_date: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      ia_f_bool: { Args: { f: Json; k: string }; Returns: boolean }
+      ia_f_txt: { Args: { f: Json; k: string }; Returns: string }
+      ia_f_uuid: { Args: { f: Json; k: string }; Returns: string }
       ia_fire_notification: {
         Args: {
           p_body?: string
@@ -123361,6 +128855,20 @@ export type Database = {
           p_recipient_email?: string
           p_recipient_user_id?: string
           p_subject?: string
+        }
+        Returns: Json
+      }
+      ia_followup_record_outcome: {
+        Args: { p_followup_id: string; p_notes?: string; p_outcome: string }
+        Returns: Json
+      }
+      ia_followup_schedule: {
+        Args: {
+          p_action_id: string
+          p_fiscal_year?: string
+          p_follow_up_type?: string
+          p_notes?: string
+          p_scheduled_date: string
         }
         Returns: Json
       }
@@ -123385,48 +128893,161 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_has: { Args: { _action: string; _module: string }; Returns: boolean }
+      ia_is_audit_admin: { Args: never; Returns: boolean }
+      ia_is_department_respondent: {
+        Args: { _department_id: string }
+        Returns: boolean
+      }
+      ia_is_ia_user: { Args: never; Returns: boolean }
+      ia_is_quality_reviewer: { Args: never; Returns: boolean }
+      ia_issue_report: {
+        Args: { p_notes?: string; p_report_id: string }
+        Returns: Json
+      }
       ia_launch_engagement: {
         Args: { p_engagement_id: string; p_launched_by?: string }
         Returns: Json
+      }
+      ia_link_action_evidence: {
+        Args: { p_action_id: string; p_evidence_ids: string[] }
+        Returns: Json
+      }
+      ia_log_event: {
+        Args: {
+          _annual_plan_id?: string
+          _correlation_id?: string
+          _engagement_id?: string
+          _entity_id: string
+          _entity_type: string
+          _event_code: string
+          _new?: Json
+          _old?: Json
+          _reason?: string
+          _source_command?: string
+        }
+        Returns: string
+      }
+      ia_office_holder_approve: {
+        Args: { p_id: string; p_reason?: string }
+        Returns: Json
+      }
+      ia_office_holder_health: { Args: { p_as_of?: string }; Returns: Json }
+      ia_office_holder_propose: {
+        Args: {
+          p_department_id?: string
+          p_effective_from?: string
+          p_effective_to?: string
+          p_fixture_tag?: string
+          p_function_code: string
+          p_is_primary?: boolean
+          p_profile_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      ia_office_holder_revoke: {
+        Args: { p_effective_to?: string; p_id: string; p_reason?: string }
+        Returns: Json
+      }
+      ia_office_holder_valid_at: {
+        Args: {
+          p_as_of: string
+          p_from: string
+          p_status: string
+          p_to: string
+        }
+        Returns: boolean
       }
       ia_persist_plan_engagements: {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
       }
+      ia_plan_accept_carry_forward: {
+        Args: {
+          p_carry_forward_id: string
+          p_notes?: string
+          p_quarter?: string
+          p_target_plan_id: string
+        }
+        Returns: Json
+      }
+      ia_postpone_engagement: {
+        Args: { p_engagement_id: string; p_reason: string }
+        Returns: Json
+      }
+      ia_q_action_centre_counts: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_closure_blockers: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_followup_queue: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_hia_attention: { Args: never; Returns: Json }
+      ia_q_management_actions: { Args: never; Returns: Json }
+      ia_q_my_audit_work: { Args: never; Returns: Json }
+      ia_q_plan_closure_readiness: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_q_qa_queue: { Args: never; Returns: Json }
       ia_recalculate_all_risks: {
         Args: { p_reason?: string; p_triggered_by?: string }
         Returns: number
       }
-      ia_record_communication_stage:
-        | {
-            Args: {
-              p_acknowledgment_required?: boolean
-              p_created_by?: string
-              p_engagement_id: string
-              p_notes?: string
-              p_recipient_email?: string
-              p_recipient_name?: string
-              p_stage_code: string
-              p_template_id?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_acknowledgment_required?: boolean
-              p_created_by?: string
-              p_engagement_id: string
-              p_mode?: string
-              p_notes?: string
-              p_recipient_email?: string
-              p_recipient_name?: string
-              p_stage_code: string
-              p_template_id?: string
-            }
-            Returns: Json
-          }
+      ia_record_communication_stage: {
+        Args: {
+          p_acknowledgment_required?: boolean
+          p_created_by?: string
+          p_engagement_id: string
+          p_mode?: string
+          p_notes?: string
+          p_recipient_email?: string
+          p_recipient_name?: string
+          p_stage_code: string
+          p_template_id?: string
+        }
+        Returns: Json
+      }
+      ia_record_management_response: {
+        Args: {
+          p_action_plan?: string
+          p_finding_id: string
+          p_management_position: string
+          p_rejection_rationale?: string
+          p_response_text: string
+          p_responsible_person?: string
+          p_target_date?: string
+        }
+        Returns: Json
+      }
+      ia_register_actions: { Args: { p_filters?: Json }; Returns: Json }
+      ia_register_findings: { Args: { p_filters?: Json }; Returns: Json }
+      ia_register_management_responses: {
+        Args: { p_filters?: Json }
+        Returns: Json
+      }
+      ia_reopen_annual_plan: {
+        Args: { p_plan_id: string; p_reason: string }
+        Returns: Json
+      }
+      ia_reschedule_engagement: {
+        Args: {
+          p_engagement_id: string
+          p_planned_end_date: string
+          p_planned_start_date: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       ia_resolve_engagement_risk: {
         Args: { p_department_id?: string; p_function_id?: string }
+        Returns: Json
+      }
+      ia_resolve_escalation_recipient: {
+        Args: {
+          p_action_id?: string
+          p_as_of?: string
+          p_department_id?: string
+          p_engagement_id?: string
+          p_role: string
+        }
         Returns: Json
       }
       ia_resolve_last_audit_date: {
@@ -123440,6 +129061,40 @@ export type Database = {
           p_parameter_key: string
           p_plan_id?: string
           p_scenario_id?: string
+        }
+        Returns: Json
+      }
+      ia_respondent_writable_class: {
+        Args: { _class: string }
+        Returns: boolean
+      }
+      ia_resubmit_management_response: {
+        Args: {
+          p_action_plan?: string
+          p_management_position?: string
+          p_rejection_rationale?: string
+          p_response_id: string
+          p_response_text: string
+          p_responsible_person?: string
+          p_target_date?: string
+        }
+        Returns: Json
+      }
+      ia_review_activity: {
+        Args: { p_activity_id: string; p_notes?: string; p_outcome: string }
+        Returns: Json
+      }
+      ia_review_management_response: {
+        Args: { p_notes?: string; p_outcome: string; p_response_id: string }
+        Returns: Json
+      }
+      ia_schedule_engagement: {
+        Args: {
+          p_engagement_id: string
+          p_notes?: string
+          p_planned_end_date: string
+          p_planned_start_date: string
+          p_scope_summary?: string
         }
         Returns: Json
       }
@@ -123463,12 +129118,34 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_start_quality_review: {
+        Args: {
+          p_engagement_id: string
+          p_review_type?: string
+          p_reviewer_id?: string
+        }
+        Returns: Json
+      }
+      ia_storage_class: { Args: { _name: string }; Returns: string }
+      ia_storage_engagement: { Args: { _name: string }; Returns: string }
+      ia_submit_annual_plan: {
+        Args: { p_notes?: string; p_plan_id: string }
+        Returns: Json
+      }
       ia_transition_execution_status: {
         Args: {
           p_engagement_id: string
           p_new_status: string
           p_notes?: string
           p_performed_by?: string
+        }
+        Returns: Json
+      }
+      ia_transition_finding: {
+        Args: {
+          p_finding_id: string
+          p_reason?: string
+          p_target_status: string
         }
         Returns: Json
       }
@@ -124028,6 +129705,20 @@ export type Database = {
           p_slot_code?: string
         }
         Returns: string
+      }
+      omni_comms_attachment_evidence: {
+        Args: { p_request_id: string }
+        Returns: {
+          byte_size: number
+          channel: string
+          checksum_sha256: string
+          content_type: string
+          file_name: string
+          message_id: string
+          ordinal: number
+          outcome: string
+          outcome_reason: string
+        }[]
       }
       omni_comms_automation_cron_evidence: {
         Args: { p_jobname: string }
@@ -124881,6 +130572,36 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_hold_classification: {
+        Args: { p_reason: string }
+        Returns: Json
+      }
+      omni_comms_in_app_list_my_communications: {
+        Args: { p_limit?: number; p_offset?: number; p_unread_only?: boolean }
+        Returns: {
+          acted_at: string
+          action_label: string
+          body: string
+          category: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_code: string
+          event_name: string
+          has_attachment: boolean
+          id: string
+          is_read: boolean
+          link: string
+          message_id: string
+          module_code: string
+          read_at: string
+          request_id: string
+          severity: string
+          title: string
+          total_count: number
+        }[]
+      }
+      omni_comms_in_app_my_unread_count: { Args: never; Returns: number }
       omni_comms_in_app_record_engagement: {
         Args: { p_engagement: string; p_notification_id: string }
         Returns: boolean
@@ -124969,6 +130690,14 @@ export type Database = {
           p_sender_identity_id: string
         }
         Returns: string
+      }
+      omni_comms_ops_attention_summary: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_ops_job_authorization: {
+        Args: { p_request_id: string }
+        Returns: Json
       }
       omni_comms_ops_message_content: {
         Args: {
@@ -125234,6 +130963,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      omni_comms_priv_attach_request_attachments: {
+        Args: {
+          p_attachments: Json
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_authorize_producer_event: {
         Args: {
           p_actor_id: string
@@ -125266,6 +131003,10 @@ export type Database = {
       omni_comms_priv_binding_endpoint_requirement: {
         Args: { p_channel: string }
         Returns: string
+      }
+      omni_comms_priv_binding_verification_supported: {
+        Args: { p_channel: string }
+        Returns: boolean
       }
       omni_comms_priv_bootstrap_employer_registration_pilot: {
         Args: {
@@ -125800,6 +131541,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_dispatch_attachment_manifest: {
+        Args: { p_message_id: string }
+        Returns: Json
+      }
       omni_comms_priv_dispatch_attempt_complete: {
         Args: {
           p_attempt_id: string
@@ -125810,6 +131555,14 @@ export type Database = {
           p_provider_response?: Json
           p_provider_status_code?: number
           p_status: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_certification_snapshot: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_request_id: string
         }
         Returns: Json
       }
@@ -126024,6 +131777,20 @@ export type Database = {
         Args: { p_input: string }
         Returns: string
       }
+      omni_comms_priv_evaluate_dispatch_authorization: {
+        Args: {
+          p_adapter_code: string
+          p_caller_module_code: string
+          p_channel: string
+          p_department_id: string
+          p_deployed_revision: string
+          p_mode: string
+          p_organization_id: string
+          p_recipient_hash: string
+          p_request_created_at: string
+        }
+        Returns: string
+      }
       omni_comms_priv_event_is_internal: {
         Args: { p_event_definition_id: string }
         Returns: boolean
@@ -126059,6 +131826,11 @@ export type Database = {
           p_organization_id: string
         }
         Returns: Json
+      }
+      omni_comms_priv_html_to_text: { Args: { _html: string }; Returns: string }
+      omni_comms_priv_in_app_title: {
+        Args: { _html: string; _subject: string; _text: string }
+        Returns: string
       }
       omni_comms_priv_inbound_voice_digits: {
         Args: { p_value: string }
@@ -126591,6 +132363,14 @@ export type Database = {
         Args: { p_new_fingerprint: string; p_request_id: string }
         Returns: undefined
       }
+      omni_comms_priv_reevaluate_held_jobs: {
+        Args: {
+          p_batch_limit?: number
+          p_deployed_revision?: string
+          p_worker?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_reference_seed_assert_safe: {
         Args: { p_organization_id: string }
         Returns: undefined
@@ -126669,12 +132449,20 @@ export type Database = {
         Args: { p_secret_ref: string }
         Returns: string
       }
+      omni_comms_priv_resolve_message_attachments: {
+        Args: { p_message_id: string }
+        Returns: Json
+      }
       omni_comms_priv_resolve_provider_credential_source: {
         Args: { p_provider_account_id: string; p_purpose: string }
         Returns: Json
       }
       omni_comms_priv_resolve_push_devices: {
         Args: { p_organization_id: string; p_recipient_id: string }
+        Returns: Json
+      }
+      omni_comms_priv_resolve_request_attachments: {
+        Args: { p_request_id: string }
         Returns: Json
       }
       omni_comms_priv_resolve_webhook_signing_secret: {
@@ -126780,6 +132568,10 @@ export type Database = {
         }
         Returns: number
       }
+      omni_comms_priv_seed_internal_audit_event: {
+        Args: { p: Json }
+        Returns: Json
+      }
       omni_comms_priv_send_communication: {
         Args: {
           p_actor_id: string
@@ -126822,6 +132614,14 @@ export type Database = {
       }
       omni_comms_priv_sender_usage: {
         Args: { p_sender_id: string }
+        Returns: Json
+      }
+      omni_comms_priv_set_dispatch_certified_from: {
+        Args: {
+          p_certified_revision: string
+          p_note?: string
+          p_project_ref: string
+        }
         Returns: Json
       }
       omni_comms_priv_set_runtime_environment: {
@@ -127143,6 +132943,24 @@ export type Database = {
       }
       omni_comms_reference_seed_status: {
         Args: { p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_register_attachment: {
+        Args: {
+          p_byte_size: number
+          p_checksum_sha256: string
+          p_classification?: string
+          p_content_type: string
+          p_department_id?: string
+          p_file_name: string
+          p_organization_id: string
+          p_owner_module_code: string
+          p_source_entity_id: string
+          p_source_entity_type: string
+          p_storage_bucket: string
+          p_storage_path: string
+          p_supersedes_attachment_id?: string
+        }
         Returns: Json
       }
       omni_comms_resolve_presentation: {
@@ -127563,6 +133381,22 @@ export type Database = {
             }
             Returns: Json
           }
+      platform_environment_consistency: {
+        Args: { p_expected_project_ref?: string }
+        Returns: Json
+      }
+      platform_environment_marker_configure: {
+        Args: {
+          p_actor_id: string
+          p_allows_controlled_test_activation: boolean
+          p_correlation_id?: string
+          p_environment_kind: string
+          p_environment_label: string
+          p_project_ref: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       platform_purge_cron_run_details: {
         Args: { p_keep_runs?: number; p_max_rows?: number }
         Returns: number
@@ -128773,6 +134607,27 @@ export type Database = {
       void_comm_hub_revalidation_cycle: {
         Args: { p_cycle_id: string; p_reason: string }
         Returns: Json
+      }
+      workflow_my_pending_tasks: {
+        Args: never
+        Returns: {
+          assigned_designation: string
+          assigned_role: string
+          assigned_to: string
+          created_at: string
+          due_at: string
+          eligibility_basis: string
+          id: string
+          instance_id: string
+          is_overdue: boolean
+          source_module: string
+          source_record_id: string
+          source_record_name: string
+          status: string
+          step_name: string
+          submitter_name: string
+          workflow_name: string
+        }[]
       }
       write_comm_hub_operating_mode_audit: {
         Args: {

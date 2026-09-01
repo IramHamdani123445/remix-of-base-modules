@@ -10,6 +10,7 @@
  *
  * Delivery here is advisory. A failure never blocks a gate decision.
  */
+import { emitGateApprovalAlert } from '@/platform/omni-comms/integrations/business/platformApprovalAlertProducer';
 import { supabase } from '@/integrations/supabase/client';
 
 export type GateApprovalNotificationEvent = 'requested' | 'approved' | 'rejected';
@@ -132,26 +133,32 @@ export async function notifyGateApprovalEvent(
     const { error: insertError } = await db.from('in_app_notifications').insert(rows);
     if (insertError) console.warn('[gate-approval-notify] in-app failed', insertError);
 
-    let emails = 0;
-    await Promise.all(
-      recipients
-        .filter((r) => Boolean(r.email))
-        .map(async (r) => {
-          const { error } = await supabase.functions.invoke('send-notification', {
-            body: {
-              recipient_email: r.email,
-              subject: `${title} — ${input.subject}`,
-              body: `<p>Dear ${r.name ?? 'Administrator'},</p><p>${body}</p>`,
-              trigger_source: 'omni_comms_gate_approval',
-              metadata: {
-                event: input.event,
-                workflow_instance_id: input.workflowInstanceId ?? null,
-              },
-            },
-          });
-          if (!error) emails += 1;
-        }),
-    );
+    // ── Omni-Comms convergence (Wave 4) ─────────────────────────────
+    // The email leg is a governed business communication and is raised
+    // through the single facade. No provider is contacted from here.
+    // The in-app row above is retained as the compatibility surface until
+    // PLATFORM alerts are certified for live delivery; it is not a second
+    // sending path — it writes no provider traffic.
+    const emission = await emitGateApprovalAlert({
+      event: input.event,
+      subject: input.subject,
+      actorName: input.actorName ?? null,
+      comment: input.comment ?? null,
+      workflowInstanceId: input.workflowInstanceId ?? null,
+      recipients: recipients.map((r) => ({
+        userId: r.userId,
+        name: r.name ?? null,
+        email: r.email ?? null,
+      })),
+    });
+
+    const emails =
+      emission.outcome === 'accepted' || emission.outcome === 'replayed'
+        ? recipients.filter((r) => Boolean(r.email)).length
+        : 0;
+    if (emails === 0 && emission.blockers.length > 0) {
+      console.warn('[gate-approval-notify] email leg not accepted', emission.blockers);
+    }
 
     return { inApp: insertError ? 0 : rows.length, emails };
   } catch (e) {

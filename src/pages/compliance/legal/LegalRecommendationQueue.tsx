@@ -22,6 +22,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { legalEscalationService } from '@/services/legalEscalationService';
+import { approveLegalReferral, rejectLegalReferral } from '@/services/compliance/legalReferralGovernance';
 import { useAuditFields } from '@/hooks/useAuditTrail';
 import { LegalRecommendation } from '@/types/legalEscalation';
 
@@ -80,19 +81,25 @@ const LegalRecommendationQueue = () => {
     },
   });
 
+  // Checkpoint D governance: management approval/rejection must go through the
+  // governed RPCs (separation of duties, authority check, referral packet
+  // minting). A direct status update on ce_legal_recommendations would bypass
+  // all of it, so it is never used here.
   const approveMut = useMutation({
-    mutationFn: (id: string) => legalEscalationService.updateRecommendationStatus(
-      id, 'APPROVED_FOR_REFERRAL', 'Approved by compliance officer', userCode || 'SYSTEM'
-    ),
-    onSuccess: () => { invalidateAll(); toast.success('Recommendation approved for legal referral'); },
-    onError: () => toast.error('Failed to approve recommendation'),
+    mutationFn: (id: string) => approveLegalReferral(id, 'Approved from Legal Recommendation Queue'),
+    onSuccess: (res) => {
+      invalidateAll();
+      toast.success('Recommendation approved', {
+        description: `Referral ${res.referral_number} created in ${res.next_stage}. Legal Pack preparation is next.`,
+      });
+    },
+    onError: (e: any) => toast.error(e?.message || 'Failed to approve recommendation'),
   });
 
   const rejectMut = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      legalEscalationService.updateRecommendationStatus(id, 'REJECTED', reason, userCode || 'SYSTEM'),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectLegalReferral(id, reason),
     onSuccess: () => { invalidateAll(); toast.success('Recommendation rejected'); },
-    onError: () => toast.error('Failed to reject recommendation'),
+    onError: (e: any) => toast.error(e?.message || 'Failed to reject recommendation'),
   });
 
   const handleReject = (recommendationId: string) => {

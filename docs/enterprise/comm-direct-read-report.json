@@ -1,16 +1,34 @@
 {
-  "generated_at": "2026-07-08T09:59:05.162Z",
-  "scanned_files": 3652,
+  "generated_at": "2026-08-28T12:38:07.290Z",
+  "scanned_files": 5061,
   "totals": {
     "ALLOWED_CANONICAL_RESOLVER": 55,
-    "ALLOWED_ADMIN_CONFIG": 135,
+    "ALLOWED_ADMIN_CONFIG": 150,
     "ALLOWED_GOVERNANCE": 1,
     "ALLOWED_HEALTH_SCAN": 10,
-    "ALLOWED_MIGRATION_COMPATIBILITY": 0,
-    "RUNTIME_BYPASS_WARNING": 44,
+    "ALLOWED_MIGRATION_COMPATIBILITY": 2,
+    "RUNTIME_BYPASS_WARNING": 45,
     "RUNTIME_BYPASS_BLOCKER": 0
   },
   "findings": [
+    {
+      "file": "src/__tests__/omni-comms/build3-slice2c-ii-batch-c.test.ts",
+      "line": 105,
+      "matched": "comm_asset_assignment",
+      "kind": "TABLE",
+      "classification": "ALLOWED_MIGRATION_COMPATIBILITY",
+      "snippet": "`await supabase.from('comm_asset_assignment').select('*');`),",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/__tests__/omni-comms/template-layout-selection.test.ts",
+      "line": 89,
+      "matched": "core_template_layout",
+      "kind": "TABLE",
+      "classification": "ALLOWED_MIGRATION_COMPATIBILITY",
+      "snippet": "const v = checkTemplateLayoutBoundary(scanOf(`supabase.from('core_template_layout').select()`));",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
     {
       "file": "src/components/admin/organization/LegalIntegrationReport.tsx",
       "line": 52,
@@ -50,7 +68,7 @@
     },
     {
       "file": "src/components/bn/validation/CountryLegalValidationCard.tsx",
-      "line": 105,
+      "line": 154,
       "matched": "notification_templates",
       "kind": "TABLE",
       "classification": "RUNTIME_BYPASS_WARNING",
@@ -60,23 +78,13 @@
     },
     {
       "file": "src/components/bn/workbench/LetterPreviewDialog.tsx",
-      "line": 35,
+      "line": 33,
       "matched": "notification_templates",
       "kind": "TABLE",
       "classification": "RUNTIME_BYPASS_WARNING",
       "snippet": "? db.from('notification_templates').select('id, name, subject, html_body, body, template_code, version_no, channel').eq('id', letter.template_id).maybeSingle()",
       "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access.",
       "waiver_reason": "OM-9.7.7 waiver: preview reads template body by id for legacy BN letters; template resolution moves to resolver in OM-9.7.8 BN cutover."
-    },
-    {
-      "file": "src/components/bn/workbench/SendEligibilityFailureNoticeDialog.tsx",
-      "line": 84,
-      "matched": "notification_templates",
-      "kind": "TABLE",
-      "classification": "RUNTIME_BYPASS_WARNING",
-      "snippet": ".from('notification_templates')",
-      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access.",
-      "waiver_reason": "OM-9.7.7 waiver: eligibility notice picker still lists notification_templates for admin selection; runtime dispatch to migrate in OM-9.7.8 BN cutover."
     },
     {
       "file": "src/components/comm/AssetPickerField.tsx",
@@ -654,16 +662,6 @@
     },
     {
       "file": "src/hooks/useAdminData.ts",
-      "line": 621,
-      "matched": "notification_templates",
-      "kind": "TABLE",
-      "classification": "RUNTIME_BYPASS_WARNING",
-      "snippet": ".from('notification_templates')",
-      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access.",
-      "waiver_reason": "OM-9.7.5A waiver: admin data hook"
-    },
-    {
-      "file": "src/hooks/useAdminData.ts",
       "line": 636,
       "matched": "notification_templates",
       "kind": "TABLE",
@@ -674,7 +672,7 @@
     },
     {
       "file": "src/hooks/useAdminData.ts",
-      "line": 657,
+      "line": 651,
       "matched": "notification_templates",
       "kind": "TABLE",
       "classification": "RUNTIME_BYPASS_WARNING",
@@ -684,7 +682,17 @@
     },
     {
       "file": "src/hooks/useAdminData.ts",
-      "line": 679,
+      "line": 672,
+      "matched": "notification_templates",
+      "kind": "TABLE",
+      "classification": "RUNTIME_BYPASS_WARNING",
+      "snippet": ".from('notification_templates')",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access.",
+      "waiver_reason": "OM-9.7.5A waiver: admin data hook"
+    },
+    {
+      "file": "src/hooks/useAdminData.ts",
+      "line": 694,
       "matched": "notification_templates",
       "kind": "TABLE",
       "classification": "RUNTIME_BYPASS_WARNING",
@@ -1223,6 +1231,141 @@
       "kind": "TABLE",
       "classification": "ALLOWED_ADMIN_CONFIG",
       "snippet": "const { error } = await supabase.from('notification_templates').delete().eq('id', id);",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/CommunicationTestDiagnosticsPage.tsx",
+      "line": 177,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "const { data: tpls } = await (supabase as any).from(\"core_template\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/CommunicationTestDiagnosticsPage.tsx",
+      "line": 182,
+      "matched": "core_template_version",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "const { data: vers } = await (supabase as any).from(\"core_template_version\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/controlCenter/BusinessModuleReadinessMatrixPanel.tsx",
+      "line": 56,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "(supabase as any).from(\"core_template\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/controlCenter/BusinessModuleReadinessMatrixPanel.tsx",
+      "line": 81,
+      "matched": "core_template_version",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "const { data: ver } = await (supabase as any).from(\"core_template_version\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/controlCenter/EventTemplateMappingPanel.tsx",
+      "line": 104,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "(supabase as any).from(\"core_template\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/controlCenter/GenericEventPilotPanel.tsx",
+      "line": 119,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "const { data: tpls } = await (supabase as any).from(\"core_template\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/controlCenter/GenericEventPilotPanel.tsx",
+      "line": 124,
+      "matched": "core_template_version",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "const { data: vers } = await (supabase as any).from(\"core_template_version\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/controlCenter/LiveReadinessGovernancePanel.tsx",
+      "line": 144,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "(supabase as any).from(\"core_template\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/controlCenter/LiveReadinessGovernancePanel.tsx",
+      "line": 171,
+      "matched": "core_template_version",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "const { data: v } = await (supabase as any).from(\"core_template_version\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/goLive/eventTestContextService.ts",
+      "line": 62,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": ".from(\"core_template\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/goLive/eventTestContextService.ts",
+      "line": 71,
+      "matched": "core_template_version",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": ".from(\"core_template_version\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/liveReadiness/allEventsLiveReadinessService.ts",
+      "line": 88,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "? db.from(\"core_template\").select(\"code, is_active, active_version_id, status\").in(\"code\", templateCodes)",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/liveReadiness/allEventsLiveReadinessService.ts",
+      "line": 97,
+      "matched": "core_template_version",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "? await db.from(\"core_template_version\").select(\"id, version_no, status\").in(\"id\", versionIds)",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/services/eventTemplateOnboardingService.ts",
+      "line": 306,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": ".from(\"core_template\")",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/pages/admin/communicationHub/testDiagnostics/validateBusinessCommunication.ts",
+      "line": 91,
+      "matched": "core_template",
+      "kind": "TABLE",
+      "classification": "ALLOWED_ADMIN_CONFIG",
+      "snippet": "const { data: tpl } = await db.from(\"core_template\")",
       "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
     },
     {
@@ -1929,7 +2072,7 @@
     },
     {
       "file": "src/platform/release-readiness/checks.ts",
-      "line": 1166,
+      "line": 1167,
       "matched": "comm_media_asset",
       "kind": "TABLE",
       "classification": "ALLOWED_GOVERNANCE",
@@ -1956,8 +2099,26 @@
       "waiver_reason": "OM-9.7.5A waiver: BN adapter migration pending (OM-9.7.8)"
     },
     {
+      "file": "src/services/bn/canvasSyncService.ts",
+      "line": 611,
+      "matched": "template_code",
+      "kind": "KEY",
+      "classification": "RUNTIME_BYPASS_WARNING",
+      "snippet": ".select('id').eq('template_code', templateCode).maybeSingle();",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
+      "file": "src/services/bn/canvasSyncService.ts",
+      "line": 669,
+      "matched": "template_code",
+      "kind": "KEY",
+      "classification": "RUNTIME_BYPASS_WARNING",
+      "snippet": ".select('id').eq('template_code', templateCode).maybeSingle();",
+      "suggested_fix": "Use resolveBusinessCommunicationContext() (src/lib/comm/businessCommunicationResolver.ts) or the enterprise wrappers in src/lib/enterprise/* instead of direct table access."
+    },
+    {
       "file": "src/services/bn/communication/bnCommunicationAdapter.ts",
-      "line": 323,
+      "line": 312,
       "matched": "notification_templates",
       "kind": "TABLE",
       "classification": "RUNTIME_BYPASS_WARNING",
@@ -1967,7 +2128,7 @@
     },
     {
       "file": "src/services/bn/communication/bnCommunicationAdapter.ts",
-      "line": 348,
+      "line": 337,
       "matched": "notification_templates",
       "kind": "TABLE",
       "classification": "RUNTIME_BYPASS_WARNING",

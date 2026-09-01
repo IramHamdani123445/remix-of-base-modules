@@ -43,10 +43,12 @@ const RENDER_FILES = [
   'snapshotRevalidator.ts',
   'renderMessage.ts',
   'renderOrchestrator.ts',
+  // Wave 4 / DEF-4 Part 3 — fail-closed runtime dispatch authorisation.
+  'dispatchAuthorization.ts',
 ];
 
 describe('Slice 2c-iii — rendering package structure', () => {
-  it('contains exactly the nine expected modules', () => {
+  it('contains exactly the ten expected modules', () => {
     const actual = readdirSync(resolve(ROOT, RENDER_DIR)).sort();
     expect(actual).toEqual([...RENDER_FILES].sort());
   });

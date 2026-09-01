@@ -229,43 +229,39 @@ export function OfficerStatusChangeWizard({ open, onOpenChange, officer, officer
           .eq("is_active", true);
       }
 
-      // 3. Reassign violations
+      // 3. Reassign violations through the governed server-side commands
+      //    (Checkpoint F-S1). Direct writes to ce_violation_assignments are
+      //    revoked for browser clients; the database enforces capability,
+      //    supersession, history and audit atomically.
+      const reassignReason =
+        newStatus === "RESIGNED" ? "RESIGNATION"
+        : newStatus === "TRANSFERRED" ? "TRANSFER"
+        : newStatus === "SUSPENDED" ? "SUSPENSION"
+        : newStatus === "ON_LEAVE" ? "LEAVE"
+        : "MANUAL";
+      const notes = `Reassigned due to officer ${newStatus.toLowerCase()}: ${reason}`;
+
       let reassignedCount = 0;
       for (const v of violations) {
-        // Mark current assignment as superseded
-        await supabase
-          .from("ce_violation_assignments")
-          .update({ is_current: false, superseded_at: new Date().toISOString() })
-          .eq("violation_id", v.id)
-          .eq("assigned_to_inspector_id", officer.id)
-          .eq("is_current", true);
-
-        // Create new assignment
-        const newAssignment: Record<string, any> = {
-          violation_id: v.id,
-          assignment_type: "REASSIGNMENT",
-          reassignment_reason: newStatus === "RESIGNED" ? "RESIGNATION"
-            : newStatus === "TRANSFERRED" ? "TRANSFER"
-            : newStatus === "SUSPENDED" ? "SUSPENSION"
-            : newStatus === "ON_LEAVE" ? "LEAVE"
-            : "MANUAL",
-          reassigned_from_inspector_id: officer.id,
-          assigned_by: userCode || "SYSTEM",
-          is_current: true,
-          notes: `Reassigned due to officer ${newStatus.toLowerCase()}: ${reason}`,
-        };
-
         if (v.reassign_target === "officer" && v.target_officer_id) {
-          newAssignment.assigned_to_inspector_id = v.target_officer_id;
-          newAssignment.resolution_method = "MANUAL_OFFICER";
+          const { error } = await (supabase.rpc as any)("ce_violation_reassign_v1", {
+            p_violation_id: v.id,
+            p_target_inspector_id: v.target_officer_id,
+            p_reason: reassignReason,
+            p_notes: notes,
+          });
+          if (error) throw error;
         } else {
-          newAssignment.assigned_to_inspector_id = null;
-          newAssignment.resolution_method = "RETURNED_TO_QUEUE";
+          const { error } = await (supabase.rpc as any)("ce_violation_return_to_queue_v1", {
+            p_violation_id: v.id,
+            p_reason: reassignReason,
+            p_notes: notes,
+          });
+          if (error) throw error;
         }
-
-        await supabase.from("ce_violation_assignments").insert([newAssignment as any]);
         reassignedCount++;
       }
+
 
       toast.success(`Officer status changed to ${newStatus}. ${reassignedCount} violation(s) reassigned.`);
       onComplete();

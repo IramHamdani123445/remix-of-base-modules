@@ -994,16 +994,8 @@ export function BoardPackTab({ planId, plan, engagements }: BoardPackTabProps) {
 
   const handleDownload = async (artifact: any) => {
     try {
-      // Try public URL first (bucket is public)
-      const { data: urlData } = supabase.storage.from('ia-artifacts').getPublicUrl(artifact.file_path);
-      if (urlData?.publicUrl) {
-        const response = await fetch(urlData.publicUrl);
-        if (!response.ok) throw new Error('Download failed');
-        const blob = await response.blob();
-        triggerBlobDownload(blob, artifact.file_name);
-        return;
-      }
-      // Fallback to SDK download
+      // ia-artifacts is a PRIVATE bucket (Wave 1). Always use the authenticated
+      // SDK download path — never getPublicUrl().
       const { data, error } = await supabase.storage.from('ia-artifacts').download(artifact.file_path);
       if (error) throw error;
       triggerBlobDownload(data, artifact.file_name);

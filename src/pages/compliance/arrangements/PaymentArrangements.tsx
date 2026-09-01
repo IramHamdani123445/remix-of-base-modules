@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ArrangementDetailPanel } from '@/components/compliance/ArrangementDetailPanel';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ComplianceHelpButton } from '@/components/help/ComplianceHelpButton';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Eye, Loader2, Info, Search, AlertTriangle } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useRegnoParam } from '@/hooks/useRegnoParam';
 import { EmployerLinkChip, RegnoFilterBanner } from '@/components/compliance/EmployerLinkChip';
@@ -27,24 +27,34 @@ const HEALTH_FILTERS = ['ALL', 'HEALTHY', 'AT_RISK', 'BREACHED'];
 export default function PaymentArrangements() {
   const navigate = useNavigate();
   const { regno } = useRegnoParam();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { arrangementId: routeArrangementId } = useParams<{ arrangementId?: string }>();
+  const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [healthFilter, setHealthFilter] = useState<string>('ALL');
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedArrangementId, setSelectedArrangementId] = useState<string | null>(
-    () => searchParams.get('arr'),
+
+  // URL is the single source of truth: /compliance/enforcement/arrangements/:arrangementId
+  // (canonical deep link) or ?arr=<id> (legacy links, still honoured).
+  const selectedArrangementId = routeArrangementId ?? searchParams.get('arr');
+
+  const openArrangement = useCallback(
+    (id: string) => {
+      const qs = searchParams.toString();
+      navigate(
+        `/compliance/enforcement/arrangements/${encodeURIComponent(id)}${qs ? `?${qs.replace(/(^|&)arr=[^&]*/g, '').replace(/^&/, '')}` : ''}`,
+      );
+    },
+    [navigate, searchParams],
   );
 
-  // Keep URL <-> state in sync so a deep link like ?arr=<id> auto-opens the detail
-  // and closing the detail cleans the query param.
-  useEffect(() => {
-    const urlArr = searchParams.get('arr');
-    if (urlArr !== selectedArrangementId) {
-      setSelectedArrangementId(urlArr);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  const closeArrangement = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('arr');
+    const qs = next.toString();
+    navigate(`/compliance/enforcement/arrangements${qs ? `?${qs}` : ''}`, { replace: true });
+  }, [navigate, searchParams]);
+
 
   const { data: register = [], isLoading } = useQuery({
     queryKey: ['ce_v_arrangement_register'],
@@ -75,6 +85,13 @@ export default function PaymentArrangements() {
   }
 
   if (selectedArrangementId) {
+    // Allow deep links by arrangement number (e.g. U020-ARR-008) as well as by id.
+    const matched = register.find(
+      (a) =>
+        a.arrangement_id === selectedArrangementId ||
+        (a.arrangement_number ?? '').toLowerCase() === selectedArrangementId.toLowerCase(),
+    );
+    const resolvedId = matched?.arrangement_id ?? selectedArrangementId;
     return (
       <div className="container mx-auto p-6 space-y-6">
         <PageHeader
@@ -83,23 +100,14 @@ export default function PaymentArrangements() {
           breadcrumbs={[
             { label: 'Compliance', href: '/compliance/dashboard' },
             { label: 'Payment Arrangements', href: '/compliance/enforcement/arrangements' },
-            { label: 'Detail' },
+            { label: matched?.arrangement_number ?? 'Detail' },
           ]}
         />
-        <ArrangementDetailPanel
-          arrangementId={selectedArrangementId}
-          onBack={() => {
-            setSelectedArrangementId(null);
-            if (searchParams.get('arr')) {
-              const next = new URLSearchParams(searchParams);
-              next.delete('arr');
-              setSearchParams(next, { replace: true });
-            }
-          }}
-        />
+        <ArrangementDetailPanel arrangementId={resolvedId} onBack={closeArrangement} />
       </div>
     );
   }
+
 
   const activeCount = arrangements.filter((a) => a.status === 'ACTIVE').length;
   const defaultedCount = arrangements.filter((a) => a.status === 'DEFAULTED').length;
@@ -251,13 +259,13 @@ export default function PaymentArrangements() {
                       onClick={(e) => {
                         // Ignore clicks that originate from interactive controls inside the row
                         if ((e.target as HTMLElement).closest('a,button,input,select,[role="button"][data-interactive]')) return;
-                        setSelectedArrangementId(arr.arrangement_id);
+                        openArrangement(arr.arrangement_id);
                       }}
                       onKeyDown={(e) => {
                         if (e.target !== e.currentTarget) return;
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setSelectedArrangementId(arr.arrangement_id);
+                          openArrangement(arr.arrangement_id);
                         }
                       }}
                     >
@@ -302,7 +310,7 @@ export default function PaymentArrangements() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedArrangementId(arr.arrangement_id)}
+                          onClick={() => openArrangement(arr.arrangement_id)}
                           title="View arrangement details"
                         >
                           <Eye className="h-4 w-4" />

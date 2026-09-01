@@ -18,6 +18,7 @@ import { PlanAmendmentHistory } from '@/components/audit/PlanAmendmentHistory';
 import { PlanApprovalBanner } from '@/components/audit/PlanApprovalBanner';
 import { PlanSubmissionReadiness } from '@/components/audit/PlanSubmissionReadiness';
 import { PlanRevisionDialog } from '@/components/audit/PlanRevisionDialog';
+import { PlanClosurePanel } from '@/components/audit/PlanClosurePanel';
 import { BoardPackTab } from '@/components/audit/BoardPackTab';
 import { PlanDistributionTab } from '@/components/audit/PlanDistributionTab';
 import { CoverageRiskTab } from '@/components/audit/CoverageRiskTab';
@@ -197,7 +198,12 @@ export default function AuditPlanDetail() {
           <TabsTrigger value="approval">Approval & Amendments</TabsTrigger>
           <TabsTrigger value="boardpack">Board Pack</TabsTrigger>
           <TabsTrigger value="distribution">Distribution</TabsTrigger>
+          <TabsTrigger value="closure">Closure</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="closure">
+          <PlanClosurePanel planId={id!} plan={plan} />
+        </TabsContent>
 
         {/* Overview Tab */}
         <TabsContent value="overview">

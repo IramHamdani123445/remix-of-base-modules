@@ -51,7 +51,9 @@ import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useAutomationStatus } from "../hooks/useAutomationStatus";
 import AutomationSection from "./channels/simple/AutomationSection";
 import {
+  getOpsAttentionSummary,
   getOpsSummary,
+
   listOpsRequests,
   OPS_PAGE_SIZE_DEFAULT,
   OPS_REQUEST_MODES,
@@ -64,6 +66,8 @@ import {
 import {
   needsAttentionCount,
 } from "@/platform/omni-comms/application/activityStatusLabels";
+import type { OmniCommsAttentionSummary } from "@/platform/omni-comms/application/holdClassification";
+
 import {
   BUSINESS_EVENT_PAGE_SIZE_DEFAULT,
   businessEventStatusLabel,
@@ -90,17 +94,26 @@ const EVENT_FILTERS = [
   { id: "sending", label: "Sending" },
   { id: "delivered", label: "Delivered" },
   { id: "needs_attention", label: "Needs attention" },
+  { id: "historical", label: "Historical (not sent)" },
 ] as const;
 
 type EventFilterId = (typeof EVENT_FILTERS)[number]["id"];
 
+/**
+ * "Waiting" means work that is still expected to go out. A permanently held
+ * historical record (recorded before delivery was switched on) is audit
+ * evidence, never pending work, so it has its own filter and is deliberately
+ * excluded from "Waiting".
+ */
 const EVENT_FILTER_STATUSES: Record<EventFilterId, readonly string[] | null> = {
   all: null,
   waiting: ["event_recorded", "preparing_communication", "waiting_to_send", "retrying"],
   sending: ["sending", "provider_accepted"],
   delivered: ["delivered"],
   needs_attention: ["needs_configuration", "needs_review", "failed"],
+  historical: ["not_sent_historical"],
 };
+
 
 
 const ALL = "__all__";
@@ -149,10 +162,12 @@ export const OmniCommsOperationsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [summary, setSummary] = useState<OpsSummary | null>(null);
+  const [holdBreakdown, setHoldBreakdown] = useState<OmniCommsAttentionSummary | null>(null);
   const [page, setPage] = useState<OpsRequestPage | null>(null);
   const [events, setEvents] = useState<BusinessEventActivityPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   const automation = useAutomationStatus(organizationId, true);
 
@@ -207,7 +222,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [s, p, ev] = await Promise.all([
+      const [s, p, ev, holds] = await Promise.all([
         getOpsSummary(client, { organizationId, departmentId: null }),
         listOpsRequests(client, {
           organizationId,
@@ -227,16 +242,23 @@ export const OmniCommsOperationsPage: React.FC = () => {
           limit: BUSINESS_EVENT_PAGE_SIZE_DEFAULT,
           offset,
         }),
+        // The hold breakdown is supplementary: it must never fail the page.
+        getOpsAttentionSummary(client, { organizationId, departmentId: null }).catch(
+          () => null,
+        ),
       ]);
       setSummary(s);
       setPage(p);
       setEvents(ev);
+      setHoldBreakdown(holds);
     } catch (e: unknown) {
       setSummary(null);
       setPage(null);
       setEvents(null);
+      setHoldBreakdown(null);
       setError(e instanceof Error ? e.message : "Unable to load activity data");
     } finally {
+
       setLoading(false);
     }
   }, [client, organizationId, mode, status, callerModule, dateFrom, debouncedSearch, offset]);
@@ -319,6 +341,20 @@ export const OmniCommsOperationsPage: React.FC = () => {
     [summary, automation.status],
   );
 
+  /**
+   * Permanently held historical records. Reported separately from attention so
+   * that audit evidence never inflates an operational figure.
+   */
+  const historicalHolds = useMemo(() => {
+    const raw = holdBreakdown?.held_by_bucket?.PERMANENT_HISTORICAL;
+    const parsed = typeof raw === "string" ? Number(raw) : raw;
+    return typeof parsed === "number" && Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : 0;
+  }, [holdBreakdown]);
+
+
+
   if (!tenantLoading && !organizationId) {
     return (
       <OmniCommsEmptyState
@@ -389,6 +425,32 @@ export const OmniCommsOperationsPage: React.FC = () => {
           </Button>
         </CardContent>
       </Card>
+
+      {historicalHolds > 0 ? (
+        <Card data-testid="omni-comms-historical-holds">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Historical records — never sent
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">{historicalHolds}</p>
+              <p className="text-xs text-muted-foreground max-w-xl">
+                Recorded before delivery was switched on. These are kept as audit
+                evidence, are not waiting for anything, and require no action.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActivityFilter("historical")}
+              data-testid="omni-comms-historical-holds-filter"
+            >
+              Show historical records
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
 
       <Card>
         <CardHeader className="pb-3">
@@ -615,7 +677,12 @@ export const OmniCommsOperationsPage: React.FC = () => {
           Technical details
         </summary>
         <div className="space-y-4 pt-4">
-          <OperationsSummaryCards summary={summary} loading={loading && !summary} />
+          <OperationsSummaryCards
+            summary={summary}
+            loading={loading && !summary}
+            attention={holdBreakdown}
+          />
+
           <div className="flex flex-wrap items-center gap-2">
             <Select value={mode} onValueChange={setMode}>
               <SelectTrigger

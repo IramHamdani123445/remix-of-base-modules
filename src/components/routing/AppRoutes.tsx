@@ -1,9 +1,16 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
+// Legacy /audit/engagements/:id — keep deep links alive on the canonical spine.
+const AuditEngagementIdRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={id ? `/audit/audits/${id}` : '/audit/audits'} replace />;
+};
+
 const LegalAdvancedMatterRedirect = () => {
   const { id } = useParams();
   return <Navigate to={`/legal/lg/cases/${id ?? ''}`} replace />;
 };
+
 
 // Legacy /legal/cases/:id (SSBCaseView, mock-context) — redirect to canonical
 // LgCaseDetail on the real lg_case tables.
@@ -29,6 +36,7 @@ import { PermissionProtectedRoute } from '@/components/auth/PermissionProtectedR
 import { useLegalAuth } from '@/contexts/LegalAuthContext';
 import React, { Suspense, lazy } from 'react';
 import { AuditFeatureGate } from '@/components/audit/AuditFeatureGate';
+import { AuditEntitlementGate, AUDIT_ADMIN_ENTITLEMENTS } from '@/components/audit/AuditEntitlementGate';
 import { ComplianceFeatureGate } from '@/components/compliance/ComplianceFeatureGate';
 import LegalRouteGuard from '@/components/legal/LegalRouteGuard';
 // ComplianceRouteGuard retired — global ComplianceAccessGate (in ProtectedLayout) handles permission gating for /compliance/*; ComplianceFeatureGate handles feature-flag gating.
@@ -44,6 +52,8 @@ const ExternalTaskLanding = lazy(() => import('@/portals/ExternalTaskLanding'));
 const PublicLayout = lazy(() => import('@/pages/public/PublicLayout'));
 const PublicHome = lazy(() => import('@/pages/public/Home'));
 const UatDownloadsPublic = lazy(() => import('@/pages/public/UatDownloadsPublic'));
+const AuditUserManuals = lazy(() => import('@/pages/audit/manuals/AuditUserManuals'));
+
 const RegisterWizard = lazy(() => import('@/pages/public/register/RegisterWizard'));
 const ExternalPortalApprovals = lazy(() => import('@/pages/admin/ExternalPortalApprovals'));
 const PublicCatalogValidation = lazy(() => import('@/pages/admin/PublicCatalogValidation'));
@@ -148,12 +158,23 @@ const ComplianceBreachMonitoring = lazy(() => import('@/pages/compliance/arrange
 const ComplianceLegalQueue = lazy(() => import('@/pages/compliance/legal/LegalQueue'));
 const ComplianceLegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedingsPage'));
 const ComplianceWaivers = lazy(() => import('@/pages/compliance/legal/WaiversOverrides'));
+const CompliancePartialPayments = lazy(() => import('@/pages/compliance/payments/PartialPaymentRequests'));
+const EmployerPartialPaymentRequest = lazy(() => import('@/pages/employer/PartialPaymentSelfService'));
 const ComplianceJobConfiguration = lazy(() => import('@/pages/compliance/automation/JobConfiguration'));
 const ComplianceJobHistory = lazy(() => import('@/pages/compliance/automation/JobHistory'));
 const ComplianceRuleEngine = lazy(() => import('@/pages/compliance/settings/RuleEngine'));
 const ComplianceViolationTypes = lazy(() => import('@/pages/compliance/settings/ViolationTypes'));
+const EmployerStatusRegister = lazy(() => import('@/pages/compliance/settings/EmployerStatusRegister'));
+const OpenDecisionRegister = lazy(() => import('@/pages/compliance/settings/OpenDecisionRegister'));
+const ReviewFlagQueue = lazy(() => import('@/pages/compliance/settings/ReviewFlagQueue'));
+const SelfEmployedCompliance = lazy(() => import('@/pages/compliance/settings/SelfEmployedCompliance'));
+const ComplianceHeadcountTiers = lazy(() => import('@/pages/compliance/settings/HeadcountTiers'));
+const ComplianceWageBenchmarks = lazy(() => import('@/pages/compliance/settings/WageBenchmarks'));
+const ComplianceContributionExemptions = lazy(() => import('@/pages/compliance/settings/ContributionExemptions'));
+const ComplianceUnregisteredLeads = lazy(() => import('@/pages/compliance/settings/UnregisteredEmployerLeads'));
 const ComplianceNumberTemplates = lazy(() => import('@/pages/compliance/settings/NumberTemplates'));
-const ComplianceRiskScoringConfig = lazy(() => import('@/pages/compliance/settings/RiskScoringConfig'));
+const ComplianceCommTriggerRulesPage = lazy(() => import('@/pages/compliance/admin/CommTriggerRulesPage'));
+
 const ComplianceTemplates = lazy(() => import('@/pages/compliance/settings/ComplianceTemplates'));
 const AuditCommunicationTemplatesPage = lazy(() => import('@/pages/compliance/admin/AuditCommunicationTemplatesPage'));
 const AuditCommunicationTemplateEditorPage = lazy(() => import('@/pages/compliance/admin/AuditCommunicationTemplateEditorPage'));
@@ -183,6 +204,7 @@ const RevisionsPending = lazy(() => import('@/pages/compliance/audit-planning/Re
 const PlanRevisionReview = lazy(() => import('@/pages/compliance/audit-planning/PlanRevisionReview'));
 const MyPlans = lazy(() => import('@/pages/compliance/audit-planning/MyPlans'));
 const AllWeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/AllWeeklyReports'));
+const AuditReportsRegister = lazy(() => import('@/pages/compliance/field/AuditReportsRegister'));
 const FieldExecution = lazy(() => import('@/pages/compliance/audit-planning/FieldExecution'));
 const WeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/WeeklyReports'));
 const CompliancePendingReview = lazy(() => import('@/pages/compliance/audit-planning/PendingReview'));
@@ -316,6 +338,7 @@ const MultiCurrencySettings = lazy(() => import('@/pages/finance/settings/MultiC
 const EmployerComplianceManagement = lazy(() => import('@/pages/compliance/employers/EmployerComplianceManagement'));
 const LegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedings'));
 const AuditManagement = lazy(() => import('@/pages/compliance/audit-planning/AuditManagement'));
+const AuditDetails = lazy(() => import('@/pages/compliance/audit-planning/AuditDetails'));
 const PenaltyManagement = lazy(() => import('@/pages/compliance/cases/PenaltyManagement'));
 const ComplianceAnalytics = lazy(() => import('@/pages/compliance/dashboards/ComplianceAnalytics'));
 const EmployerHierarchy = lazy(() => import('@/pages/compliance/employers/EmployerHierarchy'));
@@ -342,6 +365,7 @@ const CaseMergeReviewPage = lazy(() => import('@/pages/compliance/cases/CaseMerg
 const ReopenRequestsPage = lazy(() => import('@/pages/compliance/cases/ReopenRequestsPage'));
 const CaseClosurePage = lazy(() => import('@/pages/compliance/cases/CaseClosurePage'));
 const LegalPackPreparationPage = lazy(() => import('@/pages/compliance/legal/LegalPackPreparationPage'));
+const EscalationStageConfiguration = lazy(() => import('@/pages/compliance/settings/EscalationStageConfiguration'));
 const ApprovedEscalationsPage = lazy(() => import('@/pages/compliance/legal/ApprovedEscalationsPage'));
 const ReturnedFromLegalPage = lazy(() => import('@/pages/compliance/legal/ReturnedFromLegalPage'));
 const RiskScoreDetailsPage = lazy(() => import('@/pages/compliance/risk/RiskScoreDetailsPage'));
@@ -377,6 +401,8 @@ const EntitySummary = lazy(() => import('@/pages/audit/EntitySummary'));
 const RiskMatrix = lazy(() => import('@/pages/audit/RiskMatrix'));
 const AuditEngagements = lazy(() => import('@/pages/audit/AuditEngagements'));
 const EngagementDetail = lazy(() => import('@/pages/audit/EngagementDetail'));
+const AuditActionCentre = lazy(() => import('@/pages/audit/AuditActionCentre'));
+const AuditEscalationRoles = lazy(() => import('@/pages/audit/EscalationRoles'));
 const PlanApproval = lazy(() => import('@/pages/audit/PlanApproval'));
 const AuditConfig = lazy(() => import('@/pages/audit/AuditConfig'));
 const RiskSettings = lazy(() => import('@/pages/audit/RiskSettings'));
@@ -487,6 +513,7 @@ const FieldSecurity = lazy(() => import('@/pages/admin/data-access/FieldSecurity
 const RoleDataPolicies = lazy(() => import('@/pages/admin/data-access/RoleDataPolicies'));
 const UserDataOverrides = lazy(() => import('@/pages/admin/data-access/UserDataOverrides'));
 const PolicyTestConsole = lazy(() => import('@/pages/admin/data-access/PolicyTestConsole'));
+const MirrorStatus = lazy(() => import('@/pages/admin/MirrorStatus'));
 
 // System Cleanup
 const SystemCleanupDashboard = lazy(() => import('@/pages/admin/system-cleanup/SystemCleanupDashboard'));
@@ -569,6 +596,10 @@ const MyProfile = lazy(() => import('@/pages/profile/MyProfile'));
 
 // Notification Pages
 const NotificationCenter = lazy(() => import('@/pages/notifications/NotificationCenter'));
+const MyCommunications = lazy(() => import('@/pages/communications/MyCommunications'));
+const MyTasks = lazy(() => import('@/pages/tasks/MyTasks'));
+
+
 const ProviderSettings = lazy(() => import('@/pages/admin/notifications/ProviderSettings'));
 const EmailCampaigns = lazy(() => import('@/pages/admin/EmailCampaigns'));
 const EmailLogs = lazy(() => import('@/pages/admin/EmailLogs'));
@@ -1500,9 +1531,16 @@ export const AppRoutes = () => {
       <Route path="/compliance/employers/hierarchy" element={<EmployerHierarchy />} />
       <Route path="/compliance/employers/financial-statement/:employerId" element={<EmployerFinancialStatement />} />
       <Route path="/compliance/field/audit-management" element={<AuditManagement />} />
+      {/* Audit Management "View" links here; the route only existed in the
+          nested compliance router, so the app router returned 404. */}
+      <Route path="/compliance/field/audit/:id" element={<AuditDetails />} />
+      <Route path="/compliance/field/audit/:id/*" element={<AuditDetails />} />
       <Route path="/compliance/field/weekly-report" element={<WeeklyReportSubmission />} />
       <Route path="/compliance/field/weekly-reports" element={<WeeklyReports />} />
-      <Route path="/compliance/field/all-reports" element={<AllWeeklyReports />} />
+      {/* Canonical Field Audit Reports Register (employer audit reports). */}
+      <Route path="/compliance/field/all-reports" element={<AuditReportsRegister />} />
+      {/* Weekly plan reporting kept on its own manager-review route. */}
+      <Route path="/compliance/field/weekly-plan-reports" element={<AllWeeklyReports />} />
       <Route path="/compliance/field/execution-dashboard/:planId" element={<PlanExecutionDashboard />} />
       <Route path="/compliance/field/execution-dashboard/:planId/visit/:planItemId" element={<AuditVisitWorkspace />} />
       <Route path="/compliance/field/audit-visit/:planItemId" element={<AuditVisitWorkspace />} />
@@ -1514,14 +1552,20 @@ export const AppRoutes = () => {
       <Route path="/compliance/field/sampling/candidates" element={<MonthlyAuditCandidates />} />
 
       {/* ── Enforcement — legal, notices, arrangements, waivers ── */}
+      <Route path="/compliance/settings/escalation-stages" element={<EscalationStageConfiguration />} />
+      <Route path="/compliance/admin/settings/escalation-stages" element={<EscalationStageConfiguration />} />
       <Route path="/compliance/enforcement/recommendation-queue" element={<ComplianceFeatureGate flagKey="compliance.legal.handoff" title="Legal Recommendation Queue"><LegalRecommendationQueue /></ComplianceFeatureGate>} />
       <Route path="/compliance/enforcement/legal-referral" element={<ComplianceFeatureGate flagKey="compliance.legal.handoff" title="Legal Referral"><LegalReferralWizard /></ComplianceFeatureGate>} />
       <Route path="/compliance/enforcement/legal-queue" element={<ComplianceLegalQueue />} />
       <Route path="/compliance/enforcement/proceedings" element={<ComplianceFeatureGate flagKey="compliance.legal.court_monitoring" title="Legal Proceedings & Court Monitoring"><ComplianceLegalProceedings /></ComplianceFeatureGate>} />
       <Route path="/compliance/enforcement/notices" element={<NoticesManagement />} />
       <Route path="/compliance/enforcement/arrangements" element={<PaymentArrangements />} />
+      <Route path="/compliance/enforcement/arrangements/:arrangementId" element={<PaymentArrangements />} />
       <Route path="/compliance/enforcement/breaches" element={<ComplianceBreachMonitoring />} />
       <Route path="/compliance/enforcement/waivers" element={<ComplianceFeatureGate flagKey="compliance.payment.waiver_requests" title="Waiver Requests"><ComplianceWaivers /></ComplianceFeatureGate>} />
+      <Route path="/compliance/enforcement/partial-payments" element={<ComplianceFeatureGate flagKey="compliance.payment.partial_payment" title="Partial Payment Requests"><CompliancePartialPayments /></ComplianceFeatureGate>} />
+
+
 
 
       {/* ── Reports (unchanged paths) ── */}
@@ -1573,6 +1617,16 @@ export const AppRoutes = () => {
       {/* ── Admin — settings, geography, staff, automation, tools ── */}
       <Route path="/compliance/admin/settings/rule-engine" element={<ComplianceRuleEngine />} />
       <Route path="/compliance/admin/settings/violation-types" element={<ComplianceViolationTypes />} />
+      <Route path="/compliance/admin/settings/employer-status-register" element={<EmployerStatusRegister />} />
+      <Route path="/compliance/admin/settings/review-flag-queue" element={<ReviewFlagQueue />} />
+      <Route path="/compliance/admin/settings/open-decisions" element={<OpenDecisionRegister />} />
+      {/* Operational surface for enforcement officers (same governed screen) */}
+      <Route path="/compliance/violations/review-flags" element={<ReviewFlagQueue />} />
+      <Route path="/compliance/admin/settings/self-employed-compliance" element={<SelfEmployedCompliance />} />
+      <Route path="/compliance/admin/settings/headcount-tiers" element={<ComplianceHeadcountTiers />} />
+      <Route path="/compliance/admin/settings/wage-benchmarks" element={<ComplianceWageBenchmarks />} />
+      <Route path="/compliance/admin/settings/contribution-exemptions" element={<ComplianceContributionExemptions />} />
+      <Route path="/compliance/admin/settings/unregistered-employer-leads" element={<ComplianceUnregisteredLeads />} />
       <Route path="/compliance/admin/settings/assignment-routing" element={<AssignmentRoutingRules />} />
       <Route path="/compliance/admin/settings/number-templates" element={<ComplianceNumberTemplates />} />
       <Route path="/compliance/admin/settings/risk-policy" element={<RiskRulePolicy />} />
@@ -1612,14 +1666,16 @@ export const AppRoutes = () => {
       <Route path="/compliance/admin/waiver-rules" element={<ComplianceWaiverRulesPage />} />
       <Route path="/compliance/admin/legal-handoff-rules" element={<ComplianceLegalHandoffRulesPage />} />
       <Route path="/compliance/admin/help" element={<ComplianceHelpAdmin />} />
-      {/* Calculation Rules & Escalation Rules — canonical location is Rule Engine */}
-      <Route path="/compliance/admin/calculation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine" replace />} />
-      <Route path="/compliance/admin/escalation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine" replace />} />
+      {/* Calculation Rules & Escalation Rules — canonical location is Rule Engine (deep-linked tab) */}
+      <Route path="/compliance/admin/calculation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine?tab=calculation" replace />} />
+      <Route path="/compliance/admin/escalation-rules" element={<Navigate to="/compliance/admin/settings/rule-engine?tab=escalation" replace />} />
+      <Route path="/compliance/admin/comm-trigger-rules" element={<ComplianceCommTriggerRulesPage />} />
       <Route path="/compliance/admin/schedule-settings" element={<ComplianceScheduleSettings />} />
       <Route path="/compliance/admin/payment-arrangement-rules" element={<CompliancePaymentArrangementRulesPage />} />
       {/* Risk Scoring aliases — canonical route is /compliance/admin/settings/risk-policy */}
-      <Route path="/compliance/admin/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy" replace />} />
-      <Route path="/compliance/admin/settings/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy" replace />} />
+      <Route path="/compliance/admin/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy?tab=factors" replace />} />
+      <Route path="/compliance/admin/settings/risk-scoring" element={<Navigate to="/compliance/admin/settings/risk-policy?tab=factors" replace />} />
+
 
       {/* Visible-by-default 404 fixes (menu aliases to existing working pages) */}
       <Route path="/compliance/workbench/overview" element={<Navigate to="/compliance/workbench" replace />} />
@@ -1738,10 +1794,10 @@ export const AppRoutes = () => {
 
       {/* Audit Module Routes — Simplified Department Function Audit */}
       <Route path="/audit/dashboard" element={<AuditDashboard />} />
-      <Route path="/audit/departments" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_DEPARTMENT_MASTER"><DepartmentMaster /></AuditFeatureGate>} />
+      <Route path="/audit/departments" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_DEPARTMENT_MASTER"><DepartmentMaster /></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/universe" element={<Navigate to="/audit/departments" replace />} />
       <Route path="/audit/risk-register" element={<Suspense fallback={<div />}><RiskRegister /></Suspense>} />
-      <Route path="/audit/functions" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_FUNCTION_MASTER"><FunctionMaster /></AuditFeatureGate>} />
+      <Route path="/audit/functions" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_FUNCTION_MASTER"><FunctionMaster /></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/department-view/:id" element={<DepartmentView />} />
       <Route path="/audit/risk-assessment" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_RISK_ASSESSMENT"><RiskAssessment /></AuditFeatureGate>} />
       <Route path="/audit/entity-summary" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_RISK_ASSESSMENT"><EntitySummary /></AuditFeatureGate>} />
@@ -1750,23 +1806,33 @@ export const AppRoutes = () => {
       <Route path="/audit/audit-plans/:id" element={<Suspense fallback={<div>Loading...</div>}><AuditPlanDetail /></Suspense>} />
       <Route path="/audit/audits" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_ENGAGEMENTS"><AuditEngagements /></AuditFeatureGate>} />
       <Route path="/audit/audits/:id" element={<EngagementDetail />} />
+      <Route path="/audit/action-centre" element={<Suspense fallback={<div />}><AuditActionCentre /></Suspense>} />
+      <Route path="/audit/escalation-roles" element={<Suspense fallback={<div />}><AuditEscalationRoles /></Suspense>} />
+      <Route path="/audit/action-center" element={<Navigate to="/audit/action-centre" replace />} />
+      <Route path="/audit/actions" element={<Navigate to="/audit/action-centre?tab=register" replace />} />
+      <Route path="/audit/follow-up-tracker" element={<Navigate to="/audit/action-centre?tab=followup" replace />} />
       <Route path="/audit/audit-reports" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_REPORTS"><AuditReports /></AuditFeatureGate>} />
       <Route path="/audit/report-builder" element={<Suspense fallback={<div>Loading...</div>}><AuditReportBuilder /></Suspense>} />
       <Route path="/audit/plan-approval" element={<PlanApproval />} />
-      <Route path="/audit/config" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><AuditConfig /></AuditFeatureGate>} />
+      <Route path="/audit/config" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><AuditConfig /></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/risk-settings" element={<Suspense fallback={<div />}><RiskSettings /></Suspense>} />
-      <Route path="/audit/document-templates" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><Suspense fallback={<div />}><DocumentTemplateSettings /></Suspense></AuditFeatureGate>} />
+      <Route path="/audit/document-templates" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><Suspense fallback={<div />}><DocumentTemplateSettings /></Suspense></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/queries" element={<Suspense fallback={<div />}><AuditQueries /></Suspense>} />
-      <Route path="/audit/auditors" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_AUDITOR_PROFILES"><Suspense fallback={<div />}><AuditorProfiles /></Suspense></AuditFeatureGate>} />
+      <Route path="/audit/auditors" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_AUDITOR_PROFILES"><Suspense fallback={<div />}><AuditorProfiles /></Suspense></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/auditor-profiles" element={<Navigate to="/audit/auditors" replace />} />
       <Route path="/audit/workload" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_WORKLOAD_CAPACITY"><Suspense fallback={<div />}><WorkloadCapacity /></Suspense></AuditFeatureGate>} />
       <Route path="/audit/time-tracking" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_TIME_TRACKING"><Suspense fallback={<div />}><TimeTracking /></Suspense></AuditFeatureGate>} />
       
       <Route path="/audit/leave" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_LEAVE_MANAGEMENT"><Suspense fallback={<div />}><AuditorLeaveManagement /></Suspense></AuditFeatureGate>} />
+      <Route path="/audit/user-manuals" element={<Suspense fallback={<div />}><AuditUserManuals /></Suspense>} />
+      <Route path="/audit/manuals" element={<Navigate to="/audit/user-manuals" replace />} />
+
+
 
       {/* Legacy redirects */}
       <Route path="/audit/engagements" element={<Navigate to="/audit/audits" replace />} />
-      <Route path="/audit/engagements/:id" element={<Navigate to="/audit/audits" replace />} />
+      <Route path="/audit/engagements/:id" element={<AuditEngagementIdRedirect />} />
+
       <Route path="/audit/plans" element={<Navigate to="/audit/audit-plans" replace />} />
       <Route path="/audit/reports" element={<Navigate to="/audit/audit-reports" replace />} />
 
@@ -1776,8 +1842,16 @@ export const AppRoutes = () => {
       <Route path="/registration/approval-workflow" element={<ApprovalWorkflow />} />
       <Route path="/registration/documentation" element={<DocumentationRequirements />} />
 
+      {/* Omni-Comms user inbox */}
+      <Route path="/my-communications" element={<MyCommunications />} />
+
+      {/* Personal task surface (read-only projection) */}
+      <Route path="/my-tasks" element={<MyTasks />} />
+
+
       {/* User Profile & Permissions Routes */}
       <Route path="/profile" element={<MyProfile />} />
+
       <Route path="/profile/change-password" element={<ProfileChangePassword />} />
       <Route path="/profile/notifications" element={<NotificationPreferences />} />
       <Route path="/profile/sessions" element={<ActiveSessions />} />
@@ -1795,6 +1869,7 @@ export const AppRoutes = () => {
       <Route path="/employer/contribution-entry" element={<ContributionEntry />} />
       <Route path="/employer/compliance" element={<ComplianceMonitoring />} />
       <Route path="/employer/contributions" element={<ContributionTracking />} />
+      <Route path="/employer/partial-payment" element={<EmployerPartialPaymentRequest />} />
 
       {/* Insured Persons Routes - Consolidated */}
       <Route path="/person/listing" element={<IPManagement />} />
@@ -2983,6 +3058,7 @@ export const AppRoutes = () => {
       <Route path="/admin/data-access/role-policies" element={<RoleDataPolicies />} />
       <Route path="/admin/data-access/user-overrides" element={<UserDataOverrides />} />
       <Route path="/admin/data-access/test-console" element={<PolicyTestConsole />} />
+      <Route path="/admin/mirror-status" element={<MirrorStatus />} />
 
       {/* System Cleanup & Refactoring */}
       <Route path="/admin/system-cleanup" element={<SystemCleanupDashboard />} />

@@ -192,7 +192,15 @@ async function resolveUserIdentity(): Promise<{ userId: string | null; userCode:
   }
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    // Read identity from the locally-stored session only.
+    //
+    // `supabase.auth.getUser()` calls the auth server on every audited
+    // mutation; when that call fails with an authorization error (expired or
+    // slow token) the auth client clears the session and signs the user out
+    // mid-task. Audit logging must never be able to destroy a session, so the
+    // acting user is taken from the session already held in memory.
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
     if (!user) return { userId: null, userCode: null };
 
     cachedUserId = user.id;
@@ -200,7 +208,7 @@ async function resolveUserIdentity(): Promise<{ userId: string | null; userCode:
       .from('profiles')
       .select('user_code, full_name')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     cachedUserCode = profile?.user_code || null;
     cacheTimestamp = now;
@@ -210,6 +218,7 @@ async function resolveUserIdentity(): Promise<{ userId: string | null; userCode:
     return { userId: cachedUserId, userCode: cachedUserCode };
   }
 }
+
 
 /** Clear cached identity on auth state change */
 export function clearAuditUserCache() {

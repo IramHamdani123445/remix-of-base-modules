@@ -67,9 +67,20 @@ export function resolveSenderForRoute(
     ? snap.providers.find((p) => p.id === account.provider_id && p.status === "active")
     : undefined;
 
-  // Credential-free internal adapters (e.g. the internal print spool) have no
-  // external credential to configure: absence of a secret is NOT a blocker.
-  const CREDENTIAL_FREE_ADAPTERS = new Set(["print_spool"]);
+  // Credential-free adapters have no external credential to configure, so the
+  // absence of a secret is NOT a blocker. Two classes qualify:
+  //  - internal adapters that never leave the platform (print spool, in-app);
+  //  - simulation adapters, which deliberately contact no provider at all.
+  // Every credential-bearing external adapter (resend, twilio, firebase,
+  // outbound_webhook, …) is deliberately absent from this set.
+  const CREDENTIAL_FREE_ADAPTERS = new Set([
+    "print_spool",
+    "internal_in_app",
+    "simulation_email",
+    "simulation_in_app",
+    "simulation_sms",
+  ]);
+
   const credentialFree = provider
     ? CREDENTIAL_FREE_ADAPTERS.has(provider.adapter_key)
     : false;

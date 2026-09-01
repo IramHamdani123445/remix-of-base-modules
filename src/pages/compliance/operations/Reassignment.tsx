@@ -13,16 +13,23 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowRightLeft, UserPlus, AlertTriangle, Inbox } from "lucide-react";
+import { Loader2, ArrowRightLeft, UserPlus, AlertTriangle, Inbox, ListFilter, Search, ArrowDownUp, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBlockingMutation } from "@/hooks/useBlockingMutation";
 import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
 import { useHasCapability } from "@/hooks/useHasCapability";
 import { COMPLIANCE_CAPABILITIES } from "@/lib/compliance/capabilities";
+import { useNavigate } from "react-router-dom";
+import { useComplianceWorkQueue } from "@/hooks/compliance/useComplianceWorkQueue";
+import { WorkQueuePagination, WorkQueueToolbar } from "@/components/compliance/workbench/WorkQueueToolbar";
+import { Badge as UiBadge } from "@/components/ui/badge";
 
 const ACTIVE_STATUSES = ["OPEN", "UNDER_REVIEW", "ESCALATED"] as const;
 const BULK_HARD_CAP = 500;
+
+type WorkloadSort = "load" | "name" | "overdue" | "critical" | "capacity";
+
 
 type ReassignReason = "RESIGNATION" | "TRANSFER" | "SUSPENSION" | "LEAVE" | "PROMOTION" | "MANUAL";
 
@@ -44,6 +51,15 @@ export default function Reassignment() {
 
   const [reassignFrom, setReassignFrom] = useState<InspectorRow | null>(null);
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [workloadSearch, setWorkloadSearch] = useState("");
+  const [workloadSort, setWorkloadSort] = useState<WorkloadSort>("load");
+  const [workloadDir, setWorkloadDir] = useState<"asc" | "desc">("desc");
+  const navigate = useNavigate();
+
+  // Server-side work queue used by the assignable work panel below. Filtering,
+  // sorting and paging happen in the database against the whole authorised set.
+  const wq = useComplianceWorkQueue("assignment", 25);
+
 
   // ---- Data loading -----------------------------------------------------
   const { data, isLoading, refetch } = useQuery({
@@ -165,6 +181,48 @@ export default function Reassignment() {
   const inspectorOptions = data?.inspectorOptions || [];
   const unassignedCount = data?.unassignedCount || 0;
 
+  // Live urgency signals per officer, sourced from the governed work queue.
+  const workloadSignals = useMemo(() => {
+    const m = new Map<string, { overdue: number; critical: number; dueThisWeek: number }>();
+    (wq.workload || []).forEach((w) => {
+      m.set(String(w.owner_id), {
+        overdue: Number(w.overdue || 0),
+        critical: Number(w.critical_high || 0),
+        dueThisWeek: Number(w.due_this_week || 0),
+      });
+    });
+    return m;
+  }, [wq.workload]);
+
+  const utilisation = (w: InspectorRow) =>
+    w.max_caseload && w.max_caseload > 0 ? w.violation_count / w.max_caseload : -1;
+
+  const visibleWorkload = useMemo(() => {
+    const needle = workloadSearch.trim().toLowerCase();
+    const filtered = needle
+      ? rows.filter((r) => r.display_name.toLowerCase().includes(needle) || r.role.toLowerCase().includes(needle))
+      : rows.slice();
+    const factor = workloadDir === "asc" ? 1 : -1;
+    filtered.sort((a, b) => {
+      const sa = workloadSignals.get(a.assignment_key);
+      const sb = workloadSignals.get(b.assignment_key);
+      switch (workloadSort) {
+        case "name":
+          return factor * a.display_name.localeCompare(b.display_name);
+        case "overdue":
+          return factor * ((sa?.overdue || 0) - (sb?.overdue || 0));
+        case "critical":
+          return factor * ((sa?.critical || 0) - (sb?.critical || 0));
+        case "capacity":
+          return factor * (utilisation(a) - utilisation(b));
+        default:
+          return factor * (a.violation_count - b.violation_count);
+      }
+    });
+    return filtered;
+  }, [rows, workloadSearch, workloadSort, workloadDir, workloadSignals]);
+
+
   const getLoadBadge = (w: InspectorRow) => {
     if (w.max_caseload && w.max_caseload > 0) {
       const pct = (w.violation_count / w.max_caseload) * 100;
@@ -181,6 +239,8 @@ export default function Reassignment() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["compliance-reassign-workload"] });
     qc.invalidateQueries({ queryKey: ["ce_violations"] });
+    qc.invalidateQueries({ queryKey: ["ce-work-queue"] });
+
   };
 
   return (
@@ -223,20 +283,145 @@ export default function Reassignment() {
         </CardContent>
       </Card>
 
-      {/* Officer workload */}
+      {/* Assignable work — server-side filtering, sorting and paging */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <ArrowRightLeft className="h-5 w-5" /> Officer Workload ({rows.length})
+            <ListFilter className="h-5 w-5" /> Assignable Work ({wq.total.toLocaleString()})
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Search, filter and sort every open work item across violations, cases, inspections and follow-ups.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <WorkQueueToolbar
+            filters={wq.filters}
+            options={wq.options}
+            sort={wq.sort}
+            dir={wq.dir}
+            activeFilterCount={wq.activeFilterCount}
+            total={wq.total}
+            grandTotal={wq.grandTotal}
+            scope={wq.scope}
+            onPatch={wq.patchFilters}
+            onReset={wq.resetFilters}
+            onSort={wq.changeSort}
+            onToggleDir={wq.toggleDir}
+          />
+
+          {wq.error ? (
+            <p className="py-6 text-center text-sm text-destructive">
+              Work queue unavailable — {wq.error.message}
+            </p>
+          ) : wq.isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : wq.rows.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">No work matches the selected filters</p>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Work type</TableHead>
+                    <TableHead>Employer</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Age</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {wq.rows.map((r) => (
+                    <TableRow key={`${r.work_type}-${r.record_id}`}>
+                      <TableCell className="font-mono text-sm">{r.record_ref || "—"}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">{r.work_type}</div>
+                        <div className="text-xs text-muted-foreground">{r.status}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{r.employer_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{r.employer_id}</div>
+                      </TableCell>
+                      <TableCell>
+                        <UiBadge variant={r.priority_rank === 1 ? "destructive" : r.priority_rank === 2 ? "default" : "secondary"}>
+                          {r.priority || "—"}
+                        </UiBadge>
+                      </TableCell>
+                      <TableCell className={r.overdue ? "font-medium text-destructive" : ""}>
+                        {r.due_date || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {r.owner_name || (r.unassigned ? <UiBadge variant="outline">Unassigned</UiBadge> : "—")}
+                      </TableCell>
+                      <TableCell>{r.age_hours != null ? `${Math.round(r.age_hours / 24)}d` : "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate(r.route)}>
+                          <Eye className="h-3 w-3" /> Open
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <WorkQueuePagination
+                page={wq.page}
+                totalPages={wq.totalPages}
+                pageSize={wq.pageSize}
+                total={wq.total}
+                onPage={wq.setPage}
+                onPageSize={wq.setPageSize}
+                isFetching={wq.isFetching}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Officer workload */}
+      <Card>
+        <CardHeader className="space-y-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ArrowRightLeft className="h-5 w-5" /> Officer Workload ({visibleWorkload.length} of {rows.length})
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={workloadSearch}
+                onChange={(e) => setWorkloadSearch(e.target.value)}
+                placeholder="Search officer or role"
+                className="pl-8"
+              />
+            </div>
+            <Select value={workloadSort} onValueChange={(v) => setWorkloadSort(v as WorkloadSort)}>
+              <SelectTrigger className="w-[210px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="load">Active violations</SelectItem>
+                <SelectItem value="capacity">Capacity utilisation</SelectItem>
+                <SelectItem value="overdue">Overdue work</SelectItem>
+                <SelectItem value="critical">Critical / high work</SelectItem>
+                <SelectItem value="name">Officer name</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setWorkloadDir((d) => (d === "asc" ? "desc" : "asc"))}
+              title={workloadDir === "asc" ? "Ascending" : "Descending"}
+            >
+              <ArrowDownUp className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : rows.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No active officers found</p>
+          ) : visibleWorkload.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No officers match the current search</p>
           ) : (
             <Table>
               <TableHeader>
@@ -245,13 +430,15 @@ export default function Reassignment() {
                   <TableHead>Role</TableHead>
                   <TableHead>Queues</TableHead>
                   <TableHead>Active Violations</TableHead>
+                  <TableHead>Overdue</TableHead>
+                  <TableHead>Critical / High</TableHead>
                   <TableHead>Max Caseload</TableHead>
                   <TableHead>Load</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((w) => (
+                {visibleWorkload.map((w) => (
                   <TableRow key={w.assignment_key}>
                     <TableCell className="font-medium">{w.display_name}</TableCell>
                     <TableCell>
@@ -259,8 +446,13 @@ export default function Reassignment() {
                     </TableCell>
                     <TableCell>{w.queue_count}</TableCell>
                     <TableCell>{w.violation_count}</TableCell>
+                    <TableCell className={(workloadSignals.get(w.assignment_key)?.overdue || 0) > 0 ? "font-medium text-destructive" : ""}>
+                      {workloadSignals.get(w.assignment_key)?.overdue ?? "—"}
+                    </TableCell>
+                    <TableCell>{workloadSignals.get(w.assignment_key)?.critical ?? "—"}</TableCell>
                     <TableCell>{w.max_caseload ?? "—"}</TableCell>
                     <TableCell>{getLoadBadge(w)}</TableCell>
+
                     <TableCell className="text-right">
                       <Button
                         variant="outline"
@@ -409,88 +601,23 @@ function ReassignDialog({
         if (!notes.trim()) throw new Error("Notes are required");
         if (!target) throw new Error("Invalid target");
 
-        const userCode =
-          user?.user_metadata?.user_code || user?.email || "system";
-
-        // Fetch violation IDs to move
-        let q = supabase
-          .from("ce_violations")
-          .select("id")
-          .eq("assigned_to_user_id", from.assignment_key)
-          .in("status", ACTIVE_STATUSES as unknown as string[]);
-        if (count > 0) q = q.limit(count);
-        const { data: viols, error: selErr } = await q;
-        if (selErr) throw selErr;
-        if (!viols?.length) throw new Error("No active violations to move");
-
-        const ids = viols.map((v: any) => v.id);
-        const nowIso = new Date().toISOString();
-
-        // Supersede prior current assignments for these violations
-        await supabase
-          .from("ce_violation_assignments")
-          .update({ is_current: false, superseded_at: nowIso })
-          .in("violation_id", ids)
-          .eq("is_current", true);
-
-        // Insert new assignment rows
-        const inserts = ids.map((vid) => ({
-          violation_id: vid,
-          assigned_to_inspector_id: target.inspector_id,
-          assignment_type: "REASSIGN",
-          assigned_by: userCode,
-          reassignment_reason: reason,
-          reassigned_from_inspector_id: from.inspector_id,
-          resolution_method: "MANUAL",
-          is_current: true,
-          assigned_at: nowIso,
-          notes: notes,
-        }));
-        const { error: insErr } = await supabase.from("ce_violation_assignments").insert(inserts);
-        if (insErr) throw insErr;
-
-        // Update violation header
-        const { error: updErr } = await supabase
-          .from("ce_violations")
-          .update({
-            assigned_to_user_id: target.assignment_key,
-            assigned_to_name: target.label,
-            assigned_at: nowIso,
-            assignment_method: "MANUAL",
-          } as any)
-          .in("id", ids);
-        if (updErr) throw updErr;
-
-        // Per-violation history
-        const history = ids.map((vid) => ({
-          violation_id: vid,
-          change_type: "REASSIGNED",
-          changed_by: userCode,
-          changed_by_name: user?.user_metadata?.full_name || user?.email || "System",
-          change_reason: notes,
-          new_value: target.label,
-          old_value: from.display_name,
-        } as any));
-        await supabase.from("ce_violation_history").insert(history);
-
-        // Summary audit row (best-effort)
-        await supabase.from("ce_audit_log").insert({
-          entity_type: "VIOLATION",
-          entity_id: ids[0], // anchor
-          action: "BULK_REASSIGN",
-          description: `Reassigned ${ids.length} violation(s) from ${from.display_name} to ${target.label}`,
-          new_values: {
-            from: from.display_name,
-            to: target.label,
-            count: ids.length,
-            reason,
-          },
-          performed_by: userCode,
-          reason: notes,
-        } as any);
-
-        return ids.length;
+        // Governed server-side command (Checkpoint F-S1). The database verifies the
+        // caller's compliance.violations.manage capability, validates the target
+        // officer, supersedes the prior assignments and writes history + audit
+        // atomically. Browser clients can no longer write assignment rows directly.
+        const { data, error } = await (supabase.rpc as any)("ce_violation_bulk_reassign_v1", {
+          p_from_assignment_key: from.assignment_key,
+          p_target_inspector_id: target.inspector_id,
+          p_reason: reason,
+          p_notes: notes,
+          p_limit: count > 0 ? count : 0,
+        });
+        if (error) throw error;
+        const moved = Number(data ?? 0);
+        if (moved === 0) throw new Error("No active violations to move");
+        return moved;
       },
+
       onSuccess: (n) => {
         toast.success(`${n} violation${n === 1 ? "" : "s"} reassigned`);
         onDone();
@@ -636,68 +763,21 @@ function BulkAssignDialog({
         if (!notes.trim()) throw new Error("Notes are required");
         if (effectiveCount <= 0) throw new Error("Nothing to assign");
 
-        const userCode =
-          user?.user_metadata?.user_code || user?.email || "system";
-
-        const { data: viols, error: selErr } = await supabase
-          .from("ce_violations")
-          .select("id")
-          .in("status", ACTIVE_STATUSES as unknown as string[])
-          .is("assigned_to_user_id", null)
-          .limit(effectiveCount);
-        if (selErr) throw selErr;
-        if (!viols?.length) throw new Error("No unassigned violations found");
-
-        const ids = viols.map((v: any) => v.id);
-        const nowIso = new Date().toISOString();
-
-        const inserts = ids.map((vid) => ({
-          violation_id: vid,
-          assigned_to_inspector_id: target.inspector_id,
-          assignment_type: "MANUAL",
-          assigned_by: userCode,
-          resolution_method: "MANUAL",
-          is_current: true,
-          assigned_at: nowIso,
-          notes,
-        }));
-        const { error: insErr } = await supabase.from("ce_violation_assignments").insert(inserts);
-        if (insErr) throw insErr;
-
-        const { error: updErr } = await supabase
-          .from("ce_violations")
-          .update({
-            assigned_to_user_id: target.assignment_key,
-            assigned_to_name: target.label,
-            assigned_at: nowIso,
-            assignment_method: "MANUAL_BULK",
-          } as any)
-          .in("id", ids);
-        if (updErr) throw updErr;
-
-        const history = ids.map((vid) => ({
-          violation_id: vid,
-          change_type: "ASSIGNED",
-          changed_by: userCode,
-          changed_by_name: user?.user_metadata?.full_name || user?.email || "System",
-          change_reason: notes,
-          new_value: target.label,
-          old_value: null,
-        } as any));
-        await supabase.from("ce_violation_history").insert(history);
-
-        await supabase.from("ce_audit_log").insert({
-          entity_type: "VIOLATION",
-          entity_id: ids[0],
-          action: "BULK_ASSIGN",
-          description: `Bulk assigned ${ids.length} unassigned violation(s) to ${target.label}`,
-          new_values: { to: target.label, count: ids.length },
-          performed_by: userCode,
-          reason: notes,
-        } as any);
-
-        return ids.length;
+        // Governed server-side command (Checkpoint F-S1).
+        const { data, error } = await (supabase.rpc as any)(
+          "ce_violation_bulk_assign_unassigned_v1",
+          {
+            p_target_inspector_id: target.inspector_id,
+            p_notes: notes,
+            p_limit: effectiveCount,
+          },
+        );
+        if (error) throw error;
+        const assigned = Number(data ?? 0);
+        if (assigned === 0) throw new Error("No unassigned violations found");
+        return assigned;
       },
+
       onSuccess: (n) => {
         toast.success(`${n} violation${n === 1 ? "" : "s"} assigned`);
         onDone();
