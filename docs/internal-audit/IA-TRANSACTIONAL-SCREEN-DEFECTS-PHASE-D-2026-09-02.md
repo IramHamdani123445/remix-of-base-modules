@@ -14,6 +14,7 @@ All defects below were found by executing real business transactions with real p
 | DEF-D-006 | Critical | Annual Plan → Submission | No annual plan could be submitted for approval: the approval workflow routing table was empty and had no configuration surface. | The entire annual plan approval lifecycle (submit → review → approve → revise) was unusable. | **Fixed** — plan approval and plan revision workflows registered against their events. | D-C-015, D-C-021, D-C-022 |
 | DEF-D-007 | High | Annual Plan → Revision | Revising an approved plan always failed (amendment history written to non-existent columns, and current values could not be read). | Approved plans could never be amended; no amendment audit trail. | **Fixed** — amendment history records changed field, old/new value, reason, requester and material/administrative classification; material changes correctly re-enter approval. | D-C-026, D-C-027 |
 | DEF-D-008 | High (security) | Annual Plan → Plan Header | Any signed-in business user, including auditee management outside Internal Audit, could create an annual audit plan header, and the preparer name was taken from the request rather than the session. | Unauthorised creation of statutory plans; unreliable preparer attribution, undermining segregation of duties on approval. | **Fixed** — creation requires audit-plan create/edit capability; preparer derived from the signed-in user; creation event logged. | D-C-001, D-C-002 |
+| DEF-D-009 | Medium | Findings / Working Papers | Finding numbers and working paper references were generated in the browser from the clock (`FND-<timestamp>`), against a strict uniqueness rule in the database. Two auditors saving at the same moment — or any save where the field was left blank — produced a hard database error instead of a saved record. | Lost work during fieldwork; non-sequential, unauditable reference numbering. | **Fixed** — references are now issued by the system in a guaranteed-unique yearly sequence (FND-2026-00025, WP-2026-00021) when the user does not supply one; user-entered references are still respected. | D-D-007, D-D-011 |
 
 ## Governance behaviours confirmed (no defect)
 
@@ -23,3 +24,18 @@ All defects below were found by executing real business transactions with real p
 - Mandatory reason enforced on return/reject (D-C-018) and on plan revision.
 - Status-driven locking holds in both directions: portfolio frozen on submission and after approval (D-C-016, D-C-024), editable again after a return (D-C-020).
 - Invalid transitions rejected with a business-readable message (D-C-023).
+
+## Part D — engagement execution, findings, response, report and closure
+
+Additional governance behaviours proven in Part D (no defect):
+
+- An audit cannot be launched unless its parent plan is approved and the engagement is complete (title, department, function, lead auditor, dates, objectives, scope, auditee contact); relaunch is refused.
+- Once an audit is launched, the annual plan portfolio can no longer be edited around it.
+- Working paper edits are lossless, and reviewer sign-off is captured with reviewer and date.
+- Finding lifecycle is strictly ordered (Draft → Under Review → Confirmed → Released → Responded → Closed); skipping states is refused, the author cannot confirm their own finding, and a finding cannot be released without a recommendation or without a resolvable department head to receive it.
+- Severity changes require a reason and are recorded.
+- Management responses require a rationale when a finding is rejected or partially accepted, and an action plan when accepted; only the responsible department can respond.
+- Response review is versioned: returning a response for revision, resubmission as a new version, refusal to review a superseded version, and final acceptance all behave correctly, and the response author cannot review their own response.
+- Report issuance is gated on evidence, working papers, management responses, draft-finding discussion and exit meeting having taken place; issued report versions cannot be altered or deleted.
+- Audit closure is gated on report issuance and quality-review clearance, rejects invalid dispositions, refuses to fully close while actions remain open, and cannot be repeated.
+- The engagement execution log records launch and closure with old status, new status and actor.
