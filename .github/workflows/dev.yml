@@ -1,0 +1,56 @@
+name: Dev Deployment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------
+      # 1. Checkout development branch
+      # --------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: development
+
+      # --------------------------------
+      # 2. Setup Node.js
+      # --------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      # --------------------------------
+      # 3. Install dependencies
+      # --------------------------------
+      - name: Install dependencies
+        run: npm ci
+
+      # --------------------------------
+      # 4. Build React application
+      # --------------------------------
+      - name: Build React application
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      # --------------------------------
+      # 5. Deploy frontend to FTP
+      # --------------------------------
+      - name: Deploy frontend to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: /social-serve.digitalnoticeboard.biz/
