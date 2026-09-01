@@ -20,6 +20,7 @@
  * Approval here does NOT directly issue payment — it marks APPROVE_READY.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 import type { BnClaim, BnProduct, BnProductVersion, BnClaimDecision } from '@/types/bn';
 import type { BnCalcEngineOutput } from '@/types/bnCalcEngine';
 
@@ -525,6 +526,11 @@ export async function executeDeterminationAction(params: ExecuteDeterminationPar
       .eq('id', claimId);
 
     if (updateErr) throw updateErr;
+
+    // The new stage owns the claim now — move it to that stage's workbasket.
+    await routeClaimAfterStatusChange(claimId, performedBy);
+
+
 
     // Create decision record
     await db.from('bn_claim_decision').insert({
