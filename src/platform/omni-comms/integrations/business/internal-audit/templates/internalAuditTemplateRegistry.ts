@@ -16,6 +16,13 @@ import {
   internalAuditTokens,
   type IaCommunicationEntry,
 } from '../internalAuditCommunicationCatalogue';
+import {
+  IA_ORGANISATION_NAME,
+  IA_UNIT_NAME,
+  internalAuditEmailContent,
+  internalAuditPriorityLabel,
+  internalAuditSectionPath,
+} from './internalAuditEmailContent';
 
 /** Value used when the business layer has no value for a declared token. */
 export const IA_TOKEN_PLACEHOLDER = 'Not stated';
@@ -68,47 +75,118 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
+/** Internal Audit workspace base, used for the section-level call to action. */
+const IA_WORKSPACE_BASE = 'https://internalaudit.secureserve.biz';
+
+const CONFIDENTIALITY =
+  'This communication is issued by the Internal Audit Unit and is intended solely for the named recipient. ' +
+  'Its contents are confidential and must not be forwarded or reproduced without the authorisation of the Head of Internal Audit.';
+
+const NO_REPLY =
+  'This message was generated automatically by the Internal Audit system. Please do not reply to this address — ' +
+  'respond through the Internal Audit workspace so that your response is recorded on the audit file.';
+
 export function composeIaEmail(entry: IaCommunicationEntry): ComposedIaEmail {
-  const factLines = entry.facts.map((fact) => `${factLabel(fact)}: ${token(fact)}`);
+  const content = internalAuditEmailContent(entry);
+  const priority = internalAuditPriorityLabel(entry);
+  const link = `${IA_WORKSPACE_BASE}${internalAuditSectionPath(entry)}`;
+  const actionLine = content.actionRequired;
+
+  // ── Plain-text variant ────────────────────────────────────────────────
   const text = [
+    `${IA_ORGANISATION_NAME}`,
+    `${IA_UNIT_NAME} — ${content.category} (${priority})`,
+    '',
     `Dear ${token('subjectName')},`,
     '',
-    entry.lead,
+    content.purpose,
     '',
-    ...factLines,
+    'DETAILS',
+    ...entry.facts.map((fact) => `- ${factLabel(fact)}: ${token(fact)}`),
+    `- Audit reference: ${token('reference')}`,
     '',
-    `Reference: ${token('reference')}`,
+    ...(actionLine ? ['ACTION REQUIRED', actionLine, ''] : []),
+    'WHAT HAPPENS NEXT',
+    ...content.nextSteps.map((step, i) => `${i + 1}. ${step}`),
     '',
-    'This message was issued by the Internal Audit unit of the',
-    'St. Kitts & Nevis Social Security Board.',
+    `${content.ctaLabel}: ${link}`,
+    '',
+    NO_REPLY,
+    '',
+    CONFIDENTIALITY,
+    '',
+    `${IA_UNIT_NAME}, ${IA_ORGANISATION_NAME}`,
   ].join('\n');
 
-  const html = [
-    `<p>Dear ${token('subjectName')},</p>`,
-    `<p>${escapeHtml(entry.lead)}</p>`,
-    '<table role="presentation" cellpadding="6" cellspacing="0">',
+  // ── HTML variant (table-based, inline styles, email-client safe) ───────
+  const detailRows = [
     ...entry.facts.map(
       (fact) =>
-        `<tr><td><strong>${escapeHtml(factLabel(fact))}</strong></td><td>${token(fact)}</td></tr>`,
+        `<tr><td style="padding:8px 12px;border-bottom:1px solid #e6e8ec;font-size:13px;color:#5b6472;width:38%;">${escapeHtml(
+          factLabel(fact),
+        )}</td><td style="padding:8px 12px;border-bottom:1px solid #e6e8ec;font-size:13px;color:#101828;font-weight:600;">${token(
+          fact,
+        )}</td></tr>`,
     ),
-    `<tr><td><strong>Reference</strong></td><td>${token('reference')}</td></tr>`,
+    `<tr><td style="padding:8px 12px;font-size:13px;color:#5b6472;">Audit reference</td><td style="padding:8px 12px;font-size:13px;color:#101828;font-weight:600;">${token(
+      'reference',
+    )}</td></tr>`,
+  ];
+
+  const html = [
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 0;font-family:Georgia,\'Times New Roman\',serif;">',
+    '<tr><td align="center">',
+    '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border:1px solid #dfe3e8;">',
+    // Header band
+    '<tr><td style="background:#0b3d2c;padding:20px 24px;">',
+    `<div style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:0.3px;">${escapeHtml(IA_ORGANISATION_NAME)}</div>`,
+    `<div style="color:#bcd8cc;font-size:12px;margin-top:4px;text-transform:uppercase;letter-spacing:1px;">${escapeHtml(IA_UNIT_NAME)} &middot; ${escapeHtml(content.category)} &middot; ${escapeHtml(priority)}</div>`,
+    '</td></tr>',
+    // Body
+    '<tr><td style="padding:24px;font-family:Arial,Helvetica,sans-serif;">',
+    `<p style="margin:0 0 14px;font-size:14px;color:#101828;">Dear ${token('subjectName')},</p>`,
+    `<p style="margin:0 0 18px;font-size:14px;line-height:22px;color:#344054;">${escapeHtml(content.purpose)}</p>`,
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e8ec;border-collapse:collapse;margin:0 0 18px;">',
+    ...detailRows,
     '</table>',
-    '<p>This message was issued by the Internal Audit unit of the St. Kitts &amp; Nevis Social Security Board.</p>',
+    ...(actionLine
+      ? [
+          '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="border-left:4px solid #b54708;background:#fffaeb;padding:12px 14px;">',
+          '<div style="font-size:12px;font-weight:700;color:#b54708;text-transform:uppercase;letter-spacing:0.6px;">Action required</div>',
+          `<div style="font-size:14px;line-height:21px;color:#41300a;margin-top:6px;">${escapeHtml(actionLine)}</div>`,
+          '</td></tr></table>',
+        ]
+      : []),
+    '<div style="font-size:12px;font-weight:700;color:#0b3d2c;text-transform:uppercase;letter-spacing:0.6px;margin:0 0 8px;">What happens next</div>',
+    '<ol style="margin:0 0 20px;padding-left:20px;font-size:14px;line-height:22px;color:#344054;">',
+    ...content.nextSteps.map((step) => `<li>${escapeHtml(step)}</li>`),
+    '</ol>',
+    `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#0b3d2c;padding:11px 22px;"><a href="${link}" style="color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;">${escapeHtml(content.ctaLabel)}</a></td></tr></table>`,
+    `<p style="margin:18px 0 0;font-size:12px;line-height:19px;color:#667085;">${escapeHtml(NO_REPLY)}</p>`,
+    '</td></tr>',
+    // Footer
+    '<tr><td style="background:#f8f9fa;border-top:1px solid #e6e8ec;padding:16px 24px;font-family:Arial,Helvetica,sans-serif;">',
+    `<p style="margin:0 0 8px;font-size:11px;line-height:17px;color:#667085;">${escapeHtml(CONFIDENTIALITY)}</p>`,
+    `<p style="margin:0;font-size:11px;color:#98a2b3;">${escapeHtml(IA_UNIT_NAME)}, ${escapeHtml(IA_ORGANISATION_NAME)}</p>`,
+    '</td></tr>',
+    '</table></td></tr></table>',
   ].join('\n');
 
-  return { subject: entry.headline, text, html };
+  const subjectPrefix = content.actionRequired ? 'Action required' : 'Internal Audit';
+  return { subject: `[${subjectPrefix}] ${entry.headline}`, text, html };
 }
 
 export function composeIaInApp(entry: IaCommunicationEntry): ComposedIaInApp {
+  const content = internalAuditEmailContent(entry);
   const primaryFact = entry.facts[0];
-  const detail = primaryFact
-    ? ` ${factLabel(primaryFact)}: ${token(primaryFact)}.`
-    : '';
+  const detail = primaryFact ? ` ${factLabel(primaryFact)}: ${token(primaryFact)}.` : '';
+  const action = content.actionRequired ? ` Action required: ${content.actionRequired}` : '';
   return {
     title: entry.headline,
-    body: `${entry.lead}${detail} Reference ${token('reference')}.`,
+    body: `${entry.lead}${detail} Reference ${token('reference')}.${action}`,
   };
 }
+
 
 /** Plausible sample values so the published contract is reviewable. */
 const SAMPLE_VALUES: Record<string, string> = {
@@ -244,4 +322,22 @@ export function buildInternalAuditPayload(
     payload[name] = text;
   }
   return payload;
+}
+
+/**
+ * Declared tokens for which the business layer supplied no value.
+ *
+ * A professional audit communication must never render "Not stated" in place
+ * of a business fact, so the producer blocks emission when this is non-empty.
+ */
+export function missingInternalAuditFacts(
+  eventCode: string,
+  values: Record<string, unknown>,
+): string[] {
+  const entry = internalAuditEntry(eventCode);
+  if (!entry) return [];
+  return internalAuditTokens(entry).filter((name) => {
+    const raw = values?.[name];
+    return raw === null || raw === undefined || String(raw).trim() === '';
+  });
 }
