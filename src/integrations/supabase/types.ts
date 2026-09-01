@@ -42314,6 +42314,45 @@ export type Database = {
           },
         ]
       }
+      ce_legal_proceeding_ref: {
+        Row: {
+          aliases: string[]
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          group_code: string | null
+          id: string
+          is_active: boolean
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          group_code?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          group_code?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_legal_proceedings: {
         Row: {
           arrears: number | null
@@ -117428,6 +117467,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_legal_proceeding_register: {
+        Row: {
+          accepted_date: string | null
+          ce_case_id: string | null
+          ce_case_number: string | null
+          court_case_no: string | null
+          court_code: string | null
+          court_name: string | null
+          employer_id: string | null
+          employer_name: string | null
+          employer_zone: string | null
+          enforcement_count: number | null
+          filed_date: string | null
+          hearing_count: number | null
+          is_closed: boolean | null
+          judgment_amount: number | null
+          judgment_date: string | null
+          judgment_extras: number | null
+          last_enforcement_date: string | null
+          last_hearing_date: string | null
+          last_hearing_outcome: string | null
+          last_legal_update: string | null
+          last_stage_change: string | null
+          legal_officer: string | null
+          lg_case_id: string | null
+          lg_case_no: string | null
+          lg_intake_id: string | null
+          lg_intake_no: string | null
+          next_action: string | null
+          next_action_due: string | null
+          next_hearing_date: string | null
+          next_hearing_source: string | null
+          opened_date: string | null
+          outcome_code: string | null
+          outstanding_amount: number | null
+          payment_arrangement_id: string | null
+          proceeding_no: string | null
+          recovered_amount: number | null
+          recovery_status_code: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_status: string | null
+          referral_updated_at: string | null
+          referred_amount: number | null
+          row_key: string | null
+          source: string | null
+          stage_code: string | null
+          submitted_date: string | null
+        }
+        Relationships: []
+      }
       ce_v_officer_performance: {
         Row: {
           active_count: number | null
@@ -124996,6 +125086,21 @@ export type Database = {
       }
       ce_is_trusted_session: { Args: never; Returns: boolean }
       ce_ledger_settlement_order: { Args: never; Returns: string[] }
+      ce_legal_proceeding_detail_v1: {
+        Args: { p_row_key: string }
+        Returns: Json
+      }
+      ce_legal_proceeding_facets_v1: { Args: never; Returns: Json }
+      ce_legal_proceeding_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_legal_referral_approve_v1: {
         Args: { p_notes?: string; p_referral_id: string }
         Returns: Json
