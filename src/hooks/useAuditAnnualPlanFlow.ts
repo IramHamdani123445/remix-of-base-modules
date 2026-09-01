@@ -5,31 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserCode } from '@/hooks/useUserCode';
 import { notifyPlanSubmitted, notifyTeamConflict } from '@/services/iaNotificationService';
 
-type AnnualPlanEngagementRecord = {
-  id: string;
-  annual_plan_id: string | null;
-  department_id?: string | null;
-  function_id?: string | null;
-  lead_auditor_id?: string | null;
-  planned_start_date?: string | null;
-  quarter?: string | null;
-  estimated_days?: number | null;
-  estimated_hours?: number | null;
-  is_active?: boolean | null;
-};
-
-const ANNUAL_PLAN_ENGAGEMENT_SELECT = [
-  'id',
-  'annual_plan_id',
-  'department_id',
-  'function_id',
-  'lead_auditor_id',
-  'planned_start_date',
-  'quarter',
-  'estimated_days',
-  'estimated_hours',
-  'is_active',
-].join(', ');
 
 export interface AnnualPlanReadinessCheck {
   label: string;
