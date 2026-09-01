@@ -48386,10 +48386,59 @@ export type Database = {
             foreignKeyName: "ce_waiver_decisions_waiver_id_fkey"
             columns: ["waiver_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["waiver_id"]
+          },
+          {
+            foreignKeyName: "ce_waiver_decisions_waiver_id_fkey"
+            columns: ["waiver_id"]
+            isOneToOne: false
             referencedRelation: "ce_waivers"
             referencedColumns: ["id"]
           },
         ]
+      }
+      ce_waiver_ref: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          sort_order: number
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       ce_waiver_rules: {
         Row: {
@@ -63091,6 +63140,13 @@ export type Database = {
             foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "er_master"
             referencedColumns: ["regno"]
           },
@@ -63197,6 +63253,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_plan_employer_facts"
             referencedColumns: ["employer_id"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
@@ -63382,6 +63445,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_plan_employer_facts"
             referencedColumns: ["employer_id"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
@@ -63917,6 +63987,13 @@ export type Database = {
             foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "er_master"
             referencedColumns: ["regno"]
           },
@@ -64042,6 +64119,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_plan_employer_facts"
             referencedColumns: ["employer_id"]
+          },
+          {
+            foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
@@ -118473,6 +118557,130 @@ export type Database = {
           },
         ]
       }
+      ce_v_waiver_register: {
+        Row: {
+          amount_approved: number | null
+          amount_difference: number | null
+          amount_requested: number | null
+          applied_at: string | null
+          approved_at: string | null
+          approved_pct: number | null
+          approver_comments: string | null
+          approver_id: string | null
+          approver_name: string | null
+          case_id: string | null
+          case_interest: number | null
+          case_number: string | null
+          case_outstanding: number | null
+          case_paid: number | null
+          case_penalties: number | null
+          case_principal: number | null
+          case_status: string | null
+          case_total: number | null
+          case_waived: number | null
+          component_code: string | null
+          component_label: string | null
+          created_at: string | null
+          decided_at: string | null
+          document_count: number | null
+          employer_id: string | null
+          employer_name: string | null
+          justification: string | null
+          prior_amount: number | null
+          prior_count: number | null
+          reason_code: string | null
+          regno: string | null
+          rejected_reason: string | null
+          requested_at: string | null
+          requested_by: string | null
+          requested_by_name: string | null
+          rule_amount_threshold: number | null
+          rule_cap_amount: number | null
+          rule_code: string | null
+          rule_enabled: boolean | null
+          rule_escalated_role: string | null
+          rule_max_percentage: number | null
+          rule_name: string | null
+          rule_required_role: string | null
+          rule_snapshot: Json | null
+          scope_code: string | null
+          scope_label: string | null
+          source_code: string | null
+          source_label: string | null
+          status_code: string | null
+          status_label: string | null
+          status_raw: string | null
+          status_tone: string | null
+          supporting_documents: Json | null
+          updated_at: string | null
+          violation_id: string | null
+          violation_interest: number | null
+          violation_number: string | null
+          violation_penalty: number | null
+          violation_principal: number | null
+          violation_status: string | null
+          violation_total: number | null
+          violation_type: string | null
+          waiting_days: number | null
+          waiting_hours: number | null
+          waiver_id: string | null
+          waiver_number: string | null
+          waiver_rule_id: string | null
+          waiver_type_raw: string | null
+          workflow_definition_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_waiver_rule_id_fkey"
+            columns: ["waiver_rule_id"]
+            isOneToOne: false
+            referencedRelation: "ce_waiver_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_v_weekly_plan_candidates: {
         Row: {
           assigned_to_user_id: string | null
@@ -126457,6 +126665,7 @@ export type Database = {
         }
         Returns: string
       }
+      ce_waiver_component_code: { Args: { p_type: string }; Returns: string }
       ce_waiver_deny: {
         Args: {
           p_code: string
@@ -126466,7 +126675,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      ce_waiver_detail_v1: { Args: { p_waiver_id: string }; Returns: Json }
+      ce_waiver_facets_v1: { Args: never; Returns: Json }
+      ce_waiver_register_v1: { Args: { p_params?: Json }; Returns: Json }
       ce_waiver_role_capability: { Args: { p_role: string }; Returns: string }
+      ce_waiver_scope_code: {
+        Args: { p_approved: number; p_requested: number; p_type: string }
+        Returns: string
+      }
+      ce_waiver_setting: {
+        Args: { p_code: string; p_default: number }
+        Returns: number
+      }
+      ce_waiver_status_canonical: {
+        Args: { p_status: string }
+        Returns: string
+      }
       ce_work_queue_v1: {
         Args: {
           p_dir?: string
