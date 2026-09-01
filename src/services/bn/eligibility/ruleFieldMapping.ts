@@ -32,6 +32,18 @@ export interface EvaluableRule {
   rule_definition?: Record<string, unknown> | null;
   /** Document this rule asserts, when the rule names one directly (BUG-46). */
   document_type_code?: string | null;
+  /**
+   * Typed rule-kind fields — only DATE_DIFFERENCE and FACT_TO_FACT rules read
+   * these here; every other kind still resolves through `fact_key` above.
+   * Kept optional so every existing caller (tests included) is unaffected.
+   */
+  rule_kind?: string | null;
+  start_fact_key?: string | null;
+  end_fact_key?: string | null;
+  fallback_end_fact_key?: string | null;
+  compare_fact_key?: string | null;
+  unit?: string | null;
+  message_template?: string | null;
 }
 
 export type RuleKeySource = 'field_key' | 'fact_key' | 'definition_fact' | 'alias' | 'none';

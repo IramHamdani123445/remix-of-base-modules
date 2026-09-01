@@ -32,6 +32,7 @@ import { type EligibilityOperator } from './fieldRegistry';
 import { resolveField, type FieldResolutionContext } from './fieldResolver';
 import { evaluateOperator } from './operatorEvaluator';
 import { resolveFact } from './eligibilityFactResolver';
+import { convertDays } from './ruleEvaluator';
 import {
   renderRuleMessage,
   type MessageContext,
@@ -243,17 +244,206 @@ function unevaluated(
   };
 }
 
+function factCtxFor(ctx: FieldResolutionContext) {
+  return {
+    ssn: ctx.ssn,
+    claimId: ctx.claimId ?? null,
+    claimDate: ctx.claimDate,
+    productCode: ctx.benefitType ?? null,
+    employerRegno: ctx.employerRegNo ?? null,
+  };
+}
+
+/**
+ * DATE_DIFFERENCE rules assert diff(start_fact, end_fact ?? fallback) <op>
+ * value(unit) — two facts, not one, so they cannot go through the generic
+ * single field_key/value path below. Only reached when the rule declares no
+ * plain `fact_key` (see the guard at the call site); rules that model the
+ * same requirement via one precomputed derived fact (e.g.
+ * CLAIM_SUBMITTED_WITHIN_DAYS -> claim.days_since_event) already work through
+ * the generic path and must keep doing so unchanged.
+ */
+async function evaluateDateDifferenceRule(
+  rule: EvaluableRule,
+  ctx: FieldResolutionContext,
+  def: Record<string, unknown>,
+  informational: boolean,
+  msgCtx: MessageContext,
+): Promise<EligibilityRuleTrace> {
+  const start = rule.start_fact_key!;
+  const end = rule.end_fact_key ?? null;
+  const fallback = rule.fallback_end_fact_key ?? null;
+  const operator = normaliseOperator(def.operator, '<=');
+  const expected = def.value;
+  const fieldKey = `${start} → ${end ?? fallback ?? '?'}`;
+  msgCtx = { ...msgCtx, operator, expected };
+
+  if (expected === undefined || expected === null) {
+    return unevaluated(rule, fieldKey, 'fact_key', `no comparable value declared for ${rule.rule_name}`, msgCtx, { operator });
+  }
+
+  try {
+    const factCtx = factCtxFor(ctx);
+    const sR = await resolveFact(start, factCtx);
+    const source = `${sR.source_table}.${sR.source_column}`;
+    if (sR.value === null || sR.value === undefined) {
+      return unevaluated(rule, fieldKey, 'fact_key', sR.reason ?? `${start} is not available for this claimant`, msgCtx, { operator, expected_value: expected, source });
+    }
+
+    let endVal: unknown = null;
+    let endResolverKey = end;
+    if (end) {
+      const eR = await resolveFact(end, factCtx);
+      endVal = eR.value;
+      if ((endVal === null || endVal === undefined) && fallback) {
+        const fR = await resolveFact(fallback, factCtx);
+        endVal = fR.value;
+        endResolverKey = fallback;
+      }
+    } else if (fallback) {
+      const fR = await resolveFact(fallback, factCtx);
+      endVal = fR.value;
+      endResolverKey = fallback;
+    }
+    if (endVal === null || endVal === undefined) {
+      return unevaluated(rule, fieldKey, 'fact_key', `${endResolverKey ?? 'end date'} is not available for this claimant`, msgCtx, { operator, expected_value: expected, source });
+    }
+
+    const ms = Date.parse(String(endVal)) - Date.parse(String(sR.value));
+    if (!Number.isFinite(ms)) {
+      return unevaluated(rule, fieldKey, 'fact_key', 'could not compute date difference — one of the dates is invalid', msgCtx, { operator, expected_value: expected, source });
+    }
+    const unit = (rule.unit ?? 'DAYS') as 'DAYS' | 'WEEKS' | 'MONTHS' | 'YEARS';
+    const actual = convertDays(Math.floor(ms / 86_400_000), unit);
+
+    const evalRes = evaluateOperator(actual, operator, expected, 'number');
+    if (evalRes.evaluable === false) {
+      return unevaluated(rule, fieldKey, 'fact_key', evalRes.reason, msgCtx, { operator, expected_value: expected, source, actual_value: actual });
+    }
+
+    const outcome: RuleMessageOutcome = informational ? 'INFO' : evalRes.passed ? 'PASS' : 'FAIL';
+    const msg = renderRuleMessage(rule as MessageRule, outcome, { ...msgCtx, actual });
+    return {
+      rule_code: rule.rule_code,
+      rule_name: rule.rule_name,
+      rule_group: rule.rule_group ?? null,
+      field_key: fieldKey,
+      operator,
+      expected_value: expected,
+      actual_value: actual,
+      passed: informational ? true : evalRes.passed,
+      result_state: outcome === 'INFO' ? 'INFO' : evalRes.passed ? 'PASS' : 'FAIL',
+      fail_action: informational ? 'INFO' : (rule.fail_action ?? 'REJECT'),
+      severity: rule.severity ?? null,
+      key_source: 'fact_key',
+      source,
+      message: msg.text,
+      requirement: msg.requirement,
+      detail: msg.detail,
+      reference: msg.reference,
+      alternative_group: alternativeGroup(rule),
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return unevaluated(rule, fieldKey, 'fact_key', `could not compute date difference (${message})`, msgCtx, { operator, expected_value: expected });
+  }
+}
+
+/**
+ * FACT_TO_FACT rules compare two resolved facts to each other rather than one
+ * fact to a literal — e.g. "spouse's income <= claimant's income". Reached
+ * only when both `fact_key` and `compare_fact_key` are set (see call site).
+ */
+async function evaluateFactToFactRule(
+  rule: EvaluableRule,
+  ctx: FieldResolutionContext,
+  def: Record<string, unknown>,
+  informational: boolean,
+  msgCtx: MessageContext,
+): Promise<EligibilityRuleTrace> {
+  const a = rule.fact_key!;
+  const b = rule.compare_fact_key!;
+  const operator = normaliseOperator(def.operator, '==');
+  const fieldKey = `${a} vs ${b}`;
+  const fieldDef = lookupField(a);
+  const valueType = fieldDef?.valueType ?? 'string';
+  msgCtx = { ...msgCtx, operator, fieldLabel: fieldDef?.label };
+
+  try {
+    const factCtx = factCtxFor(ctx);
+    const [ra, rb] = await Promise.all([resolveFact(a, factCtx), resolveFact(b, factCtx)]);
+    const source = `${ra.source_table}.${ra.source_column} vs ${rb.source_table}.${rb.source_column}`;
+    if (ra.value === null || ra.value === undefined || rb.value === null || rb.value === undefined) {
+      const reason = ra.reason ?? rb.reason ?? `${(ra.value == null ? a : b)} is not available for this claimant`;
+      return unevaluated(rule, fieldKey, 'fact_key', reason, msgCtx, { operator, source });
+    }
+
+    let actualForEval = ra.value;
+    let expectedForEval = rb.value;
+    if (valueType === 'string' && (operator === '==' || operator === '!=')) {
+      if (typeof actualForEval === 'string') actualForEval = actualForEval.trim().toUpperCase();
+      if (typeof expectedForEval === 'string') expectedForEval = expectedForEval.trim().toUpperCase();
+    }
+
+    const evalRes = evaluateOperator(actualForEval, operator, expectedForEval, valueType);
+    if (evalRes.evaluable === false) {
+      return unevaluated(rule, fieldKey, 'fact_key', evalRes.reason, msgCtx, { operator, actual_value: ra.value, expected_value: rb.value, source });
+    }
+
+    const outcome: RuleMessageOutcome = informational ? 'INFO' : evalRes.passed ? 'PASS' : 'FAIL';
+    const msg = renderRuleMessage(rule as MessageRule, outcome, { ...msgCtx, expected: rb.value, actual: ra.value });
+    return {
+      rule_code: rule.rule_code,
+      rule_name: rule.rule_name,
+      rule_group: rule.rule_group ?? null,
+      field_key: fieldKey,
+      operator,
+      expected_value: rb.value,
+      actual_value: ra.value,
+      passed: informational ? true : evalRes.passed,
+      result_state: outcome === 'INFO' ? 'INFO' : evalRes.passed ? 'PASS' : 'FAIL',
+      fail_action: informational ? 'INFO' : (rule.fail_action ?? 'REJECT'),
+      severity: rule.severity ?? null,
+      key_source: 'fact_key',
+      source,
+      message: msg.text,
+      requirement: msg.requirement,
+      detail: msg.detail,
+      reference: msg.reference,
+      alternative_group: alternativeGroup(rule),
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return unevaluated(rule, fieldKey, 'fact_key', `could not compare facts (${message})`, msgCtx, { operator });
+  }
+}
+
 /** Evaluates one rule. Never returns `passed: true` without a real comparison. */
 export async function evaluateEligibilityRule(
   rule: EvaluableRule,
   ctx: FieldResolutionContext,
 ): Promise<EligibilityRuleTrace> {
   const def = (rule.rule_definition || {}) as Record<string, any>;
-  const { key: fieldKey, source: keySource, rawKey } = resolveRuleFieldKey(rule);
   const informational = isInformationalRule(rule);
 
   // Base message context, enriched as the field and values become known.
   let msgCtx: MessageContext = { claimDate: ctx.claimDate, ssn: ctx.ssn };
+
+  // Two-fact rule kinds can't be represented as a single field_key/value
+  // comparison, so they're resolved before the generic path below even
+  // starts looking for one. Guarded narrowly: a DATE_DIFFERENCE rule that
+  // already carries its own plain `fact_key` (a precomputed derived fact,
+  // e.g. claim.days_since_event) is deliberately left on the generic path —
+  // only rules with no fact_key of their own need this branch to see
+  // anything at all.
+  if (rule.rule_kind === 'DATE_DIFFERENCE' && !rule.fact_key && rule.start_fact_key) {
+    return evaluateDateDifferenceRule(rule, ctx, def, informational, msgCtx);
+  }
+  if (rule.rule_kind === 'FACT_TO_FACT' && rule.fact_key && rule.compare_fact_key) {
+    return evaluateFactToFactRule(rule, ctx, def, informational, msgCtx);
+  }
+
+  const { key: fieldKey, source: keySource, rawKey } = resolveRuleFieldKey(rule);
 
   const asInfo = (note: string, fieldKeyOut: string | null): EligibilityRuleTrace => {
     const msg = renderRuleMessage(rule as MessageRule, 'INFO', msgCtx);

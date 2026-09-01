@@ -24,6 +24,11 @@ import {
   type EligibilityRuleTrace,
 } from '@/services/bn/eligibility/eligibilityEvaluator';
 import { runCalculationEngine } from '@/services/bn/calculationEngine';
+import {
+  resolveEffectiveRuleShape,
+  collectCatalogueRuleIds,
+  type CatalogueShapeSource,
+} from '@/lib/bn/effectiveRuleShape';
 
 const db = supabase as any;
 
@@ -105,6 +110,23 @@ async function resolveEmployerForClaim(claim: ClaimContext): Promise<string | nu
   return data?.[0]?.payer_id ?? null;
 }
 
+/**
+ * GAP-039 — a rule attached from the Rule Catalogue keeps its own copy of
+ * fact_key/rule_kind/etc. so it evaluates identically today. This merges in
+ * the catalogue's live values wherever the catalogue actually carries one
+ * (see `resolveEffectiveRuleShape`), so a fact-key or rule-kind correction
+ * made once in the catalogue reaches every product using it without a
+ * per-product resync — matching how Formula/Document/Calculation bindings
+ * already read their master tables live.
+ */
+async function withEffectiveRuleShapes<T extends { catalogue_rule_id?: string | null }>(rules: T[]): Promise<T[]> {
+  const catalogueIds = collectCatalogueRuleIds(rules);
+  if (catalogueIds.length === 0) return rules;
+  const { data: catalogueRows } = await db.from('bn_rule_catalogue').select('*').in('id', catalogueIds);
+  const catalogueById = new Map<string, CatalogueShapeSource>((catalogueRows ?? []).map((c: CatalogueShapeSource) => [c.id, c]));
+  return rules.map((rule) => ({ ...rule, ...resolveEffectiveRuleShape(rule, catalogueById) }));
+}
+
 export async function runClaimEligibility(
   claimId: string,
   userCode: string,
@@ -112,13 +134,14 @@ export async function runClaimEligibility(
   const claim = await loadClaimContext(claimId);
   const versionId = await resolveEvaluationVersionId(claim);
 
-  const { data: rules, error: rulesErr } = await db
+  const { data: rawRules, error: rulesErr } = await db
     .from('bn_eligibility_rule')
     .select('*')
     .eq('product_version_id', versionId)
     .eq('is_active', true)
     .order('sort_order');
   if (rulesErr) throw rulesErr;
+  const rules = await withEffectiveRuleShapes(rawRules ?? []);
 
   const resolvedEmployer = await resolveEmployerForClaim(claim);
 

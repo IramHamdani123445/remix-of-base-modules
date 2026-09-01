@@ -88,6 +88,11 @@ export function FactEditorDialog({ open, onOpenChange, value, isEdit, onSave, sa
 
   const resolvers = useMemo(() => getRegisteredResolverNames().sort(), []);
   const snapshotBuilders = useMemo(() => getRegisteredSnapshotBuilderNames().sort(), []);
+  const [resolverSearch, setResolverSearch] = useState('');
+  const filteredResolvers = useMemo(() => {
+    const q = resolverSearch.trim().toLowerCase();
+    return q ? resolvers.filter(r => r.toLowerCase().includes(q)) : resolvers;
+  }, [resolvers, resolverSearch]);
 
   const err = useMemo(() => validateEligibilityFact(v), [v]);
   const registryIssues = useMemo(() => validateFactAgainstRegistry(v, sources, fields), [v, sources, fields]);
@@ -235,9 +240,19 @@ export function FactEditorDialog({ open, onOpenChange, value, isEdit, onSave, sa
             <div className="flex gap-2 items-center">
               <Select value={v.resolver_function ?? NONE} onValueChange={x => set('resolver_function', x === NONE ? null : x)}>
                 <SelectTrigger><SelectValue placeholder="Select registered resolver" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-80">
+                  <div className="sticky top-0 z-10 bg-popover p-1 pb-2">
+                    <Input
+                      autoFocus
+                      placeholder="Search resolvers…"
+                      value={resolverSearch}
+                      onChange={(e) => setResolverSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="h-8"
+                    />
+                  </div>
                   <SelectItem value={NONE}>(none)</SelectItem>
-                  {resolvers.map(r => <SelectItem key={r} value={r} className="font-mono">{r}</SelectItem>)}
+                  {filteredResolvers.map(r => <SelectItem key={r} value={r} className="font-mono">{r}</SelectItem>)}
                 </SelectContent>
               </Select>
               {v.resolver_function && (

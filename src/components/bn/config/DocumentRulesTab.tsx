@@ -95,7 +95,14 @@ export function DocumentRulesTab({ productId, versionId, isReadOnly, versionStat
       toast({ title: 'Saved' });
       setDialogOpen(false);
     } catch (err: any) {
-      toast({ title: 'Error', description: err?.message, variant: 'destructive' });
+      // Shielded errors (docs/bn/BENEFITS_MODULE_COMPLETE.md §12.4) — raw
+      // Postgres/constraint text must never reach the user directly.
+      console.warn('[DocumentRulesTab] save failed', err);
+      const raw = String(err?.message ?? '');
+      const description = raw.includes('uq_bn_doc_req_version_doc_stage_channel')
+        ? 'A document rule for this document, stage, and channel already exists on this product version. Edit the existing one instead of adding a duplicate.'
+        : 'Could not save this document rule. Please try again.';
+      toast({ title: 'Error', description, variant: 'destructive' });
     }
   };
 

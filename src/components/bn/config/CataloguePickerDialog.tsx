@@ -10,10 +10,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { useRuleCatalogue } from '@/hooks/bn/useRuleCatalogue';
+import { useBnProductVersion } from '@/hooks/bn/useBnProduct';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
-import type { RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
+import { isRuleCurrentlyEffective, type RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
 
 interface Props {
   open: boolean;
@@ -24,9 +25,20 @@ interface Props {
 
 export function CataloguePickerDialog({ open, onOpenChange, versionId, onAdded }: Props) {
   const { data: rules = [] } = useRuleCatalogue();
+  const { data: version } = useBnProductVersion(versionId);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+
+  // Anchored to the product version's own effective_from, not "today" — a
+  // draft version dated to start next year must be able to pick a rule whose
+  // own window starts then too, and a version already past a rule's
+  // effective_to should never offer it, regardless of when someone happens
+  // to be editing.
+  const asOfDate = useMemo(
+    () => ((version as any)?.effective_from ? new Date((version as any).effective_from) : new Date()),
+    [version],
+  );
 
   const ALLOWED_GOV = new Set(['LEGAL_CONFIRMED','READY_FOR_PRODUCT_USE','ACTIVE']);
   const filtered = useMemo(() => rules.filter(r => {
@@ -34,10 +46,11 @@ export function CataloguePickerDialog({ open, onOpenChange, versionId, onAdded }
     const gs = (r as any).governance_status;
     // Governance gate: only legally-confirmed (or beyond) rules can be attached to a product version
     if (gs && !ALLOWED_GOV.has(gs)) return false;
+    if (!isRuleCurrentlyEffective(r, asOfDate)) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return r.rule_code.toLowerCase().includes(s) || r.rule_name.toLowerCase().includes(s) || r.group_type.toLowerCase().includes(s);
-  }), [rules, search]);
+  }), [rules, search, asOfDate]);
 
   const toggle = (id: string) => {
     setSelected(prev => {

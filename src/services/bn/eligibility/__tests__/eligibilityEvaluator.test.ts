@@ -651,3 +651,109 @@ describe('rules attached from the Rule Catalogue are readable', () => {
     expect(traces[0].operator).toBe('IN');
   });
 });
+
+describe('DATE_DIFFERENCE rules (previously always UNEVALUATED at claim time)', () => {
+  // resolveRuleFieldKey only ever looked at fact_key / rule_definition.field_key
+  // / .fact — a two-fact DATE_DIFFERENCE rule (start_fact_key/end_fact_key, no
+  // fact_key of its own) had nothing there to find, so it blocked every claim
+  // for manual review regardless of the actual dates on record.
+  const dateDiffRule: EvaluableRule = {
+    rule_code: 'SICK-LATE-CLAIM-14D', rule_name: 'Claim filed within 14 days',
+    fail_action: 'REJECT', fact_key: null,
+    rule_kind: 'DATE_DIFFERENCE',
+    start_fact_key: 'claim.sickness_start_date',
+    end_fact_key: 'claim.submission_date',
+    unit: 'DAYS',
+    rule_definition: { value: 14, operator: '<=' },
+  };
+
+  it('PASSes when the gap between the two facts is within the allowed value', async () => {
+    stubFields({
+      'claim.sickness_start_date': '2026-01-01',
+      'claim.submission_date': '2026-01-10',
+    });
+    const traces = await evaluateEligibilityRules([dateDiffRule], ctx);
+    expect(traces[0].result_state).toBe('PASS');
+    expect(traces[0].actual_value).toBe(9);
+  });
+
+  it('FAILs when the gap exceeds the allowed value', async () => {
+    stubFields({
+      'claim.sickness_start_date': '2026-01-01',
+      'claim.submission_date': '2026-02-01',
+    });
+    const traces = await evaluateEligibilityRules([dateDiffRule], ctx);
+    expect(traces[0].result_state).toBe('FAIL');
+  });
+
+  it('falls back to fallback_end_fact_key when the end fact is not on record', async () => {
+    stubFields({
+      'claim.injury_date': '2026-01-01',
+      'claim.reported_date': null,
+      'claim.submission_date': '2026-01-02',
+    });
+    const traces = await evaluateEligibilityRules([{
+      rule_code: 'EI-REPORT-3D', rule_name: 'Injury reported within 3 days',
+      fail_action: 'REJECT', fact_key: null,
+      rule_kind: 'DATE_DIFFERENCE',
+      start_fact_key: 'claim.injury_date',
+      end_fact_key: 'claim.reported_date',
+      fallback_end_fact_key: 'claim.submission_date',
+      unit: 'DAYS',
+      rule_definition: { value: 3, operator: '<=' },
+    }], ctx);
+    expect(traces[0].result_state).toBe('PASS');
+  });
+
+  it('is UNEVALUATED (not PASS, not silently dropped) when the start fact is missing', async () => {
+    stubFields({
+      'claim.sickness_start_date': null,
+      'claim.submission_date': '2026-01-10',
+    });
+    const traces = await evaluateEligibilityRules([dateDiffRule], ctx);
+    expect(traces[0].result_state).toBe('UNEVALUATED');
+    expect(traces[0].passed).toBe(false);
+  });
+
+  it('still resolves through the generic single-fact path when the rule carries its own fact_key (no regression)', async () => {
+    // CLAIM_SUBMITTED_WITHIN_DAYS models the same DATE_DIFFERENCE requirement as
+    // one precomputed derived fact instead of start/end facts — this must keep
+    // working exactly as before, untouched by the new two-fact branch.
+    stubFields({ 'claim.days_since_event': 10 });
+    const traces = await evaluateEligibilityRules([{
+      rule_code: 'CLAIM_SUBMITTED_WITHIN_DAYS', rule_name: 'Claim submitted within 21 days',
+      fail_action: 'REJECT', fact_key: 'claim.days_since_event',
+      rule_kind: 'DATE_DIFFERENCE',
+      rule_definition: { value: 21, operator: 'LESS_OR_EQUAL' },
+    }], ctx);
+    expect(traces[0].result_state).toBe('PASS');
+  });
+});
+
+describe('FACT_TO_FACT rules (previously always UNEVALUATED at claim time)', () => {
+  const rule: EvaluableRule = {
+    rule_code: 'DEP-INCOME-BELOW-CLAIMANT', rule_name: "Dependent income below claimant's",
+    fail_action: 'REJECT', fact_key: 'dependent.income',
+    rule_kind: 'FACT_TO_FACT',
+    compare_fact_key: 'claimant.income',
+    rule_definition: { operator: '<=' },
+  };
+
+  it('PASSes when the comparison holds between the two resolved facts', async () => {
+    stubFields({ 'dependent.income': 100, 'claimant.income': 500 });
+    const traces = await evaluateEligibilityRules([rule], ctx);
+    expect(traces[0].result_state).toBe('PASS');
+  });
+
+  it('FAILs when the comparison does not hold', async () => {
+    stubFields({ 'dependent.income': 900, 'claimant.income': 500 });
+    const traces = await evaluateEligibilityRules([rule], ctx);
+    expect(traces[0].result_state).toBe('FAIL');
+  });
+
+  it('is UNEVALUATED when either compared fact is missing', async () => {
+    stubFields({ 'dependent.income': 100, 'claimant.income': null });
+    const traces = await evaluateEligibilityRules([rule], ctx);
+    expect(traces[0].result_state).toBe('UNEVALUATED');
+  });
+});
