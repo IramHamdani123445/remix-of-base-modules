@@ -125377,7 +125377,14 @@ export type Database = {
         Returns: Json
       }
       ce_next_number_v1: { Args: { p_applies_to: string }; Returns: string }
+      ce_notice_actor_can: {
+        Args: { p_cap: string; p_uid: string }
+        Returns: boolean
+      }
       ce_notice_allocate_number_v1: { Args: never; Returns: string }
+      ce_notice_detail_v1: { Args: { p_notice_id: string }; Returns: Json }
+      ce_notice_facets_v1: { Args: never; Returns: Json }
+      ce_notice_register_v1: { Args: { p_params?: Json }; Returns: Json }
       ce_officer_identities: { Args: { _user_id: string }; Returns: string[] }
       ce_officer_label: { Args: { _code: string }; Returns: string }
       ce_override_sector_benchmark_v1: {
