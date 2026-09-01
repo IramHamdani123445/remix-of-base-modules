@@ -49,7 +49,9 @@ export function AuditLifecycleStepper({ executionStatus, className }: Props) {
           const isFuture = idx > currentPhaseIndex;
 
           return (
-            <React.Fragment key={phase.key}>
+            // DEF-A-04 — a real element wrapper (not React.Fragment) so the
+            // dev tagger's data-lov-id prop has a valid host to land on.
+            <div key={phase.key} className="flex items-center shrink-0">
               {idx > 0 && (
                 <ChevronRight className={cn(
                   'h-3.5 w-3.5 shrink-0 mx-0.5',
@@ -79,7 +81,7 @@ export function AuditLifecycleStepper({ executionStatus, className }: Props) {
                   <p className="text-xs text-muted-foreground">{phase.description}</p>
                 </TooltipContent>
               </Tooltip>
-            </React.Fragment>
+            </div>
           );
         })}
       </div>
