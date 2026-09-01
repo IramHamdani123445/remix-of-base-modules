@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
   downloadEvidenceFile, formatFileSize, isPreviewable, resolveEvidenceUrl, evidenceTypeLabel,
+  evidenceAccessMessage,
 } from '@/lib/compliance/evidenceFileAccess';
 import { useEvidenceDetail, type EvidenceRow } from '@/hooks/compliance/useEvidenceRegister';
 
@@ -39,7 +40,7 @@ export function EvidencePreviewDialog({ row, open, onOpenChange }: Props) {
       if (cancelled) return;
       setLoading(false);
       if (res.ok) setUrl(res.url);
-      else setErr(res.message);
+      else setErr(evidenceAccessMessage(res));
     });
     return () => { cancelled = true; };
   }, [open, row, kind]);
@@ -87,7 +88,7 @@ export function EvidencePreviewDialog({ row, open, onOpenChange }: Props) {
                     variant="secondary"
                     onClick={async () => {
                       const res = await downloadEvidenceFile(row);
-                      if (!res.ok) toast.error(res.message);
+                      if (!res.ok) toast.error(evidenceAccessMessage(res));
                     }}
                   >
                     <Download className="h-4 w-4 mr-2" /> Download securely

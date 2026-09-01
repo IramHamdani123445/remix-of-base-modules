@@ -38,6 +38,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useEvidenceRegister, type EvidenceRow } from '@/hooks/compliance/useEvidenceRegister';
 import {
   downloadEvidenceFile, evidenceTypeLabel, formatFileSize, resolveEvidenceUrl,
+  evidenceAccessMessage,
 } from '@/lib/compliance/evidenceFileAccess';
 import { EvidenceUploadDialog } from './EvidenceUploadDialog';
 import { EvidenceEditDialog, type EditableEvidence } from './EvidenceEditDialog';
@@ -119,14 +120,14 @@ function Inner() {
     const res = await resolveEvidenceUrl(row, 'VIEW');
     setBusyId(null);
     if (res.ok) window.open(res.url, '_blank', 'noopener,noreferrer');
-    else toast.error(res.message);
+    else toast.error(evidenceAccessMessage(res));
   };
 
   const download = async (row: EvidenceRow) => {
     setBusyId(row.id);
     const res = await downloadEvidenceFile(row);
     setBusyId(null);
-    if (!res.ok) toast.error(res.message);
+    if (!res.ok) toast.error(evidenceAccessMessage(res));
   };
 
   return (

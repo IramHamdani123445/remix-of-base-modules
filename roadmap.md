@@ -3,3 +3,20 @@
 - [ ] /compliance/workbench/queues — enterprise filters, quick chips, sortable headers, counts, empty/error states
 - [ ] /compliance/workbench/review-queue — review filters, waiting-time, default urgency sort, server-side paging
 - [ ] /compliance/workbench/reassignment — work-item filters + sortable officer workload, preserve reassignment controls
+
+## Internal Audit — Post-UAT Wave 2 Corrective (Aug 31 / Sep 1)
+- [x] Working-paper storage path contract corrected to `internal-audit/<engagement>/<class>/<owner>/<file>`
+- [x] Compensating-rollback primitive + regression tests (20 passing)
+- [ ] Live upload proof + respondent RLS denial proof — BLOCKED: cannot mint a session as a specific auth user (workspace admin only)
+- [ ] Follow-Up runtime verification
+
+## Compliance — Legal Review / Handover Queue Enterprise Upgrade (Sep 1)
+- [ ] Confirm canonical purpose of /compliance/enforcement/legal-queue vs Recommendation Queue / Pack Preparation / Approved Escalations
+- [ ] Server-side RPC: search, filters, sorting, pagination (25/50/100/200), scoped counts (replace .limit(100))
+- [ ] KPI strip + Requires Attention (config-driven SLA, no hardcoded deadlines)
+- [ ] Status tabs: Action Required / Tracking / History with business labels only
+- [ ] Enterprise table register, drill-downs (Employer 360, Case, Referral, Legal Intake)
+- [ ] Approval review dialog + maker-checker (server-side), rejection context, returned-by-Legal rework
+- [ ] Transactionally safe submit-to-Legal (RPC), double-submission prevention
+- [ ] URL state preservation, error state, RBAC separation (view/approve/submit)
+- [ ] E2E lifecycle verification + completion report
