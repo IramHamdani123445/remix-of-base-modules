@@ -27,12 +27,13 @@
 - [x] `EscalationDetailDialog` + rewritten `ApprovedEscalationsPage`
 - [ ] Playwright end-to-end verification
 
-## Compliance — Returned From Legal Rework Queue (Sep 1, requested)
-- [ ] Analyse `legalHandoffService.listReturns/resolveReturn`, `ce_legal_returns`, referral status coupling
-- [ ] Server-side register RPC: referral/employer/case/legal refs, reason, required action, owner, rework age/SLA, pack readiness
-- [ ] Governed "Complete Rework" (pack-readiness gated, identity-required, no SYSTEM fallback) + resubmission via canonical approval path
-- [ ] Rework owner/tasks, repeat-return history, pack version retention, case legal-status coherence
-- [ ] Enterprise UI: KPIs, Requires Attention, filters/sort/pagination, detail workspace, error/empty states, RBAC split
+## Compliance — Returned From Legal Rework Queue (Sep 1, requested) — DONE
+- [x] Analyse `legalHandoffService.listReturns/resolveReturn`, `ce_legal_returns`, referral status coupling
+- [x] Server-side register RPC `ce_legal_return_register_v1`: referral/employer/case/legal refs, reason, required action, owner, rework age/SLA, pack readiness
+- [x] Governed `ce_legal_return_complete_rework_v1` (pack-readiness gated, identity-required, no SYSTEM fallback) + resubmission via `ce_legal_pack_submit_v1`
+- [x] Rework owner/tasks (`ce_legal_return_assign_v1`), repeat-return history, pack version retention, referral RETURNED status coherence
+- [x] Enterprise UI: KPIs, Requires Attention, filters/sort/pagination, detail workspace, error/empty states, RBAC split
+
 
 ## Compliance — Legal Referral Launcher Eligibility Workspace (Sep 1, requested)
 - [ ] Establish canonical referral paths (Recommend Legal vs Wizard vs Quick Forward) and whether Launcher is retained/consolidated

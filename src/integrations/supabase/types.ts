@@ -43425,47 +43425,140 @@ export type Database = {
           },
         ]
       }
+      ce_legal_return_ref: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_legal_returns: {
         Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          comments: string | null
           created_at: string
+          due_date: string | null
+          follow_up_action_id: string | null
           id: string
           reason: string
+          reason_code: string | null
           referral_id: string
           required_action: string | null
           resolution_notes: string | null
           resolution_status: string
+          resolution_summary: string | null
           resolved_at: string | null
           resolved_by: string | null
+          resolved_by_name: string | null
+          resubmitted_at: string | null
+          resubmitted_by: string | null
+          return_seq: number
           returned_at: string
           returned_by: string | null
+          returned_by_name: string | null
+          returned_pack_version: number | null
+          rework_started_at: string | null
+          rework_started_by: string | null
+          rework_status: string
+          rework_version_no: number | null
           updated_at: string
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          comments?: string | null
           created_at?: string
+          due_date?: string | null
+          follow_up_action_id?: string | null
           id?: string
           reason: string
+          reason_code?: string | null
           referral_id: string
           required_action?: string | null
           resolution_notes?: string | null
           resolution_status?: string
+          resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          resolved_by_name?: string | null
+          resubmitted_at?: string | null
+          resubmitted_by?: string | null
+          return_seq?: number
           returned_at?: string
           returned_by?: string | null
+          returned_by_name?: string | null
+          returned_pack_version?: number | null
+          rework_started_at?: string | null
+          rework_started_by?: string | null
+          rework_status?: string
+          rework_version_no?: number | null
           updated_at?: string
         }
         Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          comments?: string | null
           created_at?: string
+          due_date?: string | null
+          follow_up_action_id?: string | null
           id?: string
           reason?: string
+          reason_code?: string | null
           referral_id?: string
           required_action?: string | null
           resolution_notes?: string | null
           resolution_status?: string
+          resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          resolved_by_name?: string | null
+          resubmitted_at?: string | null
+          resubmitted_by?: string | null
+          return_seq?: number
           returned_at?: string
           returned_by?: string | null
+          returned_by_name?: string | null
+          returned_pack_version?: number | null
+          rework_started_at?: string | null
+          rework_started_by?: string | null
+          rework_status?: string
+          rework_version_no?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -118839,6 +118932,79 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_legal_return_register: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          ce_case_id: string | null
+          ce_case_number: string | null
+          comments: string | null
+          court_case_number: string | null
+          current_pack_version: number | null
+          due_date: string | null
+          employer_name: string | null
+          employer_reg_no: string | null
+          follow_up_action_id: string | null
+          legal_case_id: string | null
+          lg_case_no: string | null
+          lg_intake_id: string | null
+          lg_intake_no: string | null
+          pack_missing_required: number | null
+          pack_required_complete: number | null
+          pack_required_items: number | null
+          reason_code: string | null
+          reason_text: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_status: string | null
+          required_action: string | null
+          resolution_notes: string | null
+          resolution_status: string | null
+          resolution_summary: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resubmitted_at: string | null
+          return_id: string | null
+          return_seq: number | null
+          returned_at: string | null
+          returned_by: string | null
+          returned_by_display: string | null
+          returned_pack_version: number | null
+          rework_hours: number | null
+          rework_started_at: string | null
+          rework_status: string | null
+          total_interest: number | null
+          total_penalties: number | null
+          total_principal: number | null
+          total_referred: number | null
+          total_returns: number | null
+          zone: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_legal_referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
+        ]
+      }
       ce_v_notice_register: {
         Row: {
           acknowledged_at: string | null
@@ -126818,6 +126984,61 @@ export type Database = {
       ce_legal_referral_reject_v1: {
         Args: { p_reason: string; p_referral_id: string }
         Returns: Json
+      }
+      ce_legal_return_assign_v1: {
+        Args: {
+          p_assignee_code: string
+          p_assignee_name?: string
+          p_create_task?: boolean
+          p_due_date?: string
+          p_return_id: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_complete_rework_v1: {
+        Args: {
+          p_idempotency_key?: string
+          p_resubmit?: boolean
+          p_return_id: string
+          p_summary: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_create_v1: {
+        Args: {
+          p_comments?: string
+          p_reason: string
+          p_reason_code: string
+          p_referral_id: string
+          p_required_action?: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_detail_v1: {
+        Args: { p_return_id: string }
+        Returns: Json
+      }
+      ce_legal_return_label: {
+        Args: { _code: string; _domain: string }
+        Returns: Json
+      }
+      ce_legal_return_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_set_rework_status_v1: {
+        Args: { p_note?: string; p_return_id: string; p_rework_status: string }
+        Returns: Json
+      }
+      ce_legal_return_setting: {
+        Args: { _default: number; _key: string }
+        Returns: number
       }
       ce_legal_workbench_analytics: {
         Args: {
