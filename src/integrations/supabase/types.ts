@@ -33164,68 +33164,116 @@ export type Database = {
         Row: {
           amount_outstanding_at_breach: number | null
           arrangement_id: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          breach_status: string | null
           breach_type: string | null
+          case_id: string | null
+          consecutive_misses: number | null
           created_at: string
           created_by: string | null
           description: string | null
           detected_at: string | null
           detected_by: string | null
+          detection_method: string | null
+          detection_rule: string | null
           due_date_at_breach: string | null
+          escalation_status: string | null
           grace_days_at_breach: number | null
           id: string
           installment_id: string | null
           installment_number: number | null
+          last_action_at: string | null
+          legal_referral_id: string | null
           occurrence_key: string | null
+          payment_reference: string | null
           resolution: string | null
           resolution_notes: string | null
+          resolution_reason: string | null
+          resolution_type: string | null
           resolved_at: string | null
           resolved_by: string | null
+          severity: string | null
           updated_at: string
           updated_by: string | null
+          violation_id: string | null
         }
         Insert: {
           amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          breach_status?: string | null
           breach_type?: string | null
+          case_id?: string | null
+          consecutive_misses?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          detection_method?: string | null
+          detection_rule?: string | null
           due_date_at_breach?: string | null
+          escalation_status?: string | null
           grace_days_at_breach?: number | null
           id?: string
           installment_id?: string | null
           installment_number?: number | null
+          last_action_at?: string | null
+          legal_referral_id?: string | null
           occurrence_key?: string | null
+          payment_reference?: string | null
           resolution?: string | null
           resolution_notes?: string | null
+          resolution_reason?: string | null
+          resolution_type?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          severity?: string | null
           updated_at?: string
           updated_by?: string | null
+          violation_id?: string | null
         }
         Update: {
           amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          breach_status?: string | null
           breach_type?: string | null
+          case_id?: string | null
+          consecutive_misses?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          detection_method?: string | null
+          detection_rule?: string | null
           due_date_at_breach?: string | null
+          escalation_status?: string | null
           grace_days_at_breach?: number | null
           id?: string
           installment_id?: string | null
           installment_number?: number | null
+          last_action_at?: string | null
+          legal_referral_id?: string | null
           occurrence_key?: string | null
+          payment_reference?: string | null
           resolution?: string | null
           resolution_notes?: string | null
+          resolution_reason?: string | null
+          resolution_type?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          severity?: string | null
           updated_at?: string
           updated_by?: string | null
+          violation_id?: string | null
         }
         Relationships: [
           {
@@ -35854,6 +35902,48 @@ export type Database = {
           total_remaining?: number | null
           updated_at?: string | null
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_breach_ref: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          sort_order: number
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -124940,6 +125030,10 @@ export type Database = {
           missed_count: number
           total_overdue: number
         }[]
+      }
+      ce_breach_detect_v1: {
+        Args: { p_actor?: string; p_as_of_date?: string; p_dry_run?: boolean }
+        Returns: Json
       }
       ce_calculate_employer_arrears: {
         Args: { p_employer_id: string }
