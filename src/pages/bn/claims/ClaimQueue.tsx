@@ -14,6 +14,8 @@ import {
   useBasketClaimCounts,
 } from '@/hooks/bn/useBnWorkbasket';
 import { useMyWorkbaskets } from '@/hooks/bn/useMyWorkbaskets';
+import { stepForClaimStatus } from '@/services/bn/workflow/claimStatusStepMap';
+import { basketServesStage } from '@/services/bn/workflow/stageBasketExpectation';
 import { useBasketArrivalAlerts, useClearBasketArrivalAlerts } from '@/hooks/bn/useBasketArrivalAlerts';
 import { useMyEffectiveRoles } from '@/hooks/bn/useEffectiveRoles';
 import { useUserCode } from '@/hooks/useUserCode';
@@ -152,6 +154,17 @@ export default function ClaimQueue() {
     const claim = item.bn_claim;
     if (!claim) return null;
 
+    // Stage and queue are two different truths: the status is the lifecycle
+    // stage, the basket is the officer queue that owns the claim. Showing only
+    // the status made an award-setup claim in a payment queue look wrong, so
+    // both are stated, and a disagreement is marked rather than hidden.
+    const owningBasket = baskets.find((b) => b.id === (item.workbasket_id ?? selectedBasket));
+    const disposition = stepForClaimStatus(claim.status);
+    const stage = disposition.kind === 'STEP' ? disposition.step : null;
+    const parked = disposition.kind === 'HOLD';
+    const mismatched =
+      !!stage && !!owningBasket && !basketServesStage((owningBasket as any).basket_code, stage);
+
     return (
       <TableRow key={item.id} className={isOverdue(item.due_at) ? 'bg-destructive/5' : ''}>
         <TableCell className="font-medium">
@@ -161,8 +174,23 @@ export default function ClaimQueue() {
         </TableCell>
         <TableCell>{claim.ssn}</TableCell>
         <TableCell>
-          <Badge variant="outline">{(BN_CLAIM_STATUS_LABELS as any)[claim.status] || claim.status}</Badge>
+          <div className="flex flex-col gap-1">
+            <Badge variant="outline">{(BN_CLAIM_STATUS_LABELS as any)[claim.status] || claim.status}</Badge>
+            <span className="text-xs text-muted-foreground">
+              {stage ? `${stage} stage` : parked ? 'Parked with current owner' : 'No stage owns this claim'}
+              {owningBasket ? ` · ${owningBasket.basket_name ?? (owningBasket as any).basket_code} queue` : ''}
+            </span>
+            {mismatched && (
+              <span
+                className="text-xs text-destructive"
+                title={`This queue does not serve the ${stage} stage. The workflow step for that stage names the wrong queue, or the stage has no step.`}
+              >
+                Stage / queue mismatch
+              </span>
+            )}
+          </div>
         </TableCell>
+
         <TableCell>
           <Badge variant={item.priority <= 2 ? 'destructive' : item.priority <= 4 ? 'default' : 'outline'}>
             P{item.priority}
