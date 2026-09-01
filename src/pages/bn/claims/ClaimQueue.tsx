@@ -272,16 +272,20 @@ export default function ClaimQueue() {
             </h3>
             {baskets.map((basket) => {
               const count = counts[basket.id];
+              const newCount = arrivals[basket.id] ?? 0;
               return (
                 <Button
                   key={basket.id}
                   variant={selectedBasket === basket.id ? 'default' : 'outline'}
                   className="w-full justify-start"
-                  onClick={() => setSelectedBasket(basket.id)}
+                  onClick={() => openBasket(basket.id)}
                 >
                   <Inbox className="mr-2 h-4 w-4 shrink-0" />
                   <span className="truncate">{basket.basket_name}</span>
                   <span className="ml-auto flex items-center gap-1">
+                    {newCount > 0 && (
+                      <Badge className="bg-primary text-primary-foreground px-1.5">{newCount} new</Badge>
+                    )}
                     {count?.overdue ? (
                       <Badge variant="destructive" className="px-1.5">{count.overdue}</Badge>
                     ) : null}
@@ -290,6 +294,7 @@ export default function ClaimQueue() {
                 </Button>
               );
             })}
+
             {baskets.length === 0 && !myBasketsLoading && (
               <p className="text-sm text-muted-foreground">
                 {scope === 'mine'
