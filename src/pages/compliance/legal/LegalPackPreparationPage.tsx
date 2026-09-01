@@ -1,238 +1,324 @@
-import { useMemo, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState } from 'react';
+import {
+  AlertTriangle, FileCheck2, Filter, Loader2, RefreshCw, Search, TimerReset, TrendingUp, X,
+} from 'lucide-react';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
-import { PermissionButton } from '@/components/ui/permission-button';
-import { useUserCode } from '@/hooks/useUserCode';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { SortableTableHead } from '@/components/shared/SortableTableHead';
+import { TablePagination } from '@/components/shared/TablePagination';
+import { formatCurrency } from '@/utils/formatCurrency';
+import LegalPackAssemblyDialog from '@/components/compliance/legal/LegalPackAssemblyDialog';
 import {
-  ensurePackItems,
-  setPackItem,
-  validatePack,
-  resolveApprovalWorkflow,
-  type LegalPackItem,
-} from '@/services/legalHandoffService';
-import {
-  requestReferralApproval,
-  PREPARATION_STATUSES,
-  REFERRAL_STATUS,
-  REFERRAL_STATUS_LABEL,
-} from '@/services/compliance/legalEscalationFlow';
-import { CheckCircle2, AlertTriangle, FileCheck2, Send } from 'lucide-react';
-
+  useLegalPackRegister, PACK_PAGE_SIZES, READINESS_LABEL, READINESS_TONE, ATTENTION_LABEL,
+} from '@/hooks/compliance/useLegalPackRegister';
 
 const PERMISSION = 'manage_compliance';
 
 export default function LegalPackPreparationPage() {
   return (
     <PermissionWrapper moduleName={PERMISSION}>
-      <Inner />
+      <PackRegister />
     </PermissionWrapper>
   );
 }
 
-function Inner() {
-  const [params] = useSearchParams();
-  const referralIdFromQuery = params.get('referral');
-  const { userCode } = useUserCode();
-  const qc = useQueryClient();
-  const [selected, setSelected] = useState<string | null>(referralIdFromQuery);
+const TABS = [
+  { value: 'IN_PREPARATION', label: 'In preparation' },
+  { value: 'RETURNED', label: 'Returned by Legal' },
+  { value: 'PENDING_APPROVAL', label: 'Pending approval' },
+  { value: 'ALL', label: 'All' },
+];
 
-  const { data: referrals = [] } = useQuery({
-    queryKey: ['legal-referrals-draft'],
-    queryFn: async () => {
-      const { data, error } = await (supabase.from('ce_legal_referrals' as any) as any)
-        .select('id, referral_number, employer_name, employer_id, grand_total, status, return_reason, period_from, period_to')
-        .in('status', PREPARATION_STATUSES as unknown as string[])
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data || [];
-    },
-  });
+function PackRegister() {
+  const {
+    filters, setFilters, resetFilters, rows, total, kpis, attention, facets, thresholds,
+    isLoading, isFetching, error, refetch, selectedId, setSelectedId,
+  } = useLegalPackRegister();
 
-  const { data: items = [], isLoading: itemsLoading } = useQuery({
-    queryKey: ['legal-pack-items', selected],
-    queryFn: () => (selected ? ensurePackItems(selected) : Promise.resolve([] as LegalPackItem[])),
-    enabled: !!selected,
-  });
+  const [dialogOpen, setDialogOpen] = useState(!!selectedId);
 
-  const { data: workflowInfo } = useQuery({
-    queryKey: ['legal-approval-wf', selected],
-    queryFn: async () => {
-      const ref = referrals.find((r: any) => r.id === selected);
-      return resolveApprovalWorkflow(Number(ref?.grand_total || 0), null);
-    },
-    enabled: !!selected && referrals.length > 0,
-  });
+  function openPack(id: string) {
+    setSelectedId(id);
+    setDialogOpen(true);
+  }
 
-  const validation = useMemo(() => validatePack(items), [items]);
-
-  const toggleMut = useMutation({
-    mutationFn: ({ id, satisfied }: { id: string; satisfied: boolean }) =>
-      setPackItem(id, satisfied, userCode || 'SYSTEM'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['legal-pack-items', selected] }),
-  });
-
-  const submitMut = useMutation({
-    mutationFn: async () => {
-      if (!selected) throw new Error('No referral');
-      if (!validation.complete) throw new Error('Pack incomplete');
-      return requestReferralApproval(selected, userCode || null);
-    },
-    onSuccess: (res) => {
-      toast.success(
-        res.status === REFERRAL_STATUS.PENDING_APPROVAL
-          ? `Sent for approval${res.workflowName ? ` — ${res.workflowName}` : ''}`
-          : 'Approved automatically — no approval workflow is mapped',
-        {
-          description:
-            res.status === REFERRAL_STATUS.PENDING_APPROVAL
-              ? 'A different officer must approve it in Referral Approval & Handover before it reaches Legal.'
-              : 'Submit it to Legal from Referral Approval & Handover. The auto-approval has been recorded in the audit trail.',
-        },
-      );
-      setSelected(null);
-      qc.invalidateQueries({ queryKey: ['legal-referrals-draft'] });
-      qc.invalidateQueries({ queryKey: ['legal-queue-referrals'] });
-      qc.invalidateQueries({ queryKey: ['ce_case_legal_status'] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-
-  const ref = referrals.find((r: any) => r.id === selected);
+  const totalPages = Math.max(1, Math.ceil(total / filters.page_size));
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <FileCheck2 className="h-6 w-6 text-primary" />
-          Legal Pack Preparation
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Stage 1 of the legal escalation. Complete every required pack item, then send the referral
-          for approval — nothing reaches Legal until it is approved.
-        </p>
+    <div className="container mx-auto p-6 space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <FileCheck2 className="h-6 w-6 text-primary" />
+            Legal Referral Pack Assembly
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Stage 1 of legal escalation. Readiness is validated server-side from live case, notice,
+            payment and evidence records — nothing reaches Legal until the pack is complete and approved.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
+      {/* KPI strip */}
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <Kpi label="In preparation" value={kpis?.in_preparation ?? 0} />
+        <Kpi label="Ready to submit" value={kpis?.ready ?? 0} tone="text-success" />
+        <Kpi label="Incomplete" value={kpis?.incomplete ?? 0} tone="text-destructive" />
+        <Kpi label="Returned by Legal" value={kpis?.returned ?? 0} tone="text-warning" />
+        <Kpi
+          label={`SLA breached (> ${thresholds?.sla_days ?? 5}d)`}
+          value={kpis?.sla_breached ?? 0}
+          tone="text-destructive"
+        />
+        <Kpi label="Total exposure" value={formatCurrency(Number(kpis?.total_exposure ?? 0))} />
+      </div>
+
+      {/* Requires attention */}
+      {attention.length > 0 && (
+        <Card className="border-destructive/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Requires attention ({attention.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {attention.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => openPack(a.id)}
+                className="text-left rounded-md border p-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs">{a.referral_number}</span>
+                  <Badge variant="outline" className="text-[10px]">
+                    {ATTENTION_LABEL[a.reason] ?? a.reason}
+                  </Badge>
+                </div>
+                <div className="text-sm font-medium truncate">{a.employer_name ?? '—'}</div>
+                <div className="text-xs text-muted-foreground">
+                  {formatCurrency(Number(a.amount))} · {a.age_days}d in preparation · {a.completion_pct}% complete
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Toolbar */}
       <Card>
-        <CardHeader>
-          <CardTitle>Referral</CardTitle>
-          <CardDescription>
-            Draft referrals and referrals returned by Legal for rework appear here.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Select value={selected || ''} onValueChange={setSelected}>
-            <SelectTrigger><SelectValue placeholder="Select a referral" /></SelectTrigger>
-            <SelectContent>
-              {referrals.map((r: any) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.referral_number} — {r.employer_name} (${Number(r.grand_total).toLocaleString()}) ·{' '}
-                  {REFERRAL_STATUS_LABEL[r.status] ?? r.status}
-                </SelectItem>
+        <CardContent className="pt-4 space-y-3">
+          <Tabs value={filters.tab} onValueChange={(v) => setFilters({ tab: v, page: 1 })}>
+            <TabsList>
+              {TABS.map((t) => (
+                <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
               ))}
-            </SelectContent>
-          </Select>
-          {ref?.status === REFERRAL_STATUS.RETURNED_BY_LEGAL && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
-              <span className="font-medium">Returned by Legal:</span> {ref.return_reason || 'No reason recorded'}
+            </TabsList>
+          </Tabs>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-8"
+                placeholder="Search referral number, employer or case…"
+                value={filters.search}
+                onChange={(e) => setFilters({ search: e.target.value, page: 1 })}
+              />
             </div>
-          )}
+
+            <Select value={filters.readiness || 'ALL'} onValueChange={(v) => setFilters({ readiness: v === 'ALL' ? '' : v, page: 1 })}>
+              <SelectTrigger className="w-[190px]"><SelectValue placeholder="Readiness" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All readiness</SelectItem>
+                {(facets?.readiness ?? []).map((r) => (
+                  <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.missing_item || 'ALL'} onValueChange={(v) => setFilters({ missing_item: v === 'ALL' ? '' : v, page: 1 })}>
+              <SelectTrigger className="w-[210px]"><SelectValue placeholder="Missing item" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Any missing item</SelectItem>
+                {(facets?.items ?? []).map((i) => (
+                  <SelectItem key={i.code} value={i.code}>{i.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.reason_code || 'ALL'} onValueChange={(v) => setFilters({ reason_code: v === 'ALL' ? '' : v, page: 1 })}>
+              <SelectTrigger className="w-[190px]"><SelectValue placeholder="Reason" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All reasons</SelectItem>
+                {(facets?.reason_codes ?? []).filter(Boolean).map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.amount_band || 'ALL'} onValueChange={(v) => setFilters({ amount_band: v === 'ALL' ? '' : v, page: 1 })}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Amount" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Any amount</SelectItem>
+                <SelectItem value="0-10k">Up to 10k</SelectItem>
+                <SelectItem value="10k-50k">10k – 50k</SelectItem>
+                <SelectItem value="50k-250k">50k – 250k</SelectItem>
+                <SelectItem value="250k+">250k and above</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.age_min_days || 'ALL'} onValueChange={(v) => setFilters({ age_min_days: v === 'ALL' ? '' : v, page: 1 })}>
+              <SelectTrigger className="w-[170px]"><SelectValue placeholder="Ageing" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Any age</SelectItem>
+                <SelectItem value="3">3+ days</SelectItem>
+                <SelectItem value="7">7+ days</SelectItem>
+                <SelectItem value="14">14+ days</SelectItem>
+                <SelectItem value="30">30+ days</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              <X className="h-4 w-4 mr-1" /> Clear
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-
-      {selected && ref && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Handoff Checklist</CardTitle>
-              <CardDescription>
-                {validation.complete ? (
-                  <span className="text-success flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" /> Pack complete
-                  </span>
-                ) : (
-                  <span className="text-destructive flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4" /> {validation.missing.length} required item(s) missing:{' '}
-                    {validation.missing
-                      .map((m: any) => (typeof m === 'string' ? m : m.item_label ?? m.item_code))
-                      .join(', ')}
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {itemsLoading ? (
-                <div className="text-muted-foreground py-8 text-center">Loading…</div>
-              ) : (
-                items.map((it) => (
-                  <div key={it.id} className="flex items-start gap-3 p-3 border rounded-md">
-                    <Checkbox
-                      checked={it.is_satisfied}
-                      onCheckedChange={(v) => toggleMut.mutate({ id: it.id, satisfied: !!v })}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{it.item_label}</span>
-                        {it.is_required && <Badge variant="secondary" className="text-[10px]">Required</Badge>}
-                        {it.is_satisfied && it.satisfied_by && (
-                          <span className="text-xs text-muted-foreground">
-                            by {it.satisfied_by} on {it.satisfied_at?.slice(0, 10)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
+      {/* Register */}
+      <Card>
+        <CardContent className="pt-4">
+          {error && (
+            <div className="py-8 text-center text-sm text-destructive">{error.message}</div>
+          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortableTableHead sortKey="referral_no" currentSortKey={filters.sort} direction={filters.dir}
+                  onSort={(k) => setFilters({ sort: k, dir: filters.dir === 'asc' ? 'desc' : 'asc' })}>
+                  Referral
+                </SortableTableHead>
+                <SortableTableHead sortKey="employer" currentSortKey={filters.sort} direction={filters.dir}
+                  onSort={(k) => setFilters({ sort: k, dir: filters.dir === 'asc' ? 'desc' : 'asc' })}>
+                  Employer
+                </SortableTableHead>
+                <TableHead>Case</TableHead>
+                <TableHead>State</TableHead>
+                <SortableTableHead sortKey="completion" currentSortKey={filters.sort} direction={filters.dir}
+                  onSort={(k) => setFilters({ sort: k, dir: filters.dir === 'asc' ? 'desc' : 'asc' })}>
+                  Readiness
+                </SortableTableHead>
+                <TableHead>Docs</TableHead>
+                <SortableTableHead sortKey="amount" currentSortKey={filters.sort} direction={filters.dir}
+                  onSort={(k) => setFilters({ sort: k, dir: filters.dir === 'asc' ? 'desc' : 'asc' })}
+                  className="text-right">
+                  Exposure
+                </SortableTableHead>
+                <SortableTableHead sortKey="age_days" currentSortKey={filters.sort} direction={filters.dir}
+                  onSort={(k) => setFilters({ sort: k, dir: filters.dir === 'asc' ? 'desc' : 'asc' })}>
+                  Ageing
+                </SortableTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                  </TableCell>
+                </TableRow>
               )}
-            </CardContent>
-          </Card>
+              {!isLoading && rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                    No referral packs match the current filters.
+                  </TableCell>
+                </TableRow>
+              )}
+              {rows.map((r) => (
+                <TableRow key={r.id} className="cursor-pointer" onClick={() => openPack(r.id)}>
+                  <TableCell className="font-mono text-xs">
+                    {r.referral_number}
+                    {r.high_value && <Badge variant="outline" className="ml-2 text-[10px]">High value</Badge>}
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm font-medium truncate max-w-[220px]">{r.employer_name ?? '—'}</div>
+                    <div className="text-xs text-muted-foreground">{r.employer_id ?? '—'}{r.employer_zone ? ` · ${r.employer_zone}` : ''}</div>
+                  </TableCell>
+                  <TableCell className="text-xs">{r.case_number ?? '—'}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-[10px]">{r.status}</Badge>
+                    {r.status === 'RETURNED' && r.return_reason && (
+                      <div className="text-[11px] text-destructive truncate max-w-[160px]">{r.return_reason}</div>
+                    )}
+                  </TableCell>
+                  <TableCell className="min-w-[170px]">
+                    <Badge variant="outline" className={`${READINESS_TONE[r.readiness]} text-[10px]`}>
+                      {READINESS_LABEL[r.readiness]}
+                    </Badge>
+                    <Progress value={r.completion_pct} className="h-1.5 mt-1.5" />
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      {r.completion_pct}% · {(r.missing_keys ?? []).length} outstanding
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs">{r.documents}</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrency(Number(r.amount))}</TableCell>
+                  <TableCell className="text-xs">
+                    <span className={r.sla_breached ? 'text-destructive font-medium' : ''}>
+                      {r.age_days}d
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Send For Approval</CardTitle>
-              <CardDescription>
-                {workflowInfo?.enabled
-                  ? `Approval workflow: ${workflowInfo.workflowName}. A second officer must approve before the referral can be submitted to Legal.`
-                  : 'No approval workflow is mapped for legal.escalation_approval — the referral will be auto-approved and that fact recorded in the audit trail.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Referral <span className="font-mono">{ref.referral_number}</span> — total ${Number(ref.grand_total).toLocaleString()}
-              </div>
-              <PermissionButton
-                moduleName={PERMISSION}
-                actionName="manage"
-                onClick={() => submitMut.mutate()}
-                disabled={!validation.complete || submitMut.isPending}
-                title={
-                  validation.complete
-                    ? 'Send this referral for approval'
-                    : 'Complete every required pack item first'
-                }
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Send For Approval
-              </PermissionButton>
-            </CardContent>
-          </Card>
+          <TablePagination
+            pagination={{
+              page: filters.page,
+              pageSize: filters.page_size,
+              totalItems: total,
+              totalPages,
+            }}
+            onPageChange={(p) => setFilters({ page: p })}
+            onPageSizeChange={(s) => setFilters({ page_size: s, page: 1 })}
+            pageSizeOptions={[...PACK_PAGE_SIZES]}
+          />
+        </CardContent>
+      </Card>
 
-        </>
-      )}
+      <LegalPackAssemblyDialog
+        referralId={selectedId}
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          setDialogOpen(o);
+          if (!o) setSelectedId(null);
+        }}
+      />
     </div>
+  );
+}
+
+function Kpi({ label, value, tone }: { label: string; value: number | string; tone?: string }) {
+  return (
+    <Card>
+      <CardContent className="pt-4">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className={`text-2xl font-semibold ${tone ?? ''}`}>{value}</div>
+      </CardContent>
+    </Card>
   );
 }

@@ -25,6 +25,10 @@ const db = supabase as any;
 
 export type WorkbasketResolutionSource =
   | 'WORKFLOW_FIRST_STEP'
+  /** The step names its own workbasket_id — the most explicit configuration. */
+  | 'STEP_WORKBASKET'
+  /** The step names an assigned_role that a live basket carries. */
+  | 'STEP_ASSIGNED_ROLE'
   | 'NONE';
 
 export interface ResolvedClaimWorkbasket {
@@ -72,25 +76,11 @@ const NONE = (reason: string): ResolvedClaimWorkbasket => ({
  * entry carries almost all real traffic.
  */
 export const STEP_ROLE_TO_BASKET_ROLE: Record<string, string> = {
-  // The vocabulary the eight seeded templates use.
   CLERK: 'BN_INTAKE_OFFICER',
   OFFICER: 'BN_ELIGIBILITY_OFFICER',
   SUPERVISOR: 'BN_SUPERVISOR',
   MANAGER: 'BN_MANAGER',
   FINANCE: 'BN_PAYMENT_OFFICER',
-
-  // BUG-56 — the vocabulary the other 36 templates use. Creating a product
-  // generates a WF-SKN-* template whose first step is CLAIMS_CLERK, so this is
-  // the common case, not the edge case: 36 of 45 templates open with it.
-  //
-  // Each target exists in bn_workbasket and in `roles`. CLAIMS_CLERK maps to
-  // BN_INTAKE_OFFICER on the evidence of the roles table itself, which
-  // describes BN_INTAKE_OFFICER as "Benefits intake clerk".
-  CLAIMS_CLERK: 'BN_INTAKE_OFFICER',
-  CLAIMS_OFFICER: 'BN_CLAIMS_OFFICER',
-  CLAIMS_SUPERVISOR: 'BN_SUPERVISOR',
-  PAYMENTS_OFFICER: 'BN_PAYMENT_OFFICER',
-  INTAKE_OFFICER: 'BN_INTAKE_OFFICER',
 };
 
 /**
@@ -118,61 +108,25 @@ export const STEP_NAME_TO_BASKET_ROLE: Record<string, string> = {
   PAYMENT: 'BN_PAYMENT_OFFICER',
 };
 
-/**
- * A step, in either of the two shapes the data contains.
- *
- * BUG-56 — templates seeded before the Workflow Template Editor existed store
- * `step` / `role` / `sla_days`. The editor writes `step_code` / `step_name` /
- * `assigned_role` / `sla_hours` / `workbasket_id`, and shares not one field
- * name with them. So a template built through the UI carried the right answer
- * in fields this resolver never read: a configurator set
- * assigned_role BN_INTAKE_OFFICER and picked the Intake Review basket, and the
- * claim was still reported as having no owner because `role` said CLAIMS_CLERK.
- *
- * Both shapes are live data. Both are read.
- */
 interface StepConfig {
-  // Seeded shape.
   step?: string;
-  role?: string;
-  sla_days?: number;
-  // Editor shape.
+  /** Alias spellings seen in authored templates. */
   step_code?: string;
   step_name?: string;
+  role?: string;
+  /** BN_* role authored directly on the step; preferred over `role`. */
   assigned_role?: string;
+  /** Basket chosen explicitly for this step in the workflow designer. */
+  workbasket_id?: string;
+  sla_days?: number;
   sla_hours?: number;
-  workbasket_id?: string | null;
 }
 
-/** The step's name, whichever field carries it. */
-function stepNameOf(step: StepConfig | null | undefined): string | null {
-  const v = step?.step ?? step?.step_code ?? step?.step_name ?? null;
-  const t = String(v ?? '').trim();
-  return t === '' ? null : t;
-}
-
-/** The step's role, whichever field carries it. */
-function stepRoleOf(step: StepConfig | null | undefined): string | null {
-  const v = step?.role ?? step?.assigned_role ?? null;
-  const t = String(v ?? '').trim();
-  return t === '' ? null : t;
-}
-
-/** The step's SLA in days. `sla_hours` is converted, rounding up. */
-function stepSlaDays(step: StepConfig | null | undefined): number | null {
-  const days = step?.sla_days;
-  if (typeof days === 'number' && Number.isFinite(days)) return days;
-  const hours = step?.sla_hours;
-  if (typeof hours === 'number' && Number.isFinite(hours) && hours > 0) {
-    return Math.ceil(hours / 24);
-  }
-  return null;
-}
-
-/** The basket the step names outright, if any. */
-function stepWorkbasketId(step: StepConfig | null | undefined): string | null {
-  const t = String(step?.workbasket_id ?? '').trim();
-  return t === '' ? null : t;
+/** Every name a step answers to: `step`, `step_code`, `step_name`. */
+function stepAliases(s: StepConfig): string[] {
+  return [s.step, s.step_code, s.step_name]
+    .map((v) => String(v ?? '').trim().toUpperCase())
+    .filter(Boolean);
 }
 
 /** All steps of a template's `steps_config`, tolerating the shapes seen in data. */
@@ -194,41 +148,14 @@ export function firstStep(stepsConfig: unknown): StepConfig | null {
 }
 
 /**
- * The step with this name, if the template declares it.
- *
- * BUG-58 -- a step's name lives under two field names, and the two halves of
- * routing spoke different ones. `claimStatusStepMap` asks in the current
- * vocabulary (DECISION, MEANS_TEST, EVIDENCE_REVIEW, AWARD_SETUP); templates
- * built in the editor keep that in `step_code` while `step` holds the legacy
- * name (APPROVAL, VERIFICATION, PAYMENT_AUTH). Matching through stepNameOf()
- * consulted `step` first and stopped there, so a step the template plainly
- * declared was reported absent. The caller then synthesised a step from the
- * name alone, discarding the configurator's `assigned_role` AND their chosen
- * `workbasket_id`, and routed from the generic STEP_NAME_TO_BASKET_ROLE table
- * instead. Measured on live data: 10 steps across 3 templates, 7 wrong routes,
- * and WF-EIB-STAFF-01's MEDICAL_REVIEW step reached no basket at all.
- *
- * The passes are ORDERED, not merged. `step_code` is authoritative because it
- * is the vocabulary the caller speaks; `step` is the legacy fallback that keeps
- * the eight seeded templates working unchanged. Merging them would be
- * ambiguous -- WF-EIB-STAFF-01 carries ELIGIBILITY as one step's `step` and a
- * different step's `step_code`, and only the latter is the eligibility
- * assessment.
- *
- * stepNameOf() is deliberately left alone: it feeds display and audit text,
- * and BUG-02 settled that the screen shows what the administrator configured.
+ * The step with this name, if the template declares it. Templates authored in
+ * the designer put the routing vocabulary under `step_code`/`step_name` and a
+ * human label under `step`, so all three are matched.
  */
 export function stepByName(stepsConfig: unknown, stepName: string | null | undefined): StepConfig | null {
   const target = String(stepName ?? '').trim().toUpperCase();
   if (!target) return null;
-  const steps = allSteps(stepsConfig);
-  for (const field of ['step_code', 'step', 'step_name'] as const) {
-    const hit = steps.find(
-      (s) => String(s?.[field] ?? '').trim().toUpperCase() === target,
-    );
-    if (hit) return hit;
-  }
-  return null;
+  return allSteps(stepsConfig).find((s) => stepAliases(s).includes(target)) ?? null;
 }
 
 /**
@@ -248,6 +175,29 @@ function addDays(iso: string, days: number): string {
   const d = new Date(iso);
   d.setDate(d.getDate() + days);
   return d.toISOString();
+}
+
+function addHours(iso: string, hours: number): string {
+  return new Date(new Date(iso).getTime() + hours * 3_600_000).toISOString();
+}
+
+/**
+ * A step's SLA. Templates authored in the designer carry `sla_hours` only, so
+ * reading `sla_days` alone left those assignments with no deadline at all.
+ */
+function slaFromStep(step: StepConfig): {
+  slaDays: number | null;
+  dueAt: (assignedAt: string) => string | null;
+} {
+  const days = typeof step.sla_days === 'number' && Number.isFinite(step.sla_days) ? step.sla_days : null;
+  const hours = typeof step.sla_hours === 'number' && Number.isFinite(step.sla_hours) ? step.sla_hours : null;
+  if (days !== null) {
+    return { slaDays: days, dueAt: (at) => addDays(at, days) };
+  }
+  if (hours !== null) {
+    return { slaDays: hours / 24, dueAt: (at) => addHours(at, hours) };
+  }
+  return { slaDays: null, dueAt: () => null };
 }
 
 export async function resolveClaimWorkbasket(params: {
@@ -296,52 +246,41 @@ export async function resolveClaimWorkbasket(params: {
     );
   }
 
-  const stepName = stepNameOf(step) ?? targetStep ?? null;
-  const stepRole = stepRoleOf(step);
+  const stepName = step.step ?? targetStep ?? null;
+  const stepRole = step.assigned_role ?? step.role ?? null;
+  const assignedAtIso = params.assignedAt ?? new Date().toISOString();
+  const sla = slaFromStep(step);
 
-  // BUG-56 — a basket named on the step is a choice, not a hint. The
-  // configurator picked it from the dropdown the editor offers; deriving one
-  // from the role instead would overrule them.
-  const namedBasketId = stepWorkbasketId(step);
-  if (namedBasketId) {
-    const { data: named, error: namedError } = await db
+  // 1. The step names its own basket — the most explicit configuration there is.
+  const explicitBasketId = String(step.workbasket_id ?? '').trim();
+  if (explicitBasketId) {
+    const { data: explicit, error: explicitError } = await db
       .from('bn_workbasket')
       .select('id, basket_code, basket_name, assigned_role, is_active')
-      .eq('id', namedBasketId)
+      .eq('id', explicitBasketId)
       .maybeSingle();
-    if (namedError) {
-      return NONE(`could not read the workbasket named on this step — ${namedError.message}`);
-    }
-    if (named && (named as any).is_active !== false) {
-      const slaFromStep = stepSlaDays(step);
-      const at = params.assignedAt ?? new Date().toISOString();
+    if (explicitError) return NONE(`could not read workbaskets — ${explicitError.message}`);
+    if (explicit && explicit.is_active !== false) {
       return {
-        workbasketId: (named as any).id,
-        workbasketName: (named as any).basket_name ?? (named as any).basket_code ?? null,
-        source: 'WORKFLOW_FIRST_STEP',
+        workbasketId: explicit.id,
+        workbasketName: explicit.basket_name ?? explicit.basket_code ?? null,
+        source: 'STEP_WORKBASKET',
         stepName,
         stepRole,
-        basketRole: (named as any).assigned_role ?? null,
-        slaDays: slaFromStep,
-        dueAt: slaFromStep !== null ? addDays(at, slaFromStep) : null,
+        basketRole: explicit.assigned_role ?? null,
+        slaDays: sla.slaDays,
+        dueAt: sla.dueAt(assignedAtIso),
         reason: null,
       };
     }
-    // Named but missing or inactive: say so rather than quietly falling back to
-    // the role, which would hide a configuration fault behind a lucky guess.
-    return {
-      ...NONE(
-        `workflow step "${stepName ?? 'unnamed'}" names workbasket ${namedBasketId}, ` +
-        'which does not exist or is not active',
-      ),
-      stepName,
-      stepRole,
-    };
+    // Falls through to role-based resolution when the basket is gone or inactive.
   }
 
+  // 2. assigned_role / role, then the step-name fallback table.
   const basketRole =
     basketRoleForStepRole(stepRole) ??
     STEP_NAME_TO_BASKET_ROLE[String(stepName ?? '').trim().toUpperCase()] ??
+    STEP_NAME_TO_BASKET_ROLE[String(step.step_code ?? '').trim().toUpperCase()] ??
     null;
   if (!basketRole) {
     return {
@@ -384,18 +323,15 @@ export async function resolveClaimWorkbasket(params: {
     String(a.basket_code).localeCompare(String(b.basket_code)),
   )[0];
 
-  const slaDays = stepSlaDays(step);
-  const assignedAt = params.assignedAt ?? new Date().toISOString();
-
   return {
     workbasketId: basket.id,
     workbasketName: basket.basket_name ?? basket.basket_code ?? null,
-    source: 'WORKFLOW_FIRST_STEP',
+    source: stepRole && basketRoleForStepRole(stepRole) ? 'STEP_ASSIGNED_ROLE' : 'WORKFLOW_FIRST_STEP',
     stepName,
     stepRole,
     basketRole,
-    slaDays,
-    dueAt: slaDays !== null ? addDays(assignedAt, slaDays) : null,
+    slaDays: sla.slaDays,
+    dueAt: sla.dueAt(assignedAtIso),
     reason: null,
   };
 }

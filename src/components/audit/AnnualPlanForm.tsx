@@ -73,19 +73,20 @@ export function AnnualPlanForm({ plan, onClose, onSuccess, onCreate, onUpdate }:
       monthly_working_hours: formData.monthlyWorkingHours ? Number(formData.monthlyWorkingHours) : 160,
       utilization_pct: formData.utilizationPct ? Number(formData.utilizationPct) : 85,
       buffer_pct: formData.bufferPct ? Number(formData.bufferPct) : 10,
-      status,
     };
     if (!plan) {
+      // Lifecycle status is only set at creation. Editing plan content must never
+      // move a plan backwards (e.g. Changes Requested → Draft); status transitions
+      // belong to the governed workflow commands.
+      payload.status = status;
       payload.created_by = userCode || 'system';
       payload.plan_owner = userCode || 'system';
       payload.prepared_by = userCode || 'system';
     }
     payload.updated_by = userCode || 'system';
-    if (status === 'Submitted') {
-      payload.submitted_date = new Date().toISOString();
-    }
     return payload;
   };
+
 
   const handleSaveDraft = async () => {
     if (!formData.title.trim()) {

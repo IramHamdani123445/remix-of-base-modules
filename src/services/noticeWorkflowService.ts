@@ -68,7 +68,13 @@ export async function generateNotice(input: {
 
   const subject = resolveTemplate(tpl.subject || '', input.mergeVars);
   const body = resolveTemplate(tpl.body || '', input.mergeVars);
-  const noticeNumber = `N-${Date.now().toString(36).toUpperCase()}`;
+  // Notice numbers are allocated by the database (ce_notice_allocate_number_v1)
+  // so concurrent generation can never collide and every number is auditable.
+  const { data: allocated, error: numErr } = await (supabase as any)
+    .rpc('ce_notice_allocate_number_v1');
+  if (numErr) throw new Error(`Unable to allocate a notice number: ${numErr.message}`);
+  const noticeNumber = allocated as string;
+  if (!noticeNumber) throw new Error('Unable to allocate a notice number');
 
   const { data, error } = await supabase
     .from('ce_notices')

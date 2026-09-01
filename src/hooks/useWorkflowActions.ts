@@ -1,3 +1,4 @@
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
@@ -1376,6 +1377,9 @@ async function updateSourceRecordStatus(
         console.error('Error updating bn_claim status:', error);
         throw error;
       }
+
+      // Keep the work queue in step with the engine's status write-back.
+      await routeClaimAfterStatusChange(sourceRecordId, userCode);
 
       console.log(`BN claim ${sourceRecordId} status updated to ${newStatus}`);
     }

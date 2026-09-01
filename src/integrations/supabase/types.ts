@@ -33160,72 +33160,162 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_approved_escalation_ref: {
+        Row: {
+          aliases: string[]
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          group_code: string | null
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          group_code?: string | null
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          group_code?: string | null
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_arrangement_breaches: {
         Row: {
           amount_outstanding_at_breach: number | null
           arrangement_id: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          breach_status: string | null
           breach_type: string | null
+          case_id: string | null
+          consecutive_misses: number | null
           created_at: string
           created_by: string | null
           description: string | null
           detected_at: string | null
           detected_by: string | null
+          detection_method: string | null
+          detection_rule: string | null
           due_date_at_breach: string | null
+          escalation_status: string | null
           grace_days_at_breach: number | null
           id: string
           installment_id: string | null
           installment_number: number | null
+          last_action_at: string | null
+          legal_referral_id: string | null
           occurrence_key: string | null
+          payment_reference: string | null
           resolution: string | null
           resolution_notes: string | null
+          resolution_reason: string | null
+          resolution_type: string | null
           resolved_at: string | null
           resolved_by: string | null
+          severity: string | null
           updated_at: string
           updated_by: string | null
+          violation_id: string | null
         }
         Insert: {
           amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          breach_status?: string | null
           breach_type?: string | null
+          case_id?: string | null
+          consecutive_misses?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          detection_method?: string | null
+          detection_rule?: string | null
           due_date_at_breach?: string | null
+          escalation_status?: string | null
           grace_days_at_breach?: number | null
           id?: string
           installment_id?: string | null
           installment_number?: number | null
+          last_action_at?: string | null
+          legal_referral_id?: string | null
           occurrence_key?: string | null
+          payment_reference?: string | null
           resolution?: string | null
           resolution_notes?: string | null
+          resolution_reason?: string | null
+          resolution_type?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          severity?: string | null
           updated_at?: string
           updated_by?: string | null
+          violation_id?: string | null
         }
         Update: {
           amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          breach_status?: string | null
           breach_type?: string | null
+          case_id?: string | null
+          consecutive_misses?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          detection_method?: string | null
+          detection_rule?: string | null
           due_date_at_breach?: string | null
+          escalation_status?: string | null
           grace_days_at_breach?: number | null
           id?: string
           installment_id?: string | null
           installment_number?: number | null
+          last_action_at?: string | null
+          legal_referral_id?: string | null
           occurrence_key?: string | null
+          payment_reference?: string | null
           resolution?: string | null
           resolution_notes?: string | null
+          resolution_reason?: string | null
+          resolution_type?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          severity?: string | null
           updated_at?: string
           updated_by?: string | null
+          violation_id?: string | null
         }
         Relationships: [
           {
@@ -33247,6 +33337,20 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["arrangement_id"]
           },
           {
@@ -33282,6 +33386,20 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -33391,6 +33509,48 @@ export type Database = {
           scope_key?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_arrangement_ref: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          sort_order: number
+          ui_tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          sort_order?: number
+          ui_tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          sort_order?: number
+          ui_tone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -35801,6 +35961,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_breach_ref: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          sort_order: number
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_c3_ledger_sync_log: {
         Row: {
           created_at: string
@@ -36158,7 +36360,21 @@ export type Database = {
             foreignKeyName: "ce_case_actions_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_actions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_actions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -36224,7 +36440,21 @@ export type Database = {
             foreignKeyName: "ce_case_assignments_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_assignments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_assignments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -36332,7 +36562,21 @@ export type Database = {
             foreignKeyName: "ce_case_correspondence_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_correspondence_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_correspondence_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -36441,7 +36685,21 @@ export type Database = {
             foreignKeyName: "ce_case_documents_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -36636,7 +36894,21 @@ export type Database = {
             foreignKeyName: "ce_case_history_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_history_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_history_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -36650,7 +36922,21 @@ export type Database = {
             foreignKeyName: "fk_ce_case_history_case"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_history_case"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_history_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -36722,7 +37008,21 @@ export type Database = {
             foreignKeyName: "ce_case_merge_history_source_case_id_fkey"
             columns: ["source_case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_merge_history_source_case_id_fkey"
+            columns: ["source_case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_merge_history_source_case_id_fkey"
+            columns: ["source_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -36736,7 +37036,21 @@ export type Database = {
             foreignKeyName: "ce_case_merge_history_target_case_id_fkey"
             columns: ["target_case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_merge_history_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_merge_history_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -36855,7 +37169,21 @@ export type Database = {
             foreignKeyName: "ce_case_notices_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -36863,6 +37191,13 @@ export type Database = {
             columns: ["notice_id"]
             isOneToOne: false
             referencedRelation: "ce_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_notices_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_notice_register"
             referencedColumns: ["id"]
           },
         ]
@@ -37056,7 +37391,21 @@ export type Database = {
             foreignKeyName: "ce_case_recommendations_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_recommendations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_recommendations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -37186,7 +37535,21 @@ export type Database = {
             foreignKeyName: "ce_case_requests_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -37200,7 +37563,21 @@ export type Database = {
             foreignKeyName: "ce_case_requests_target_case_id_fkey"
             columns: ["target_case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_requests_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_requests_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -37278,7 +37655,21 @@ export type Database = {
             foreignKeyName: "ce_case_risk_snapshots_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_risk_snapshots_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_risk_snapshots_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -37438,7 +37829,21 @@ export type Database = {
             foreignKeyName: "ce_case_violations_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_violations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_violations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -37480,7 +37885,21 @@ export type Database = {
             foreignKeyName: "fk_ce_case_violations_case"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_violations_case"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_violations_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -37680,7 +38099,21 @@ export type Database = {
             foreignKeyName: "ce_cases_merged_into_case_id_fkey"
             columns: ["merged_into_case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_cases_merged_into_case_id_fkey"
+            columns: ["merged_into_case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_cases_merged_into_case_id_fkey"
+            columns: ["merged_into_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -40337,7 +40770,21 @@ export type Database = {
             foreignKeyName: "ce_field_activities_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_field_activities_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_field_activities_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -41278,7 +41725,21 @@ export type Database = {
             foreignKeyName: "ce_inspections_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_inspections_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_inspections_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -41585,6 +42046,20 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "fk_ce_installments_arrangement"
             columns: ["arrangement_id"]
             isOneToOne: false
@@ -41603,6 +42078,20 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -41834,6 +42323,45 @@ export type Database = {
           principal_due?: number
           waivers?: number
           write_offs?: number
+        }
+        Relationships: []
+      }
+      ce_legal_candidate_ref: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          display_order: number
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          tone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -42125,7 +42653,21 @@ export type Database = {
             foreignKeyName: "ce_legal_escalations_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_escalations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_escalations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -42139,7 +42681,21 @@ export type Database = {
             foreignKeyName: "fk_ce_legal_escalations_case"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_legal_escalations_case"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_legal_escalations_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -42264,44 +42820,170 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_legal_pack_event: {
+        Row: {
+          actor_code: string | null
+          actor_name: string | null
+          created_at: string
+          description: string | null
+          event_code: string
+          id: string
+          payload: Json
+          referral_id: string
+          version_no: number | null
+        }
+        Insert: {
+          actor_code?: string | null
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          event_code: string
+          id?: string
+          payload?: Json
+          referral_id: string
+          version_no?: number | null
+        }
+        Update: {
+          actor_code?: string | null
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          event_code?: string
+          id?: string
+          payload?: Json
+          referral_id?: string
+          version_no?: number | null
+        }
+        Relationships: []
+      }
+      ce_legal_pack_item_def: {
+        Row: {
+          applies_reason_codes: string[]
+          auto_source: string | null
+          code: string
+          created_at: string
+          description: string | null
+          display_order: number
+          document_type_code: string | null
+          group_code: string
+          guidance: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          min_amount: number
+          requires_document: boolean
+          updated_at: string
+          updated_by: string | null
+          validation_mode: string
+        }
+        Insert: {
+          applies_reason_codes?: string[]
+          auto_source?: string | null
+          code: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          document_type_code?: string | null
+          group_code?: string
+          guidance?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          min_amount?: number
+          requires_document?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          validation_mode?: string
+        }
+        Update: {
+          applies_reason_codes?: string[]
+          auto_source?: string | null
+          code?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          document_type_code?: string | null
+          group_code?: string
+          guidance?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          min_amount?: number
+          requires_document?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          validation_mode?: string
+        }
+        Relationships: []
+      }
       ce_legal_pack_items: {
         Row: {
+          auto_evidence: Json
+          auto_source: string | null
+          completion_mode: string
           created_at: string
+          display_order: number
+          group_code: string
           id: string
           is_required: boolean
           is_satisfied: boolean
           item_key: string
           item_label: string
+          item_status: string
           notes: string | null
+          pack_version_no: number
           referral_id: string
+          requires_document: boolean
           satisfied_at: string | null
           satisfied_by: string | null
+          satisfied_by_name: string | null
           updated_at: string
         }
         Insert: {
+          auto_evidence?: Json
+          auto_source?: string | null
+          completion_mode?: string
           created_at?: string
+          display_order?: number
+          group_code?: string
           id?: string
           is_required?: boolean
           is_satisfied?: boolean
           item_key: string
           item_label: string
+          item_status?: string
           notes?: string | null
+          pack_version_no?: number
           referral_id: string
+          requires_document?: boolean
           satisfied_at?: string | null
           satisfied_by?: string | null
+          satisfied_by_name?: string | null
           updated_at?: string
         }
         Update: {
+          auto_evidence?: Json
+          auto_source?: string | null
+          completion_mode?: string
           created_at?: string
+          display_order?: number
+          group_code?: string
           id?: string
           is_required?: boolean
           is_satisfied?: boolean
           item_key?: string
           item_label?: string
+          item_status?: string
           notes?: string | null
+          pack_version_no?: number
           referral_id?: string
+          requires_document?: boolean
           satisfied_at?: string | null
           satisfied_by?: string | null
+          satisfied_by_name?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -42312,7 +42994,169 @@ export type Database = {
             referencedRelation: "ce_legal_referrals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_legal_pack_items_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_pack_items_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_pack_items_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["referral_id"]
+          },
         ]
+      }
+      ce_legal_pack_ref: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          group_code: string | null
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          text_value: string | null
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          group_code?: string | null
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          text_value?: string | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          group_code?: string | null
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          text_value?: string | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_legal_pack_version: {
+        Row: {
+          checklist_snapshot: Json
+          created_at: string
+          documents_snapshot: Json
+          id: string
+          referral_id: string
+          return_reason: string | null
+          returned_at: string | null
+          returned_by: string | null
+          status: string
+          submission_key: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_name: string | null
+          totals_snapshot: Json
+          updated_at: string
+          version_no: number
+          workflow_snapshot: Json
+        }
+        Insert: {
+          checklist_snapshot?: Json
+          created_at?: string
+          documents_snapshot?: Json
+          id?: string
+          referral_id: string
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          status?: string
+          submission_key?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          totals_snapshot?: Json
+          updated_at?: string
+          version_no: number
+          workflow_snapshot?: Json
+        }
+        Update: {
+          checklist_snapshot?: Json
+          created_at?: string
+          documents_snapshot?: Json
+          id?: string
+          referral_id?: string
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          status?: string
+          submission_key?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          totals_snapshot?: Json
+          updated_at?: string
+          version_no?: number
+          workflow_snapshot?: Json
+        }
+        Relationships: []
+      }
+      ce_legal_proceeding_ref: {
+        Row: {
+          aliases: string[]
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          group_code: string | null
+          id: string
+          is_active: boolean
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          group_code?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          group_code?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       ce_legal_proceedings: {
         Row: {
@@ -42368,6 +43212,48 @@ export type Database = {
           stage?: string
           updated_at?: string | null
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_legal_recommendation_ref: {
+        Row: {
+          aliases: string[]
+          code: string
+          created_at: string
+          description: string | null
+          display_order: number
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          code: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          code?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          tone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -42535,6 +43421,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_legal_referrals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_legal_referral_lines_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_referral_lines_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_referral_lines_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["referral_id"]
           },
         ]
       }
@@ -42730,49 +43637,156 @@ export type Database = {
             referencedRelation: "ce_legal_recommendations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_legal_referrals_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["recommendation_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_referrals_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["recommendation_id"]
+          },
         ]
+      }
+      ce_legal_return_ref: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       ce_legal_returns: {
         Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          comments: string | null
           created_at: string
+          due_date: string | null
+          follow_up_action_id: string | null
           id: string
           reason: string
+          reason_code: string | null
           referral_id: string
           required_action: string | null
           resolution_notes: string | null
           resolution_status: string
+          resolution_summary: string | null
           resolved_at: string | null
           resolved_by: string | null
+          resolved_by_name: string | null
+          resubmitted_at: string | null
+          resubmitted_by: string | null
+          return_seq: number
           returned_at: string
           returned_by: string | null
+          returned_by_name: string | null
+          returned_pack_version: number | null
+          rework_started_at: string | null
+          rework_started_by: string | null
+          rework_status: string
+          rework_version_no: number | null
           updated_at: string
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          comments?: string | null
           created_at?: string
+          due_date?: string | null
+          follow_up_action_id?: string | null
           id?: string
           reason: string
+          reason_code?: string | null
           referral_id: string
           required_action?: string | null
           resolution_notes?: string | null
           resolution_status?: string
+          resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          resolved_by_name?: string | null
+          resubmitted_at?: string | null
+          resubmitted_by?: string | null
+          return_seq?: number
           returned_at?: string
           returned_by?: string | null
+          returned_by_name?: string | null
+          returned_pack_version?: number | null
+          rework_started_at?: string | null
+          rework_started_by?: string | null
+          rework_status?: string
+          rework_version_no?: number | null
           updated_at?: string
         }
         Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          comments?: string | null
           created_at?: string
+          due_date?: string | null
+          follow_up_action_id?: string | null
           id?: string
           reason?: string
+          reason_code?: string | null
           referral_id?: string
           required_action?: string | null
           resolution_notes?: string | null
           resolution_status?: string
+          resolution_summary?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          resolved_by_name?: string | null
+          resubmitted_at?: string | null
+          resubmitted_by?: string | null
+          return_seq?: number
           returned_at?: string
           returned_by?: string | null
+          returned_by_name?: string | null
+          returned_pack_version?: number | null
+          rework_started_at?: string | null
+          rework_started_by?: string | null
+          rework_status?: string
+          rework_version_no?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -42782,6 +43796,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_legal_referrals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["referral_id"]
           },
         ]
       }
@@ -43124,7 +44159,65 @@ export type Database = {
             referencedRelation: "ce_notices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_notice_delivery_log_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_notice_register"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      ce_notice_number_seq: {
+        Row: {
+          last_value: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          last_value?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      ce_notice_ref: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          group_code: string | null
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          group_code?: string | null
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          group_code?: string | null
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+        }
+        Relationships: []
       }
       ce_notice_responses: {
         Row: {
@@ -43187,7 +44280,21 @@ export type Database = {
             foreignKeyName: "ce_notice_responses_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -43195,6 +44302,13 @@ export type Database = {
             columns: ["notice_id"]
             isOneToOne: false
             referencedRelation: "ce_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_notice_register"
             referencedColumns: ["id"]
           },
           {
@@ -43429,7 +44543,21 @@ export type Database = {
             foreignKeyName: "ce_notices_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -43471,7 +44599,21 @@ export type Database = {
             foreignKeyName: "fk_ce_notices_case"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -44754,7 +45896,21 @@ export type Database = {
             foreignKeyName: "ce_payment_arrangements_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -44768,7 +45924,21 @@ export type Database = {
             foreignKeyName: "fk_ce_payment_arrangements_case"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -45112,7 +46282,21 @@ export type Database = {
             foreignKeyName: "ce_planned_visits_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_planned_visits_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_planned_visits_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -47405,7 +48589,21 @@ export type Database = {
             foreignKeyName: "ce_violation_grouping_decisions_target_case_id_fkey"
             columns: ["target_case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_violation_grouping_decisions_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_violation_grouping_decisions_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -47939,7 +49137,21 @@ export type Database = {
             foreignKeyName: "ce_violations_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_violations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_violations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -48115,10 +49327,59 @@ export type Database = {
             foreignKeyName: "ce_waiver_decisions_waiver_id_fkey"
             columns: ["waiver_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["waiver_id"]
+          },
+          {
+            foreignKeyName: "ce_waiver_decisions_waiver_id_fkey"
+            columns: ["waiver_id"]
+            isOneToOne: false
             referencedRelation: "ce_waivers"
             referencedColumns: ["id"]
           },
         ]
+      }
+      ce_waiver_ref: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          sort_order: number
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          sort_order?: number
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       ce_waiver_rules: {
         Row: {
@@ -48316,7 +49577,21 @@ export type Database = {
             foreignKeyName: "ce_waivers_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -62820,6 +64095,13 @@ export type Database = {
             foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_account_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "er_master"
             referencedColumns: ["regno"]
           },
@@ -62926,6 +64208,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_plan_employer_facts"
             referencedColumns: ["employer_id"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_balance_employer_id_fkey"
@@ -63111,6 +64400,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_plan_employer_facts"
             referencedColumns: ["employer_id"]
+          },
+          {
+            foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_employer_ledger_transaction_employer_id_fkey"
@@ -63646,6 +64942,13 @@ export type Database = {
             foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
+          },
+          {
+            foreignKeyName: "core_ledger_payment_allocation_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
             referencedRelation: "er_master"
             referencedColumns: ["regno"]
           },
@@ -63771,6 +65074,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_plan_employer_facts"
             referencedColumns: ["employer_id"]
+          },
+          {
+            foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_waiver_register"
+            referencedColumns: ["regno"]
           },
           {
             foreignKeyName: "core_ledger_recalculation_run_employer_id_fkey"
@@ -85961,6 +87271,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_legal_referrals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_referral_source_ce_referral_id_fkey"
+            columns: ["source_ce_referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "legal_referral_source_ce_referral_id_fkey"
+            columns: ["source_ce_referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "legal_referral_source_ce_referral_id_fkey"
+            columns: ["source_ce_referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["referral_id"]
           },
         ]
       }
@@ -116851,6 +118182,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_approved_escalation_register: {
+        Row: {
+          accepted_by: string | null
+          accepted_date: string | null
+          approved_at: string | null
+          approved_by: string | null
+          awaiting_acceptance: boolean | null
+          ce_case_id: string | null
+          ce_case_number: string | null
+          court_case_no: string | null
+          court_name: string | null
+          created_at: string | null
+          employer_name: string | null
+          employer_reg_no: string | null
+          interest_amount: number | null
+          is_closed: boolean | null
+          last_legal_update: string | null
+          legal_case_id: string | null
+          legal_officer: string | null
+          legal_status_raw: string | null
+          lg_case_no: string | null
+          lg_intake_id: string | null
+          lg_intake_no: string | null
+          next_hearing_date: string | null
+          origin_code: string | null
+          outstanding_amount: number | null
+          pack_completed_at: string | null
+          penalty_amount: number | null
+          principal_amount: number | null
+          reason_code: string | null
+          recovered_amount: number | null
+          recovery_status_code: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_reason_text: string | null
+          referral_return_reason: string | null
+          referral_returned_at: string | null
+          referral_status: string | null
+          return_reason: string | null
+          return_resolution_status: string | null
+          returned_at: string | null
+          source_reference_no: string | null
+          submitted_by: string | null
+          submitted_date: string | null
+          total_referred: number | null
+          updated_at: string | null
+          waiting_hours: number | null
+          zone: string | null
+        }
+        Relationships: []
+      }
       ce_v_arrangement_allocation_trail: {
         Row: {
           allocation_amount: number | null
@@ -116937,6 +118319,20 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
             columns: ["installment_id"]
             isOneToOne: false
@@ -116969,6 +118365,20 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -117041,6 +118451,20 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "ce_payment_arrangements_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
@@ -117051,7 +118475,21 @@ export type Database = {
             foreignKeyName: "ce_payment_arrangements_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -117076,6 +118514,20 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "fk_ce_payment_arrangements_case"
             columns: ["case_id"]
             isOneToOne: false
@@ -117086,7 +118538,21 @@ export type Database = {
             foreignKeyName: "fk_ce_payment_arrangements_case"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -117139,7 +118605,21 @@ export type Database = {
             foreignKeyName: "ce_payment_arrangements_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
           {
@@ -117153,7 +118633,162 @@ export type Database = {
             foreignKeyName: "fk_ce_payment_arrangements_case"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
+      ce_v_arrangement_register_ext: {
+        Row: {
+          agreement_signed: boolean | null
+          agreement_start_date: string | null
+          approved_at: string | null
+          approved_by_user: string | null
+          arrangement_default_violation_id: string | null
+          arrangement_default_violation_number: string | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          breach_count: number | null
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          case_number: string | null
+          created_at: string | null
+          days_to_next_due: number | null
+          employer_id: string | null
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          health_label: string | null
+          health_status: string | null
+          installment_amount: number | null
+          installments_paid: number | null
+          installments_partial: number | null
+          installments_total: number | null
+          last_breach_at: string | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          next_installment_amount: number | null
+          next_installment_number: number | null
+          number_of_installments: number | null
+          outstanding: number | null
+          overdue_count: number | null
+          paid_percent: number | null
+          past_due_amount: number | null
+          regno: string | null
+          rejection_reason: string | null
+          start_date: string | null
+          status: string | null
+          status_label: string | null
+          submitted_at: string | null
+          submitted_by_user: string | null
+          superseded_by_arrangement_id: string | null
+          superseded_from_arrangement_id: string | null
+          total_arranged: number | null
+          total_paid: number | null
+          unattributed_amount: number | null
+          unresolved_breach_count: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_by_arrangement_id_fkey"
+            columns: ["superseded_by_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "core_payment_arrangement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_by_arrangement_id_fkey"
+            columns: ["superseded_by_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "v_payment_arrangement_context"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_from_arrangement_id_fkey"
+            columns: ["superseded_from_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "core_payment_arrangement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_from_arrangement_id_fkey"
+            columns: ["superseded_from_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "v_payment_arrangement_context"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
             referencedColumns: ["case_id"]
           },
         ]
@@ -117174,6 +118809,162 @@ export type Database = {
           sync_state: string | null
         }
         Relationships: []
+      }
+      ce_v_breach_register: {
+        Row: {
+          age_days: number | null
+          arrangement_health: string | null
+          arrangement_health_label: string | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          arrangement_outstanding: number | null
+          arrangement_past_due: number | null
+          arrangement_status: string | null
+          arrangement_status_label: string | null
+          assigned_at: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          breach_date: string | null
+          breach_id: string | null
+          breach_reference: string | null
+          breach_status: string | null
+          breach_status_label: string | null
+          breach_type: string | null
+          breach_type_label: string | null
+          case_id: string | null
+          case_number: string | null
+          case_status: string | null
+          consecutive_misses: number | null
+          created_at: string | null
+          description: string | null
+          detected_at: string | null
+          detection_method: string | null
+          detection_method_label: string | null
+          detection_rule: string | null
+          employer_id: string | null
+          employer_name: string | null
+          escalation_status: string | null
+          escalation_status_label: string | null
+          grace_days_at_breach: number | null
+          installment_amount: number | null
+          installment_due_date: string | null
+          installment_id: string | null
+          installment_number: number | null
+          installment_paid: number | null
+          installment_payment_reference: string | null
+          installment_status: string | null
+          last_action_at: string | null
+          last_notice_number: string | null
+          last_notice_sent_at: string | null
+          last_notice_status: string | null
+          legal_referral_id: string | null
+          legal_referral_number: string | null
+          legal_referral_status: string | null
+          max_missed_before_breach: number | null
+          payment_reference: string | null
+          regno: string | null
+          resolution: string | null
+          resolution_notes: string | null
+          resolution_reason: string | null
+          resolution_type: string | null
+          resolution_type_label: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          severity_label: string | null
+          shortfall: number | null
+          total_arranged: number | null
+          total_paid: number | null
+          updated_at: string | null
+          violation_id: string | null
+          violation_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_installment_operational"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["arrangement_id"]
+          },
+        ]
       }
       ce_v_c3_aggregate_stats: {
         Row: {
@@ -117427,6 +119218,436 @@ export type Database = {
           write_offs: number | null
         }
         Relationships: []
+      }
+      ce_v_legal_proceeding_register: {
+        Row: {
+          accepted_date: string | null
+          ce_case_id: string | null
+          ce_case_number: string | null
+          court_case_no: string | null
+          court_code: string | null
+          court_name: string | null
+          employer_id: string | null
+          employer_name: string | null
+          employer_zone: string | null
+          enforcement_count: number | null
+          filed_date: string | null
+          hearing_count: number | null
+          is_closed: boolean | null
+          judgment_amount: number | null
+          judgment_date: string | null
+          judgment_extras: number | null
+          last_enforcement_date: string | null
+          last_hearing_date: string | null
+          last_hearing_outcome: string | null
+          last_legal_update: string | null
+          last_stage_change: string | null
+          legal_officer: string | null
+          lg_case_id: string | null
+          lg_case_no: string | null
+          lg_intake_id: string | null
+          lg_intake_no: string | null
+          next_action: string | null
+          next_action_due: string | null
+          next_hearing_date: string | null
+          next_hearing_source: string | null
+          opened_date: string | null
+          outcome_code: string | null
+          outstanding_amount: number | null
+          payment_arrangement_id: string | null
+          proceeding_no: string | null
+          recovered_amount: number | null
+          recovery_status_code: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_status: string | null
+          referral_updated_at: string | null
+          referred_amount: number | null
+          row_key: string | null
+          source: string | null
+          stage_code: string | null
+          submitted_date: string | null
+        }
+        Relationships: []
+      }
+      ce_v_legal_recommendation_register: {
+        Row: {
+          assigned_officer_name: string | null
+          court_case_number: string | null
+          eligibility_snapshot: Json | null
+          employer_id: string | null
+          employer_name: string | null
+          financial_snapshot: Json | null
+          grand_total: number | null
+          legal_state_code: string | null
+          lg_case_no: string | null
+          lg_intake_no: string | null
+          policy_snapshot: Json | null
+          qualifying_case_count: number | null
+          recommendation_id: string | null
+          recommendation_reason: string | null
+          recommendation_type: string | null
+          recommended_at: string | null
+          recommended_by: string | null
+          recommended_date: string | null
+          referral_accepted_date: string | null
+          referral_created_at: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_returned_at: string | null
+          referral_status: string | null
+          referral_submitted_date: string | null
+          review_notes: string | null
+          reviewed_by: string | null
+          reviewed_date: string | null
+          risk_code: string | null
+          risk_rank: number | null
+          risk_score: number | null
+          rule_names: string[] | null
+          rule_summary: string | null
+          search_blob: string | null
+          source_case_id: string | null
+          source_case_number: string | null
+          source_case_status: string | null
+          source_code: string | null
+          status_code: string | null
+          subcase_summary: Json | null
+          total_interest: number | null
+          total_penalties: number | null
+          total_principal: number | null
+          triggered_rules: Json | null
+          waiting_hours: number | null
+          zone: string | null
+        }
+        Relationships: []
+      }
+      ce_v_legal_referral_candidate: {
+        Row: {
+          accepted_date: string | null
+          amount_collected: number | null
+          amount_waived: number | null
+          arrangement_active: boolean | null
+          arrangement_breach: boolean | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          arrangement_status: string | null
+          assigned_officer_id: string | null
+          assigned_officer_name: string | null
+          case_age_days: number | null
+          case_id: string | null
+          case_lg_case_no: string | null
+          case_lg_intake_no: string | null
+          case_notices_sent: number | null
+          case_number: string | null
+          case_status_code: string | null
+          case_type: string | null
+          court_case_number: string | null
+          created_at: string | null
+          created_via: string | null
+          days_since_final_notice: number | null
+          employer_name: string | null
+          employer_reg_no: string | null
+          entry_path: string | null
+          escalation_recommended: boolean | null
+          final_notice_at: string | null
+          fund_type: string | null
+          gross_amount: number | null
+          last_action_at: string | null
+          last_employer_response: string | null
+          last_notice_at: string | null
+          last_notice_stage: string | null
+          last_notice_type: string | null
+          last_violation_date: string | null
+          legal_case_id: string | null
+          lg_case_no: string | null
+          lg_intake_id: string | null
+          lg_intake_no: string | null
+          missed_payments: number | null
+          next_due_date: string | null
+          notices_sent: number | null
+          open_return_id: string | null
+          open_returns: number | null
+          open_violations: number | null
+          opened_date: string | null
+          outstanding_amount: number | null
+          principal_violation_id: string | null
+          principal_violation_number: string | null
+          priority: string | null
+          recommendation_id: string | null
+          recommendation_reason: string | null
+          recommendation_status: string | null
+          recommendation_type: string | null
+          recommended_at: string | null
+          recommended_by: string | null
+          referral_created_at: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_status: string | null
+          referral_total: number | null
+          return_count: number | null
+          return_reason: string | null
+          returned_at: string | null
+          reviewed_by: string | null
+          reviewed_date: string | null
+          risk_band: string | null
+          risk_score: number | null
+          rule_code: string | null
+          rule_days_after_final: number | null
+          rule_json: Json | null
+          rule_min_outstanding: number | null
+          rule_mode: string | null
+          rule_name: string | null
+          rule_require_breach: boolean | null
+          rule_require_repeat: boolean | null
+          rule_required_notices: number | null
+          rule_response_window: number | null
+          submitted_date: string | null
+          summary: string | null
+          total_interest: number | null
+          total_penalties: number | null
+          total_principal: number | null
+          total_violations: number | null
+          updated_at: string | null
+          zone: string | null
+        }
+        Relationships: []
+      }
+      ce_v_legal_return_register: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          ce_case_id: string | null
+          ce_case_number: string | null
+          comments: string | null
+          court_case_number: string | null
+          current_pack_version: number | null
+          due_date: string | null
+          employer_name: string | null
+          employer_reg_no: string | null
+          follow_up_action_id: string | null
+          legal_case_id: string | null
+          lg_case_no: string | null
+          lg_intake_id: string | null
+          lg_intake_no: string | null
+          pack_missing_required: number | null
+          pack_required_complete: number | null
+          pack_required_items: number | null
+          reason_code: string | null
+          reason_text: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_status: string | null
+          required_action: string | null
+          resolution_notes: string | null
+          resolution_status: string | null
+          resolution_summary: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resubmitted_at: string | null
+          return_id: string | null
+          return_seq: number | null
+          returned_at: string | null
+          returned_by: string | null
+          returned_by_display: string | null
+          returned_pack_version: number | null
+          rework_hours: number | null
+          rework_started_at: string | null
+          rework_status: string | null
+          total_interest: number | null
+          total_penalties: number | null
+          total_principal: number | null
+          total_referred: number | null
+          total_returns: number | null
+          zone: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_legal_referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["referral_id"]
+          },
+        ]
+      }
+      ce_v_notice_register: {
+        Row: {
+          acknowledged_at: string | null
+          case_id: string | null
+          case_number: string | null
+          created_at: string | null
+          created_by: string | null
+          delivered_at: string | null
+          delivery_attempts: number | null
+          delivery_failure_reason: string | null
+          delivery_method: string | null
+          delivery_method_label: string | null
+          delivery_status: string | null
+          dms_document_ref: string | null
+          due_response_date: string | null
+          employer_id: string | null
+          employer_name: string | null
+          id: string | null
+          last_attempt_at: string | null
+          last_delivered_at: string | null
+          last_delivery_channel: string | null
+          last_response_date: string | null
+          notice_number: string | null
+          notice_type: string | null
+          notice_type_group: string | null
+          notice_type_label: string | null
+          response_count: number | null
+          response_date: string | null
+          response_received: boolean | null
+          response_state: string | null
+          sent_at: string | null
+          stage_code: string | null
+          status: string | null
+          status_group: string | null
+          status_label: string | null
+          subject: string | null
+          template_code: string | null
+          template_id: string | null
+          template_name: string | null
+          violation_id: string | null
+          violation_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_v_officer_performance: {
         Row: {
@@ -117735,6 +119956,144 @@ export type Database = {
             columns: ["plan_item_id"]
             isOneToOne: false
             referencedRelation: "ce_weekly_plan_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_v_waiver_register: {
+        Row: {
+          amount_approved: number | null
+          amount_difference: number | null
+          amount_requested: number | null
+          applied_at: string | null
+          approved_at: string | null
+          approved_pct: number | null
+          approver_comments: string | null
+          approver_id: string | null
+          approver_name: string | null
+          case_id: string | null
+          case_interest: number | null
+          case_number: string | null
+          case_outstanding: number | null
+          case_paid: number | null
+          case_penalties: number | null
+          case_principal: number | null
+          case_status: string | null
+          case_total: number | null
+          case_waived: number | null
+          component_code: string | null
+          component_label: string | null
+          created_at: string | null
+          decided_at: string | null
+          document_count: number | null
+          employer_id: string | null
+          employer_name: string | null
+          justification: string | null
+          prior_amount: number | null
+          prior_count: number | null
+          reason_code: string | null
+          regno: string | null
+          rejected_reason: string | null
+          requested_at: string | null
+          requested_by: string | null
+          requested_by_name: string | null
+          rule_amount_threshold: number | null
+          rule_cap_amount: number | null
+          rule_code: string | null
+          rule_enabled: boolean | null
+          rule_escalated_role: string | null
+          rule_max_percentage: number | null
+          rule_name: string | null
+          rule_required_role: string | null
+          rule_snapshot: Json | null
+          scope_code: string | null
+          scope_label: string | null
+          source_code: string | null
+          source_label: string | null
+          status_code: string | null
+          status_label: string | null
+          status_raw: string | null
+          status_tone: string | null
+          supporting_documents: Json | null
+          updated_at: string | null
+          violation_id: string | null
+          violation_interest: number | null
+          violation_number: string | null
+          violation_penalty: number | null
+          violation_principal: number | null
+          violation_status: string | null
+          violation_total: number | null
+          violation_type: string | null
+          waiting_days: number | null
+          waiting_hours: number | null
+          waiver_id: string | null
+          waiver_number: string | null
+          waiver_rule_id: string | null
+          waiver_type_raw: string | null
+          workflow_definition_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["ce_case_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_referral_candidate"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_waiver_rule_id_fkey"
+            columns: ["waiver_rule_id"]
+            isOneToOne: false
+            referencedRelation: "ce_waiver_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -124172,6 +126531,7 @@ export type Database = {
         Returns: boolean
       }
       ce_actor_code: { Args: { _user_id: string }; Returns: string }
+      ce_actor_display_name: { Args: { _user_id: string }; Returns: string }
       ce_actor_user_code: { Args: { _user_id: string }; Returns: string }
       ce_allocate_employer_payment: {
         Args: {
@@ -124216,6 +126576,20 @@ export type Database = {
           p_approved_amount: number
           p_comments?: string
           p_waiver_id: string
+        }
+        Returns: Json
+      }
+      ce_approved_escalation_detail_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
+      ce_approved_escalation_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
         }
         Returns: Json
       }
@@ -124278,9 +126652,11 @@ export type Database = {
           status: string
         }[]
       }
+      ce_arrangement_facets_v1: { Args: never; Returns: Json }
       ce_arrangement_grace_days:
         | { Args: never; Returns: number }
         | { Args: { p_scope_key?: string }; Returns: number }
+      ce_arrangement_register_v1: { Args: { p_params?: Json }; Returns: Json }
       ce_arrangement_reject_v1: {
         Args: { p_arrangement_id: string; p_reason: string }
         Returns: {
@@ -124427,6 +126803,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_breach_assign_v1: {
+        Args: { p_assignee: string; p_breach_id: string; p_notes?: string }
+        Returns: Json
+      }
       ce_breach_check_arrangements: {
         Args: { p_as_of_date?: string; p_checked_by?: string }
         Returns: {
@@ -124436,6 +126816,32 @@ export type Database = {
           missed_count: number
           total_overdue: number
         }[]
+      }
+      ce_breach_detail_v1: { Args: { p_breach_id: string }; Returns: Json }
+      ce_breach_detect_v1: {
+        Args: { p_actor?: string; p_as_of_date?: string; p_dry_run?: boolean }
+        Returns: Json
+      }
+      ce_breach_facets_v1: { Args: never; Returns: Json }
+      ce_breach_link_referral_v1: {
+        Args: { p_breach_id: string; p_referral_id: string }
+        Returns: Json
+      }
+      ce_breach_register_v1: { Args: { p_params?: Json }; Returns: Json }
+      ce_breach_resolve_v1: {
+        Args: {
+          p_breach_id: string
+          p_notes?: string
+          p_payment_reference?: string
+          p_resolution_date?: string
+          p_resolution_reason: string
+          p_resolution_type: string
+        }
+        Returns: Json
+      }
+      ce_breach_run_detection_v1: {
+        Args: { p_as_of_date?: string }
+        Returns: Json
       }
       ce_calculate_employer_arrears: {
         Args: { p_employer_id: string }
@@ -124996,6 +127402,106 @@ export type Database = {
       }
       ce_is_trusted_session: { Args: never; Returns: boolean }
       ce_ledger_settlement_order: { Args: never; Returns: string[] }
+      ce_legal_candidate_evaluate: {
+        Args: {
+          _row: Database["public"]["Views"]["ce_v_legal_referral_candidate"]["Row"]
+        }
+        Returns: Json
+      }
+      ce_legal_candidate_label: {
+        Args: { _code: string; _domain: string }
+        Returns: Json
+      }
+      ce_legal_candidate_preview_v1: {
+        Args: { p_audit?: boolean; p_case_id: string }
+        Returns: Json
+      }
+      ce_legal_candidate_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_legal_candidate_setting: {
+        Args: { _default: number; _key: string }
+        Returns: number
+      }
+      ce_legal_pack_auto_v1: { Args: { p_referral_id: string }; Returns: Json }
+      ce_legal_pack_confirm_item_v1: {
+        Args: {
+          p_item_key: string
+          p_notes?: string
+          p_referral_id: string
+          p_satisfied: boolean
+        }
+        Returns: Json
+      }
+      ce_legal_pack_detach_document_v1: {
+        Args: { p_document_id: string; p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_pack_detail_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_pack_register_v1: { Args: { p_params?: Json }; Returns: Json }
+      ce_legal_pack_rollup_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_pack_submit_v1: {
+        Args: {
+          p_idempotency_key?: string
+          p_notes?: string
+          p_referral_id: string
+        }
+        Returns: Json
+      }
+      ce_legal_pack_sync_v1: {
+        Args: { p_referral_id: string }
+        Returns: undefined
+      }
+      ce_legal_pack_workflow_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_proceeding_detail_v1: {
+        Args: { p_row_key: string }
+        Returns: Json
+      }
+      ce_legal_proceeding_facets_v1: { Args: never; Returns: Json }
+      ce_legal_proceeding_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_legal_rec_label: {
+        Args: { _code: string; _domain: string }
+        Returns: Json
+      }
+      ce_legal_recommendation_detail_v1: {
+        Args: { p_recommendation_id: string }
+        Returns: Json
+      }
+      ce_legal_recommendation_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
       ce_legal_referral_approve_v1: {
         Args: { p_notes?: string; p_referral_id: string }
         Returns: Json
@@ -125014,6 +127520,61 @@ export type Database = {
       ce_legal_referral_reject_v1: {
         Args: { p_reason: string; p_referral_id: string }
         Returns: Json
+      }
+      ce_legal_return_assign_v1: {
+        Args: {
+          p_assignee_code: string
+          p_assignee_name?: string
+          p_create_task?: boolean
+          p_due_date?: string
+          p_return_id: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_complete_rework_v1: {
+        Args: {
+          p_idempotency_key?: string
+          p_resubmit?: boolean
+          p_return_id: string
+          p_summary: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_create_v1: {
+        Args: {
+          p_comments?: string
+          p_reason: string
+          p_reason_code: string
+          p_referral_id: string
+          p_required_action?: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_detail_v1: {
+        Args: { p_return_id: string }
+        Returns: Json
+      }
+      ce_legal_return_label: {
+        Args: { _code: string; _domain: string }
+        Returns: Json
+      }
+      ce_legal_return_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_legal_return_set_rework_status_v1: {
+        Args: { p_note?: string; p_return_id: string; p_rework_status: string }
+        Returns: Json
+      }
+      ce_legal_return_setting: {
+        Args: { _default: number; _key: string }
+        Returns: number
       }
       ce_legal_workbench_analytics: {
         Args: {
@@ -125071,6 +127632,14 @@ export type Database = {
         Returns: Json
       }
       ce_next_number_v1: { Args: { p_applies_to: string }; Returns: string }
+      ce_notice_actor_can: {
+        Args: { p_cap: string; p_uid: string }
+        Returns: boolean
+      }
+      ce_notice_allocate_number_v1: { Args: never; Returns: string }
+      ce_notice_detail_v1: { Args: { p_notice_id: string }; Returns: Json }
+      ce_notice_facets_v1: { Args: never; Returns: Json }
+      ce_notice_register_v1: { Args: { p_params?: Json }; Returns: Json }
       ce_officer_identities: { Args: { _user_id: string }; Returns: string[] }
       ce_officer_label: { Args: { _code: string }; Returns: string }
       ce_override_sector_benchmark_v1: {
@@ -125668,6 +128237,7 @@ export type Database = {
         }
         Returns: string
       }
+      ce_waiver_component_code: { Args: { p_type: string }; Returns: string }
       ce_waiver_deny: {
         Args: {
           p_code: string
@@ -125677,7 +128247,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      ce_waiver_detail_v1: { Args: { p_waiver_id: string }; Returns: Json }
+      ce_waiver_facets_v1: { Args: never; Returns: Json }
+      ce_waiver_register_v1: { Args: { p_params?: Json }; Returns: Json }
       ce_waiver_role_capability: { Args: { p_role: string }; Returns: string }
+      ce_waiver_scope_code: {
+        Args: { p_approved: number; p_requested: number; p_type: string }
+        Returns: string
+      }
+      ce_waiver_setting: {
+        Args: { p_code: string; p_default: number }
+        Returns: number
+      }
+      ce_waiver_status_canonical: {
+        Args: { p_status: string }
+        Returns: string
+      }
       ce_work_queue_v1: {
         Args: {
           p_dir?: string
@@ -128560,6 +131145,10 @@ export type Database = {
         Returns: Json
       }
       ia_can_configure_office_holders: { Args: never; Returns: boolean }
+      ia_can_edit_plan_portfolio: {
+        Args: { _creating: boolean }
+        Returns: boolean
+      }
       ia_can_issue_report: { Args: { p_report_id: string }; Returns: Json }
       ia_can_read_all: { Args: never; Returns: boolean }
       ia_can_start_engagement: {
@@ -128972,6 +131561,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_plan_working_copy_statuses: { Args: never; Returns: string[] }
       ia_postpone_engagement: {
         Args: { p_engagement_id: string; p_reason: string }
         Returns: Json
@@ -129021,6 +131611,15 @@ export type Database = {
       ia_register_findings: { Args: { p_filters?: Json }; Returns: Json }
       ia_register_management_responses: {
         Args: { p_filters?: Json }
+        Returns: Json
+      }
+      ia_remove_plan_engagement: {
+        Args: {
+          p_actor?: string
+          p_engagement_id: string
+          p_plan_id: string
+          p_reason?: string
+        }
         Returns: Json
       }
       ia_reopen_annual_plan: {
@@ -129147,6 +131746,10 @@ export type Database = {
           p_reason?: string
           p_target_status: string
         }
+        Returns: Json
+      }
+      ia_update_annual_plan_working_copy: {
+        Args: { p_changes: Json; p_plan_id: string }
         Returns: Json
       }
       ia_validate_audit_team_user_mapping: {

@@ -10,6 +10,20 @@
 - [ ] Live upload proof + respondent RLS denial proof — BLOCKED: cannot mint a session as a specific auth user (workspace admin only)
 - [ ] Follow-Up runtime verification
 
+## Internal Audit — Consolidated Business Convergence Wave (Sep 1)
+- [x] Phase 0 baseline: `docs/audit/INTERNAL-AUDIT-BUSINESS-CONVERGENCE-REBASE-2026-09-01.md`
+- [x] Annual plan submission converged to one governed command (permission + server readiness + lock + approval action + event)
+- [x] Governed engagement upsert extended to all planning fields; governed removal command with change log
+- [x] Server-authoritative readiness in plan register and plan workspace
+- [x] Plan header edit no longer resets lifecycle status; active-flag handling aligned with server
+- [x] Final corrective checkpoint: status contract, server authorization, actor identity, workspace-only editing, governed plan header updates (`docs/audit/INTERNAL-AUDIT-ANNUAL-PLAN-FINAL-CORRECTIVE-CHECKPOINT.md`)
+- [ ] Annual plan portfolio workspace enhancements (portfolio KPIs, coverage rollups)
+- [ ] Prior Audit History convergence (not started — deliberately deferred)
+- [ ] Access / permission matrix review (not started — deliberately deferred)
+
+- [ ] Prior audit history visibility on engagement/auditable area
+- [ ] Enterprise access management matrix (IA roles vs capabilities)
+
 ## Compliance — Legal Review / Handover Queue Enterprise Upgrade (Sep 1)
 - [ ] Confirm canonical purpose of /compliance/enforcement/legal-queue vs Recommendation Queue / Pack Preparation / Approved Escalations
 - [ ] Server-side RPC: search, filters, sorting, pagination (25/50/100/200), scoped counts (replace .limit(100))
@@ -20,3 +34,33 @@
 - [ ] Transactionally safe submit-to-Legal (RPC), double-submission prevention
 - [ ] URL state preservation, error state, RBAC separation (view/approve/submit)
 - [ ] E2E lifecycle verification + completion report
+
+## Compliance — Approved Escalations Enterprise Register (Sep 1)
+- [x] Ref data, register view + governed RPCs (register/detail) with financial masking
+- [x] `useApprovedEscalationRegister` hook (URL state, facets, KPIs, attention)
+- [x] `EscalationDetailDialog` + rewritten `ApprovedEscalationsPage`
+- [ ] Playwright end-to-end verification
+
+## Compliance — Returned From Legal Rework Queue (Sep 1, requested) — DONE
+- [x] Analyse `legalHandoffService.listReturns/resolveReturn`, `ce_legal_returns`, referral status coupling
+- [x] Server-side register RPC `ce_legal_return_register_v1`: referral/employer/case/legal refs, reason, required action, owner, rework age/SLA, pack readiness
+- [x] Governed `ce_legal_return_complete_rework_v1` (pack-readiness gated, identity-required, no SYSTEM fallback) + resubmission via `ce_legal_pack_submit_v1`
+- [x] Rework owner/tasks (`ce_legal_return_assign_v1`), repeat-return history, pack version retention, referral RETURNED status coherence
+- [x] Enterprise UI: KPIs, Requires Attention, filters/sort/pagination, detail workspace, error/empty states, RBAC split
+
+
+## Compliance — Legal Referral Launcher Eligibility Workspace (Sep 1) — DONE
+- [x] Establish canonical referral paths (Recommend Legal vs Wizard vs Quick Forward) and whether Launcher is retained/consolidated
+- [x] Canonical eligibility service/RPC (shared with Case Detail, Wizard, Recommendation Queue)
+- [x] Candidate register RPC replacing `.limit(50)`: search, filters, sorting, paging, counts, exposure, violation/enforcement context
+- [x] Duplicate-referral prevention + context-sensitive primary action per state
+- [x] Eligibility preview + server-side revalidation before initiation, audit trail, RBAC/maker-checker
+- [x] Enterprise UI + E2E verification
+
+## Compliance — Legal Recommendation Queue Enterprise Workspace (Sep 1) — DONE
+- [x] Analyse legalEscalationService/generateRecommendations, approveLegalReferral/rejectLegalReferral, ce_legal_recommendations
+- [x] Server-side register RPC: search, filters, sort, paging, KPIs, rule explainability, linked referral state
+- [x] Review/Approve + structured Reject dialogs (no prompt()), maker-checker surfaced, identity-required (no SYSTEM fallback)
+- [x] Resolve duplicate "Create Referral" vs approval-minted referral; context-sensitive next action to Legal Pack
+- [x] Enterprise UI: KPIs, Requires Attention, table register, URL state, error/empty states, RBAC split
+

@@ -1,3 +1,4 @@
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 import { supabase } from '@/integrations/supabase/client';
 import { isEvidenceComplete } from '@/services/bn/evidenceService';
 import type {
@@ -206,6 +207,9 @@ export async function executeTransition(params: ExecuteTransitionParams): Promis
     .eq('id', claimId);
 
   if (updateErr) throw updateErr;
+
+  // The claim's new status decides which workbasket owns it next.
+  await routeClaimAfterStatusChange(claimId, performedBy);
 
   // 10. Insert claim event
   await db.from('bn_claim_event').insert({
