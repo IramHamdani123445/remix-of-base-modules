@@ -172,6 +172,9 @@ export default function WorkbasketConfig() {
       manager_role: form.manager_role || null,
       allow_auto_reassign: form.allow_auto_reassign,
       escalation_target_basket_id: form.escalation_target_basket_id || null,
+      notify_title: form.notify_title.trim() || null,
+      notify_body: form.notify_body.trim() || null,
+      notify_action_label: form.notify_action_label.trim() || null,
     };
 
 
