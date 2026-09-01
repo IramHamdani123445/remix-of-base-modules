@@ -131169,12 +131169,24 @@ export type Database = {
       }
       ia_actor_label: { Args: never; Returns: string }
       ia_annual_plan_coverage: { Args: { p_plan_id: string }; Returns: Json }
+      ia_annual_plan_coverage_core: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       ia_annual_plan_portfolio_summary: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_annual_plan_portfolio_summary_core: {
         Args: { p_plan_id: string }
         Returns: Json
       }
       ia_annual_plan_readiness: { Args: { p_plan_id: string }; Returns: Json }
       ia_annual_plan_version_diff: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_annual_plan_version_diff_core: {
         Args: { p_plan_id: string }
         Returns: Json
       }
@@ -131244,6 +131256,7 @@ export type Database = {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_can_view_annual_plan: { Args: { p_plan_id: string }; Returns: boolean }
       ia_cancel_engagement: {
         Args: { p_engagement_id: string; p_reason: string }
         Returns: Json
@@ -131648,7 +131661,7 @@ export type Database = {
         Returns: boolean
       }
       ia_permission_reconciliation: {
-        Args: { p_expected: Json }
+        Args: { p_expected?: Json }
         Returns: Json
       }
       ia_persist_plan_engagements: {
@@ -131811,6 +131824,14 @@ export type Database = {
       ia_seed_ssb_audit_reference_data: {
         Args: { p_created_by?: string }
         Returns: Json
+      }
+      ia_sensitive_capability_policy: {
+        Args: never
+        Returns: {
+          action_name: string
+          intended_roles: string[]
+          module_name: string
+        }[]
       }
       ia_start_annual_plan_approval_workflow: {
         Args: { p_plan_id: string; p_submitted_by?: string }

@@ -20,6 +20,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | '
   PASS: 'default',
   MISSING: 'destructive',
   MISMATCHED: 'destructive',
+  'OVER-BROAD': 'destructive',
   UNUSED: 'outline',
 };
 
@@ -56,6 +57,7 @@ export default function AuditAccessMatrix() {
       pass: rows.filter((r) => r.final_status === 'PASS').length,
       missing: rows.filter((r) => r.final_status === 'MISSING').length,
       mismatched: rows.filter((r) => r.final_status === 'MISMATCHED').length,
+      overBroad: rows.filter((r) => r.final_status === 'OVER-BROAD').length,
       unused: rows.filter((r) => r.final_status === 'UNUSED').length,
     };
   }, [reconciliation]);
@@ -172,12 +174,13 @@ export default function AuditAccessMatrix() {
             <Alert variant="destructive"><AlertDescription>Permission reconciliation is not available to your role.</AlertDescription></Alert>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 {[
                   { label: 'Capabilities', value: reconStats.total },
                   { label: 'Pass', value: reconStats.pass },
                   { label: 'Missing', value: reconStats.missing },
                   { label: 'Mismatched', value: reconStats.mismatched },
+                  { label: 'Over-broad', value: reconStats.overBroad },
                   { label: 'Unused', value: reconStats.unused },
                 ].map((s) => (
                   <div key={s.label} className="rounded-lg border bg-card p-3">
@@ -198,6 +201,7 @@ export default function AuditAccessMatrix() {
                         <th className="text-left p-2 font-medium">Action</th>
                         <th className="text-left p-2 font-medium">Registry</th>
                         <th className="text-left p-2 font-medium">Roles Granted</th>
+                        <th className="text-left p-2 font-medium">Unexpected Roles</th>
                         <th className="text-left p-2 font-medium">Final Status</th>
                       </tr>
                     </thead>
@@ -209,6 +213,7 @@ export default function AuditAccessMatrix() {
                           <td className="p-2 text-xs">{r.action}</td>
                           <td className="p-2 text-xs">{r.registry_status}</td>
                           <td className="p-2 text-xs">{(r.roles_granted || []).join(', ') || '—'}</td>
+                          <td className="p-2 text-xs text-destructive">{(r.unexpected_roles || []).join(', ') || '—'}</td>
                           <td className="p-2">
                             <Badge variant={STATUS_VARIANT[r.final_status] || 'secondary'}>{r.final_status}</Badge>
                           </td>

@@ -44,8 +44,9 @@ export interface ReconciliationRow {
   action: string;
   registry_status: 'REGISTERED' | 'MISSING_MODULE' | 'MISSING_ACTION' | 'DISABLED';
   roles_granted: string[];
+  unexpected_roles?: string[];
   grant_count: number;
-  final_status: 'PASS' | 'MISSING' | 'MISMATCHED' | 'UNUSED';
+  final_status: 'PASS' | 'MISSING' | 'MISMATCHED' | 'UNUSED' | 'OVER-BROAD';
 }
 
 /** Flatten the UI capability map into the expected-permission contract. */

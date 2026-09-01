@@ -58,3 +58,23 @@ Plan submission requires `audit_plans:submit`; approval and rejection require
 3. Audit Admin can read the Access Matrix through
    `audit_configuration:configure`; that grant is read-only and confers no
    business approval authority.
+
+## Over-broad classification (security closure, 2026-09)
+
+`ia_sensitive_capability_policy()` records, per sensitive capability, the roles
+that are *intended* to hold it. `ia_permission_reconciliation` compares actual
+grants against that policy and returns `unexpected_roles`; any capability with
+unexpected holders is classified `OVER-BROAD` and surfaced in a dedicated column
+and KPI tile on `/audit/access-matrix`. The policy function is private
+(`service_role` only) and is read exclusively through the governed RPC.
+
+## Portfolio and prior-history lockdown
+
+- `ia_prior_action_reference` carries no `anon`/`authenticated` grants; all access
+  runs through `ia_prior_audit_history`, `ia_prior_action_detail`,
+  `ia_link_prior_action` and `ia_unlink_prior_action`.
+- `ia_annual_plan_portfolio_summary`, `ia_annual_plan_coverage` and
+  `ia_annual_plan_version_diff` authorise through `ia_can_view_annual_plan`
+  (`audit_plans:view` or central Admin) and delegate to private `*_core`
+  helpers that clients cannot execute.
+- Regression: `supabase/verify/ia_business_convergence_security_closure.sql`.
