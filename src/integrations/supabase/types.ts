@@ -131169,12 +131169,24 @@ export type Database = {
       }
       ia_actor_label: { Args: never; Returns: string }
       ia_annual_plan_coverage: { Args: { p_plan_id: string }; Returns: Json }
+      ia_annual_plan_coverage_core: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       ia_annual_plan_portfolio_summary: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_annual_plan_portfolio_summary_core: {
         Args: { p_plan_id: string }
         Returns: Json
       }
       ia_annual_plan_readiness: { Args: { p_plan_id: string }; Returns: Json }
       ia_annual_plan_version_diff: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_annual_plan_version_diff_core: {
         Args: { p_plan_id: string }
         Returns: Json
       }
