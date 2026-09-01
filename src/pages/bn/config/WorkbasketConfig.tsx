@@ -141,6 +141,9 @@ export default function WorkbasketConfig() {
       manager_role: item.manager_role || '',
       allow_auto_reassign: item.allow_auto_reassign ?? true,
       escalation_target_basket_id: item.escalation_target_basket_id || '',
+      notify_title: (item as any).notify_title || '',
+      notify_body: (item as any).notify_body || '',
+      notify_action_label: (item as any).notify_action_label || '',
     });
     setEditItem(item);
   };
