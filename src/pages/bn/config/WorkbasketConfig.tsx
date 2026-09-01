@@ -25,6 +25,8 @@ import {
 } from '@/services/bn/workbasketRoleService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QueueAccessHealthPanel } from '@/components/bn/config/QueueAccessHealthPanel';
+
 
 function useEscalationPolicyOptions() {
   return useQuery({
@@ -213,6 +215,10 @@ export default function WorkbasketConfig() {
           productAssemblyHint
           description="Reusable operational queues. A workbasket can be served by one primary role plus any number of additional roles, so small offices can let one user cover several stages."
         />
+
+        <QueueAccessHealthPanel />
+
+
 
         <BNDataGrid
           id="bn.workbaskets"
