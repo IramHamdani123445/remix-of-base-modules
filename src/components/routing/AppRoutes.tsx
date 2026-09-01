@@ -405,6 +405,7 @@ const AuditActionCentre = lazy(() => import('@/pages/audit/AuditActionCentre'));
 const AuditEscalationRoles = lazy(() => import('@/pages/audit/EscalationRoles'));
 const PlanApproval = lazy(() => import('@/pages/audit/PlanApproval'));
 const AuditConfig = lazy(() => import('@/pages/audit/AuditConfig'));
+const AuditAccessMatrix = lazy(() => import('@/pages/audit/AuditAccessMatrix'));
 const RiskSettings = lazy(() => import('@/pages/audit/RiskSettings'));
 const DocumentTemplateSettings = lazy(() => import('@/pages/audit/DocumentTemplateSettings'));
 const ComplianceReportTemplates = lazy(() => import('@/pages/compliance/admin/ComplianceReportTemplates'));
@@ -1815,6 +1816,7 @@ export const AppRoutes = () => {
       <Route path="/audit/report-builder" element={<Suspense fallback={<div>Loading...</div>}><AuditReportBuilder /></Suspense>} />
       <Route path="/audit/plan-approval" element={<PlanApproval />} />
       <Route path="/audit/config" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><AuditConfig /></AuditFeatureGate></AuditEntitlementGate>} />
+      <Route path="/audit/access-matrix" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><Suspense fallback={<div />}><AuditAccessMatrix /></Suspense></AuditEntitlementGate>} />
       <Route path="/audit/risk-settings" element={<Suspense fallback={<div />}><RiskSettings /></Suspense>} />
       <Route path="/audit/document-templates" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><Suspense fallback={<div />}><DocumentTemplateSettings /></Suspense></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/queries" element={<Suspense fallback={<div />}><AuditQueries /></Suspense>} />

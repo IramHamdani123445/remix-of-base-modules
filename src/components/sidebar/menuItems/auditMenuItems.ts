@@ -58,6 +58,13 @@ const auditMenuItemsRaw = [
             requiresPermission: "configure_audit_system",
             description: "Manage department functions"
           },
+          {
+            title: "Access Matrix",
+            url: "/audit/access-matrix",
+            icon: Users,
+            requiresPermission: "configure_audit_system",
+            description: "Explain effective Internal Audit access and segregation of duties"
+          },
         ]
       },
       // ── Risk Management ──
