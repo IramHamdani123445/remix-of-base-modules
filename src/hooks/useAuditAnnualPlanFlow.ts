@@ -5,31 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserCode } from '@/hooks/useUserCode';
 import { notifyPlanSubmitted, notifyTeamConflict } from '@/services/iaNotificationService';
 
-type AnnualPlanEngagementRecord = {
-  id: string;
-  annual_plan_id: string | null;
-  department_id?: string | null;
-  function_id?: string | null;
-  lead_auditor_id?: string | null;
-  planned_start_date?: string | null;
-  quarter?: string | null;
-  estimated_days?: number | null;
-  estimated_hours?: number | null;
-  is_active?: boolean | null;
-};
-
-const ANNUAL_PLAN_ENGAGEMENT_SELECT = [
-  'id',
-  'annual_plan_id',
-  'department_id',
-  'function_id',
-  'lead_auditor_id',
-  'planned_start_date',
-  'quarter',
-  'estimated_days',
-  'estimated_hours',
-  'is_active',
-].join(', ');
 
 export interface AnnualPlanReadinessCheck {
   label: string;
@@ -135,6 +110,33 @@ export function getAnnualPlanReadinessSummary(plan: any, engagements: any[] = []
   return summarizeAnnualPlanReadiness(getAnnualPlanReadinessChecks(plan, engagements));
 }
 
+/**
+ * Server-authoritative readiness for a single annual plan.
+ * Canonical source: ia_annual_plan_readiness (same function the submit command enforces).
+ */
+export function useAnnualPlanReadiness(planId?: string) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['ia_annual_plan_readiness', planId],
+    queryFn: async (): Promise<AnnualPlanReadinessSummary> => {
+      const { data, error } = await supabase.rpc('ia_annual_plan_readiness' as any, { p_plan_id: planId });
+      if (error) throw error;
+      const result = (data || {}) as { ready?: boolean; blockers?: string[] };
+      const failedChecks = result.blockers || [];
+      return {
+        ready: !!result.ready,
+        failedChecks,
+        reason: failedChecks.length > 0 ? failedChecks.slice(0, 3).join(' ') : undefined,
+      };
+    },
+    enabled: !!planId,
+  });
+
+  return { readiness: data, isLoading };
+}
+
+/**
+ * Server-authoritative readiness for a list of plans (portfolio register).
+ */
 export function useAuditAnnualPlanReadinessMap(plans: any[] = []) {
   const planIds = useMemo(() => plans.map((plan) => plan.id).filter(Boolean), [plans]);
 
@@ -143,28 +145,22 @@ export function useAuditAnnualPlanReadinessMap(plans: any[] = []) {
     queryFn: async () => {
       if (planIds.length === 0) return {} as Record<string, AnnualPlanReadinessSummary>;
 
-      const { data, error } = await supabase
-        .from('ia_audit_engagements' as any)
-        .select(ANNUAL_PLAN_ENGAGEMENT_SELECT)
-        .in('annual_plan_id', planIds);
+      const results = await Promise.all(
+        planIds.map(async (planId) => {
+          const { data, error } = await supabase.rpc('ia_annual_plan_readiness' as any, { p_plan_id: planId });
+          if (error) throw error;
+          const result = (data || {}) as { ready?: boolean; blockers?: string[] };
+          const failedChecks = result.blockers || [];
+          const summary: AnnualPlanReadinessSummary = {
+            ready: !!result.ready,
+            failedChecks,
+            reason: failedChecks.length > 0 ? failedChecks.slice(0, 3).join(' ') : undefined,
+          };
+          return [planId, summary] as const;
+        }),
+      );
 
-      if (error) throw error;
-
-      const grouped = new Map<string, any[]>();
-      (((data || []) as unknown) as AnnualPlanEngagementRecord[])
-        .filter((engagement: any) => engagement.is_active !== false)
-        .forEach((engagement: any) => {
-          const key = engagement.annual_plan_id;
-          if (!key) return;
-          const current = grouped.get(key) || [];
-          current.push(engagement);
-          grouped.set(key, current);
-        });
-
-      return plans.reduce<Record<string, AnnualPlanReadinessSummary>>((acc, plan) => {
-        acc[plan.id] = getAnnualPlanReadinessSummary(plan, grouped.get(plan.id) || []);
-        return acc;
-      }, {});
+      return Object.fromEntries(results) as Record<string, AnnualPlanReadinessSummary>;
     },
     enabled: planIds.length > 0,
   });
@@ -172,6 +168,14 @@ export function useAuditAnnualPlanReadinessMap(plans: any[] = []) {
   return { readinessMap: data, isLoading };
 }
 
+/**
+ * Canonical annual plan submission.
+ *
+ * All gating (permission, readiness, status, team-availability conflicts, version
+ * snapshot, plan locking, engagement approval reset, approval action and event log)
+ * is performed inside ia_start_plan_approval_workflow. The client performs no
+ * parallel validation and no direct table writes.
+ */
 export async function submitAnnualPlanWorkflow(params: {
   planId: string;
   userCode: string;
@@ -180,51 +184,6 @@ export async function submitAnnualPlanWorkflow(params: {
   engagements?: any[];
   isRevision?: boolean;
 }) {
-  const [planResult, engagementResult] = await Promise.all([
-    params.plan
-      ? Promise.resolve({ data: params.plan, error: null })
-      : supabase.from('ia_annual_plans' as any).select('*').eq('id', params.planId).single(),
-    params.engagements
-      ? Promise.resolve({ data: params.engagements, error: null })
-      : supabase
-          .from('ia_audit_engagements' as any)
-          .select(ANNUAL_PLAN_ENGAGEMENT_SELECT)
-          .eq('annual_plan_id', params.planId),
-  ]);
-
-  if (planResult.error) throw planResult.error;
-  if (engagementResult.error) throw engagementResult.error;
-
-  const plan = planResult.data;
-  const engagements = (engagementResult.data || []).filter((engagement: any) => engagement.is_active !== false);
-  const readiness = getAnnualPlanReadinessSummary(plan, engagements);
-
-  if (!readiness.ready) {
-    throw new Error(readiness.reason || 'Plan readiness checks failed.');
-  }
-
-  const { data: conflicts, error: conflictError } = await supabase.rpc('ia_validate_team_availability', {
-    p_plan_id: params.planId,
-    p_engagement_id: null,
-    p_auditor_ids: null,
-    p_date_from: null,
-    p_date_to: null,
-  });
-
-  if (conflictError) throw conflictError;
-
-  if ((conflicts as any)?.has_blocking) {
-    notifyTeamConflict(params.planId, {
-      plan_title: plan?.title || 'Audit Plan',
-      conflict_type: 'multiple',
-      auditor_name: 'Team',
-      conflict_dates: 'See details',
-      severity: 'blocking',
-    });
-
-    throw new Error(`Team availability check failed with ${(conflicts as any)?.total_conflicts || 0} blocking conflict(s).`);
-  }
-
   const { data: result, error } = await supabase.rpc('ia_start_plan_approval_workflow', {
     p_plan_id: params.planId,
     p_submitted_by: params.userCode,
@@ -232,40 +191,30 @@ export async function submitAnnualPlanWorkflow(params: {
   });
 
   if (error) throw error;
-  if (!(result as any)?.success) {
-    throw new Error((result as any)?.error || 'Failed to start the annual plan approval workflow.');
+
+  const payload = (result || {}) as any;
+
+  if (!payload?.success) {
+    const blockers: string[] = payload?.blockers || [];
+    if (payload?.conflicts) {
+      notifyTeamConflict(params.planId, {
+        plan_title: params.plan?.title || 'Audit Plan',
+        conflict_type: 'multiple',
+        auditor_name: 'Team',
+        conflict_dates: 'See details',
+        severity: 'blocking',
+      });
+    }
+    throw new Error(
+      blockers.length > 0
+        ? `${payload?.error || 'Plan readiness checks failed'}: ${blockers.join(' ')}`
+        : payload?.error || 'Failed to start the annual plan approval workflow.',
+    );
   }
 
-  const { data: refreshedPlanData, error: refreshedPlanError } = await supabase
-    .from('ia_annual_plans' as any)
-    .select('workflow_instance_id, current_version_number')
-    .eq('id', params.planId)
-    .single();
-
-  if (refreshedPlanError) throw refreshedPlanError;
-
-  const refreshedPlan = (refreshedPlanData || {}) as {
-    workflow_instance_id?: string | null;
-    current_version_number?: number | null;
-  };
-
-  const { error: engagementUpdateError } = await supabase
-    .from('ia_audit_engagements' as any)
-    .update({
-      workflow_instance_id: refreshedPlan?.workflow_instance_id || null,
-      approved_by: null,
-      approved_at: null,
-      approved_plan_version: null,
-      updated_by: params.userCode,
-      updated_at: new Date().toISOString(),
-    } as any)
-    .eq('annual_plan_id', params.planId);
-
-  if (engagementUpdateError) throw engagementUpdateError;
-
   notifyPlanSubmitted(params.planId, {
-    plan_title: plan?.title || 'Audit Plan',
-    fiscal_year: plan?.fiscal_year || '',
+    plan_title: params.plan?.title || 'Audit Plan',
+    fiscal_year: params.plan?.fiscal_year || '',
     submitted_by: params.userCode,
     submitted_by_name: params.fullName || undefined,
     plan_id: params.planId,
@@ -273,12 +222,9 @@ export async function submitAnnualPlanWorkflow(params: {
     risk_level: '',
   });
 
-  return {
-    ...(result as any),
-    workflow_instance_id: refreshedPlan?.workflow_instance_id || null,
-    current_version_number: refreshedPlan?.current_version_number || null,
-  };
+  return payload;
 }
+
 
 export function useSubmitAnnualPlanWorkflow() {
   const queryClient = useQueryClient();
@@ -308,6 +254,8 @@ export function useSubmitAnnualPlanWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflow_instances'] });
       queryClient.invalidateQueries({ queryKey: ['ia_plan_approval_history'] });
       queryClient.invalidateQueries({ queryKey: ['ia_plan_engagements', params.planId] });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness', params.planId] });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness_map'] });
 
       return result;
     },

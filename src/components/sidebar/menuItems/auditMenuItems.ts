@@ -58,6 +58,13 @@ const auditMenuItemsRaw = [
             requiresPermission: "configure_audit_system",
             description: "Manage department functions"
           },
+          {
+            title: "Access Matrix",
+            url: "/audit/access-matrix",
+            icon: Users,
+            requiresPermission: "configure_audit_system",
+            description: "Explain effective Internal Audit access and segregation of duties"
+          },
         ]
       },
       // ── Risk Management ──
@@ -66,11 +73,18 @@ const auditMenuItemsRaw = [
         isGroupLabel: true,
       },
       {
+        title: "Risk Register",
+        url: "/audit/risk-register",
+        icon: Database,
+        requiresPermission: "configure_audit_system",
+        description: "Standing risk universe and risk ownership"
+      },
+      {
         title: "Risk Assessment",
         url: "/audit/risk-assessment",
         icon: Target,
         requiresPermission: "configure_audit_system",
-        description: "Assess function-level risks"
+        description: "Periodic formal assessment of registered risks"
       },
       {
         title: "Entity Risk Summary",

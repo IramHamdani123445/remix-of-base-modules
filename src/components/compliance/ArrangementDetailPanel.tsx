@@ -47,6 +47,8 @@ import { ArrangementCoveragePanel } from '@/components/compliance/ArrangementCov
 import { ArrangementInstallmentsPanel } from '@/components/compliance/arrangements/ArrangementInstallmentsPanel';
 import { ArrangementAllocationsPanel } from '@/components/compliance/arrangements/ArrangementAllocationsPanel';
 import { ArrangementOperationalStrip } from '@/components/compliance/arrangements/ArrangementOperationalStrip';
+import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
+
 import { useUserCode } from '@/hooks/useUserCode';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
@@ -493,8 +495,21 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
               : <RefreshCw className="h-4 w-4 mr-1" />}
             Recalculate
           </Button>
+          {/* Legal referral is raised from the arrangement record itself so the
+              referral always carries the correct employer, case and default context. */}
+          {['ACTIVE', 'BREACHED', 'DEFAULTED'].includes(arr.status) && (
+            <ReferToLegalButton
+              module="compliance"
+              employerId={arr.employer_id ?? null}
+              ceCaseId={arr.case_id ?? null}
+              paymentArrangementId={arrangementId}
+              reasonCode="PAYMENT_ARRANGEMENT_DEFAULT"
+              label="Refer Default to Legal"
+            />
+          )}
         </div>
       </div>
+
 
       {/* ── Financial Summary Cards ─────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

@@ -5,6 +5,8 @@ import { Briefcase, User, Shield, Calendar, Target, TrendingUp, AlertTriangle, C
 import { formatDateForDisplay } from '@/lib/format-config';
 import { LaunchReadinessPanel } from '@/components/audit/LaunchReadinessPanel';
 import { AuditNextActionsPanel, deriveNextActions } from '@/components/audit/workspace/AuditNextActionsPanel';
+import type { NextActionKey } from '@/components/audit/workspace/AuditNextActionsPanel';
+import { resolveRecommendedActionTab } from '@/components/audit/execution/recommendedActionDispatch';
 import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
 import { AuditProgressPanel } from '@/components/audit/execution/AuditProgressPanel';
 
@@ -62,6 +64,18 @@ export function AuditOverviewTab({
     audit?.annual_plan_id ? 'Annual Plan' : 'Ad Hoc Audit';
 
   const goTo = (tab: string) => onNavigateTab?.(tab);
+
+  /**
+   * IA-POST-UAT-01 — single dispatcher for Recommended Actions.
+   * Keys resolve through an exhaustive Record (see recommendedActionDispatch),
+   * so a new key without a dispatcher fails typecheck. No mutation happens here.
+   */
+  const dispatchRecommendedAction = (key: NextActionKey) => {
+    const tab = resolveRecommendedActionTab(key);
+    if (tab) goTo(tab);
+  };
+
+
 
   return (
     <div className="grid gap-5 md:grid-cols-3">
@@ -170,8 +184,12 @@ export function AuditOverviewTab({
           }, {
             canLaunch: auditPermissions.can('launch_department_audit'),
             canClose: auditPermissions.can('close_department_audit'),
+            canExecuteAudit: auditPermissions.can('execute_audit_activities'),
+            canManageActions: auditPermissions.can('progress_audit_actions') || auditPermissions.can('manage_audit_followups'),
           })}
+          onDispatch={dispatchRecommendedAction}
         />
+
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Execution Summary</CardTitle></CardHeader>
           <CardContent className="space-y-1">

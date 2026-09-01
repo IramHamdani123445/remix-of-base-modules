@@ -344,10 +344,24 @@ export function useIAAnnualPlanMutations() {
   const update = useMutation({
     mutationKey: ['InternalAudit', 'ia_audit_universe', 'create'],
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      const { data, error } = await supabase.from('ia_annual_plans').update(updates).eq('id', id).select().single();
+      // Governed working-copy update. Never write to ia_annual_plans directly:
+      // the server owns status gating, authorization, actor identity and change logging.
+      const IGNORED = new Set(['created_at', 'updated_at', 'created_by', 'updated_by']);
+      const changes = Object.fromEntries(
+        Object.entries(updates).filter(([key, value]) => !key.startsWith('_') && !IGNORED.has(key) && value !== undefined),
+      );
+      const { data, error } = await supabase.rpc('ia_update_annual_plan_working_copy', {
+        p_plan_id: id,
+        p_changes: changes as any,
+      });
       if (error) throw error;
-      return data;
+      const result = data as any;
+      if (!result?.success) {
+        throw new Error(result?.error || 'The plan could not be updated.');
+      }
+      return result.plan;
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ia_annual_plans'] });
       toast({ title: 'Plan Updated' });

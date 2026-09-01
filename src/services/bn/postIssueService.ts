@@ -32,6 +32,7 @@
  *   - Issue is not "complete" until all REQUIRED tasks reach COMPLETED status.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 
 const db = supabase as any;
 
@@ -544,9 +545,12 @@ async function executeClaimClosure(task: PostIssueTask, userCode: string): Promi
   }).eq('claim_number', task.claim_number);
 
   // Also update bn_claim
-  await db.from('bn_claim').update({
+  const { data: closedClaim } = await db.from('bn_claim').update({
     status: 'CLOSED',
-  }).eq('claim_number', task.claim_number);
+  }).eq('claim_number', task.claim_number).select('id').maybeSingle();
+
+  // A closed claim must leave the work queue, not linger in its last basket.
+  await routeClaimAfterStatusChange(closedClaim?.id ?? null, userCode);
 
   return { closed: task.claim_number };
 }

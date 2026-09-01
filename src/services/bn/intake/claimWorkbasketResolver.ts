@@ -25,6 +25,10 @@ const db = supabase as any;
 
 export type WorkbasketResolutionSource =
   | 'WORKFLOW_FIRST_STEP'
+  /** The step names its own workbasket_id — the most explicit configuration. */
+  | 'STEP_WORKBASKET'
+  /** The step names an assigned_role that a live basket carries. */
+  | 'STEP_ASSIGNED_ROLE'
   | 'NONE';
 
 export interface ResolvedClaimWorkbasket {
@@ -106,8 +110,23 @@ export const STEP_NAME_TO_BASKET_ROLE: Record<string, string> = {
 
 interface StepConfig {
   step?: string;
+  /** Alias spellings seen in authored templates. */
+  step_code?: string;
+  step_name?: string;
   role?: string;
+  /** BN_* role authored directly on the step; preferred over `role`. */
+  assigned_role?: string;
+  /** Basket chosen explicitly for this step in the workflow designer. */
+  workbasket_id?: string;
   sla_days?: number;
+  sla_hours?: number;
+}
+
+/** Every name a step answers to: `step`, `step_code`, `step_name`. */
+function stepAliases(s: StepConfig): string[] {
+  return [s.step, s.step_code, s.step_name]
+    .map((v) => String(v ?? '').trim().toUpperCase())
+    .filter(Boolean);
 }
 
 /** All steps of a template's `steps_config`, tolerating the shapes seen in data. */
@@ -128,15 +147,15 @@ export function firstStep(stepsConfig: unknown): StepConfig | null {
   return allSteps(stepsConfig)[0] ?? null;
 }
 
-/** The step with this name, if the template declares it. */
+/**
+ * The step with this name, if the template declares it. Templates authored in
+ * the designer put the routing vocabulary under `step_code`/`step_name` and a
+ * human label under `step`, so all three are matched.
+ */
 export function stepByName(stepsConfig: unknown, stepName: string | null | undefined): StepConfig | null {
   const target = String(stepName ?? '').trim().toUpperCase();
   if (!target) return null;
-  return (
-    allSteps(stepsConfig).find(
-      (s) => String(s.step ?? '').trim().toUpperCase() === target,
-    ) ?? null
-  );
+  return allSteps(stepsConfig).find((s) => stepAliases(s).includes(target)) ?? null;
 }
 
 /**
@@ -156,6 +175,29 @@ function addDays(iso: string, days: number): string {
   const d = new Date(iso);
   d.setDate(d.getDate() + days);
   return d.toISOString();
+}
+
+function addHours(iso: string, hours: number): string {
+  return new Date(new Date(iso).getTime() + hours * 3_600_000).toISOString();
+}
+
+/**
+ * A step's SLA. Templates authored in the designer carry `sla_hours` only, so
+ * reading `sla_days` alone left those assignments with no deadline at all.
+ */
+function slaFromStep(step: StepConfig): {
+  slaDays: number | null;
+  dueAt: (assignedAt: string) => string | null;
+} {
+  const days = typeof step.sla_days === 'number' && Number.isFinite(step.sla_days) ? step.sla_days : null;
+  const hours = typeof step.sla_hours === 'number' && Number.isFinite(step.sla_hours) ? step.sla_hours : null;
+  if (days !== null) {
+    return { slaDays: days, dueAt: (at) => addDays(at, days) };
+  }
+  if (hours !== null) {
+    return { slaDays: hours / 24, dueAt: (at) => addHours(at, hours) };
+  }
+  return { slaDays: null, dueAt: () => null };
 }
 
 export async function resolveClaimWorkbasket(params: {
@@ -205,10 +247,40 @@ export async function resolveClaimWorkbasket(params: {
   }
 
   const stepName = step.step ?? targetStep ?? null;
-  const stepRole = step.role ?? null;
+  const stepRole = step.assigned_role ?? step.role ?? null;
+  const assignedAtIso = params.assignedAt ?? new Date().toISOString();
+  const sla = slaFromStep(step);
+
+  // 1. The step names its own basket — the most explicit configuration there is.
+  const explicitBasketId = String(step.workbasket_id ?? '').trim();
+  if (explicitBasketId) {
+    const { data: explicit, error: explicitError } = await db
+      .from('bn_workbasket')
+      .select('id, basket_code, basket_name, assigned_role, is_active')
+      .eq('id', explicitBasketId)
+      .maybeSingle();
+    if (explicitError) return NONE(`could not read workbaskets — ${explicitError.message}`);
+    if (explicit && explicit.is_active !== false) {
+      return {
+        workbasketId: explicit.id,
+        workbasketName: explicit.basket_name ?? explicit.basket_code ?? null,
+        source: 'STEP_WORKBASKET',
+        stepName,
+        stepRole,
+        basketRole: explicit.assigned_role ?? null,
+        slaDays: sla.slaDays,
+        dueAt: sla.dueAt(assignedAtIso),
+        reason: null,
+      };
+    }
+    // Falls through to role-based resolution when the basket is gone or inactive.
+  }
+
+  // 2. assigned_role / role, then the step-name fallback table.
   const basketRole =
     basketRoleForStepRole(stepRole) ??
     STEP_NAME_TO_BASKET_ROLE[String(stepName ?? '').trim().toUpperCase()] ??
+    STEP_NAME_TO_BASKET_ROLE[String(step.step_code ?? '').trim().toUpperCase()] ??
     null;
   if (!basketRole) {
     return {
@@ -251,20 +323,15 @@ export async function resolveClaimWorkbasket(params: {
     String(a.basket_code).localeCompare(String(b.basket_code)),
   )[0];
 
-  const slaDays = typeof step.sla_days === 'number' && Number.isFinite(step.sla_days)
-    ? step.sla_days
-    : null;
-  const assignedAt = params.assignedAt ?? new Date().toISOString();
-
   return {
     workbasketId: basket.id,
     workbasketName: basket.basket_name ?? basket.basket_code ?? null,
-    source: 'WORKFLOW_FIRST_STEP',
+    source: stepRole && basketRoleForStepRole(stepRole) ? 'STEP_ASSIGNED_ROLE' : 'WORKFLOW_FIRST_STEP',
     stepName,
     stepRole,
     basketRole,
-    slaDays,
-    dueAt: slaDays !== null ? addDays(assignedAt, slaDays) : null,
+    slaDays: sla.slaDays,
+    dueAt: sla.dueAt(assignedAtIso),
     reason: null,
   };
 }

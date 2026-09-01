@@ -106,7 +106,7 @@ const InstallmentsDuePage = lazy(() => import('@/pages/compliance/arrangements/I
 const PaymentAllocationPage = lazy(() => import('@/pages/compliance/arrangements/PaymentAllocationPage'));
 const ArrangementBreachesPage = lazy(() => import('@/pages/compliance/arrangements/BreachesPage'));
 const FieldOperations = lazy(() => import('@/pages/compliance/inspections/FieldOperations'));
-const NoticesManagement = lazy(() => import('@/pages/compliance/legal/NoticesManagement'));
+const LegacyNoticesRedirect = lazy(() => import('@/pages/compliance/notices/LegacyNoticesRedirect'));
 const EmployerStatements = lazy(() => import('@/pages/compliance/employers/EmployerStatements'));
 const ComplianceSettings = lazy(() => import('@/pages/compliance/settings/ComplianceSettings'));
 const ComplianceScheduleSettings = lazy(() => import('@/pages/compliance/admin/ScheduleSettings'));
@@ -157,7 +157,7 @@ const ComplianceInspectionManagement = lazy(() => import('@/pages/compliance/ins
 const ComplianceBreachMonitoring = lazy(() => import('@/pages/compliance/arrangements/BreachMonitoring'));
 const ComplianceLegalQueue = lazy(() => import('@/pages/compliance/legal/LegalQueue'));
 const ComplianceLegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedingsPage'));
-const ComplianceWaivers = lazy(() => import('@/pages/compliance/legal/WaiversOverrides'));
+const ComplianceWaivers = lazy(() => import('@/pages/compliance/waivers/WaiverRegister'));
 const CompliancePartialPayments = lazy(() => import('@/pages/compliance/payments/PartialPaymentRequests'));
 const EmployerPartialPaymentRequest = lazy(() => import('@/pages/employer/PartialPaymentSelfService'));
 const ComplianceJobConfiguration = lazy(() => import('@/pages/compliance/automation/JobConfiguration'));
@@ -204,6 +204,7 @@ const RevisionsPending = lazy(() => import('@/pages/compliance/audit-planning/Re
 const PlanRevisionReview = lazy(() => import('@/pages/compliance/audit-planning/PlanRevisionReview'));
 const MyPlans = lazy(() => import('@/pages/compliance/audit-planning/MyPlans'));
 const AllWeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/AllWeeklyReports'));
+const AuditReportsRegister = lazy(() => import('@/pages/compliance/field/AuditReportsRegister'));
 const FieldExecution = lazy(() => import('@/pages/compliance/audit-planning/FieldExecution'));
 const WeeklyReports = lazy(() => import('@/pages/compliance/audit-planning/WeeklyReports'));
 const CompliancePendingReview = lazy(() => import('@/pages/compliance/audit-planning/PendingReview'));
@@ -404,6 +405,7 @@ const AuditActionCentre = lazy(() => import('@/pages/audit/AuditActionCentre'));
 const AuditEscalationRoles = lazy(() => import('@/pages/audit/EscalationRoles'));
 const PlanApproval = lazy(() => import('@/pages/audit/PlanApproval'));
 const AuditConfig = lazy(() => import('@/pages/audit/AuditConfig'));
+const AuditAccessMatrix = lazy(() => import('@/pages/audit/AuditAccessMatrix'));
 const RiskSettings = lazy(() => import('@/pages/audit/RiskSettings'));
 const DocumentTemplateSettings = lazy(() => import('@/pages/audit/DocumentTemplateSettings'));
 const ComplianceReportTemplates = lazy(() => import('@/pages/compliance/admin/ComplianceReportTemplates'));
@@ -1536,7 +1538,10 @@ export const AppRoutes = () => {
       <Route path="/compliance/field/audit/:id/*" element={<AuditDetails />} />
       <Route path="/compliance/field/weekly-report" element={<WeeklyReportSubmission />} />
       <Route path="/compliance/field/weekly-reports" element={<WeeklyReports />} />
-      <Route path="/compliance/field/all-reports" element={<AllWeeklyReports />} />
+      {/* Canonical Field Audit Reports Register (employer audit reports). */}
+      <Route path="/compliance/field/all-reports" element={<AuditReportsRegister />} />
+      {/* Weekly plan reporting kept on its own manager-review route. */}
+      <Route path="/compliance/field/weekly-plan-reports" element={<AllWeeklyReports />} />
       <Route path="/compliance/field/execution-dashboard/:planId" element={<PlanExecutionDashboard />} />
       <Route path="/compliance/field/execution-dashboard/:planId/visit/:planItemId" element={<AuditVisitWorkspace />} />
       <Route path="/compliance/field/audit-visit/:planItemId" element={<AuditVisitWorkspace />} />
@@ -1554,7 +1559,7 @@ export const AppRoutes = () => {
       <Route path="/compliance/enforcement/legal-referral" element={<ComplianceFeatureGate flagKey="compliance.legal.handoff" title="Legal Referral"><LegalReferralWizard /></ComplianceFeatureGate>} />
       <Route path="/compliance/enforcement/legal-queue" element={<ComplianceLegalQueue />} />
       <Route path="/compliance/enforcement/proceedings" element={<ComplianceFeatureGate flagKey="compliance.legal.court_monitoring" title="Legal Proceedings & Court Monitoring"><ComplianceLegalProceedings /></ComplianceFeatureGate>} />
-      <Route path="/compliance/enforcement/notices" element={<NoticesManagement />} />
+      <Route path="/compliance/enforcement/notices" element={<LegacyNoticesRedirect />} />
       <Route path="/compliance/enforcement/arrangements" element={<PaymentArrangements />} />
       <Route path="/compliance/enforcement/arrangements/:arrangementId" element={<PaymentArrangements />} />
       <Route path="/compliance/enforcement/breaches" element={<ComplianceBreachMonitoring />} />
@@ -1811,6 +1816,7 @@ export const AppRoutes = () => {
       <Route path="/audit/report-builder" element={<Suspense fallback={<div>Loading...</div>}><AuditReportBuilder /></Suspense>} />
       <Route path="/audit/plan-approval" element={<PlanApproval />} />
       <Route path="/audit/config" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><AuditConfig /></AuditFeatureGate></AuditEntitlementGate>} />
+      <Route path="/audit/access-matrix" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><Suspense fallback={<div />}><AuditAccessMatrix /></Suspense></AuditEntitlementGate>} />
       <Route path="/audit/risk-settings" element={<Suspense fallback={<div />}><RiskSettings /></Suspense>} />
       <Route path="/audit/document-templates" element={<AuditEntitlementGate anyOf={AUDIT_ADMIN_ENTITLEMENTS}><AuditFeatureGate featureFlag="FEATURE_AUDIT_SYSTEM_CONFIG"><Suspense fallback={<div />}><DocumentTemplateSettings /></Suspense></AuditFeatureGate></AuditEntitlementGate>} />
       <Route path="/audit/queries" element={<Suspense fallback={<div />}><AuditQueries /></Suspense>} />

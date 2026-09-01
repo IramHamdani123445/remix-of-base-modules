@@ -19,6 +19,8 @@ import { PlanApprovalBanner } from '@/components/audit/PlanApprovalBanner';
 import { PlanSubmissionReadiness } from '@/components/audit/PlanSubmissionReadiness';
 import { PlanRevisionDialog } from '@/components/audit/PlanRevisionDialog';
 import { PlanClosurePanel } from '@/components/audit/PlanClosurePanel';
+import { PlanPortfolioPanel } from '@/components/audit/plan/PlanPortfolioPanel';
+
 import { BoardPackTab } from '@/components/audit/BoardPackTab';
 import { PlanDistributionTab } from '@/components/audit/PlanDistributionTab';
 import { CoverageRiskTab } from '@/components/audit/CoverageRiskTab';
@@ -32,7 +34,7 @@ import { Loader2, X } from 'lucide-react';
 import { useAuditPlanWorkflow } from '@/hooks/useAuditPlanApproval';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePlanWorkflowAccess } from '@/hooks/useAuditPlanWorkflowAccess';
-import { getAnnualPlanReadinessChecks, summarizeAnnualPlanReadiness, useSubmitAnnualPlanWorkflow } from '@/hooks/useAuditAnnualPlanFlow';
+import { getAnnualPlanReadinessChecks, summarizeAnnualPlanReadiness, useAnnualPlanReadiness, useSubmitAnnualPlanWorkflow } from '@/hooks/useAuditAnnualPlanFlow';
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -66,8 +68,25 @@ export default function AuditPlanDetail() {
 
   const plan = useMemo(() => (plans || []).find((p: any) => p.id === id), [plans, id]);
   const planStatus = plan?.status || 'Draft';
-  const readinessChecks = useMemo(() => getAnnualPlanReadinessChecks(plan, engagements || []), [engagements, plan]);
-  const readinessSummary = useMemo(() => summarizeAnnualPlanReadiness(readinessChecks), [readinessChecks]);
+  const { readiness: serverReadiness } = useAnnualPlanReadiness(id);
+
+  // Display checklist stays granular, but the authoritative gate is the server
+  // readiness function (ia_annual_plan_readiness) enforced by the submit command.
+  const readinessChecks = useMemo(() => {
+    const checks = getAnnualPlanReadinessChecks(plan, engagements || []);
+    const clientFailures = new Set(checks.filter((c) => !c.passed).map((c) => c.label));
+    (serverReadiness?.failedChecks || []).forEach((blocker) => {
+      if (![...clientFailures].some((label) => blocker.toLowerCase().includes(label.toLowerCase().slice(0, 12)))) {
+        checks.push({ label: blocker, passed: false });
+      }
+    });
+    return checks;
+  }, [engagements, plan, serverReadiness]);
+
+  const readinessSummary = useMemo(
+    () => serverReadiness ?? summarizeAnnualPlanReadiness(readinessChecks),
+    [serverReadiness, readinessChecks],
+  );
 
   const access = usePlanWorkflowAccess(planStatus, readinessSummary);
 
@@ -191,6 +210,7 @@ export default function AuditPlanDetail() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
           <TabsTrigger value="engagements">Engagements ({stats.total})</TabsTrigger>
           <TabsTrigger value="coverage">Coverage & Risk</TabsTrigger>
           <TabsTrigger value="capacity">Capacity & Schedule</TabsTrigger>
@@ -201,9 +221,14 @@ export default function AuditPlanDetail() {
           <TabsTrigger value="closure">Closure</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="portfolio">
+          <PlanPortfolioPanel planId={id!} />
+        </TabsContent>
+
         <TabsContent value="closure">
           <PlanClosurePanel planId={id!} plan={plan} />
         </TabsContent>
+
 
         {/* Overview Tab */}
         <TabsContent value="overview">

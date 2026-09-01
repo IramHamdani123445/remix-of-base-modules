@@ -14,6 +14,7 @@ import {
   useBasketClaimCounts,
 } from '@/hooks/bn/useBnWorkbasket';
 import { useMyWorkbaskets } from '@/hooks/bn/useMyWorkbaskets';
+import { useBasketArrivalAlerts, useClearBasketArrivalAlerts } from '@/hooks/bn/useBasketArrivalAlerts';
 import { useMyEffectiveRoles } from '@/hooks/bn/useEffectiveRoles';
 import { useUserCode } from '@/hooks/useUserCode';
 import { BN_CLAIM_STATUS_LABELS } from '@/types/bn';
@@ -100,6 +101,15 @@ export default function ClaimQueue() {
 
   const basketIds = useMemo(() => baskets.map((b) => b.id), [baskets]);
   const { data: counts = {} } = useBasketClaimCounts(basketIds);
+  const { data: arrivals = {} } = useBasketArrivalAlerts(basketIds);
+  const clearArrivals = useClearBasketArrivalAlerts();
+
+  // Opening a basket clears its "new arrival" alerts for this user.
+  const openBasket = (basketId: string) => {
+    setSelectedBasket(basketId);
+    if ((arrivals[basketId] ?? 0) > 0) clearArrivals.mutate(basketId);
+  };
+
 
   // Auto-select: primary basket first, then the first basket holding work.
   useEffect(() => {
@@ -192,7 +202,7 @@ export default function ClaimQueue() {
   const selected = baskets.find((b) => b.id === selectedBasket);
 
   return (
-    <PermissionWrapper moduleName="benefits_management">
+    <PermissionWrapper moduleName="bn_claim_queue">
       <div className="space-y-6 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -262,16 +272,20 @@ export default function ClaimQueue() {
             </h3>
             {baskets.map((basket) => {
               const count = counts[basket.id];
+              const newCount = arrivals[basket.id] ?? 0;
               return (
                 <Button
                   key={basket.id}
                   variant={selectedBasket === basket.id ? 'default' : 'outline'}
                   className="w-full justify-start"
-                  onClick={() => setSelectedBasket(basket.id)}
+                  onClick={() => openBasket(basket.id)}
                 >
                   <Inbox className="mr-2 h-4 w-4 shrink-0" />
                   <span className="truncate">{basket.basket_name}</span>
                   <span className="ml-auto flex items-center gap-1">
+                    {newCount > 0 && (
+                      <Badge className="bg-primary text-primary-foreground px-1.5">{newCount} new</Badge>
+                    )}
                     {count?.overdue ? (
                       <Badge variant="destructive" className="px-1.5">{count.overdue}</Badge>
                     ) : null}
@@ -280,6 +294,7 @@ export default function ClaimQueue() {
                 </Button>
               );
             })}
+
             {baskets.length === 0 && !myBasketsLoading && (
               <p className="text-sm text-muted-foreground">
                 {scope === 'mine'

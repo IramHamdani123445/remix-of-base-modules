@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,103 +7,51 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Eye, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2, Eye, ArrowRight, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import {
+  useComplianceWorkQueue,
+  type WorkQueueRow,
+} from "@/hooks/compliance/useComplianceWorkQueue";
+import { WorkQueuePagination, WorkQueueToolbar } from "@/components/compliance/workbench/WorkQueueToolbar";
 
-interface QueueOption { id: string; queue_name: string; queue_type: string; }
 interface InspectorOption { id: string; display_name: string; }
 
-const STATUS_OPTIONS = ["UNDER_REVIEW", "OPEN", "IN_PROGRESS", "ESCALATED"] as const;
-type StatusFilter = typeof STATUS_OPTIONS[number] | "ALL_REVIEW";
-
 export default function ReviewQueue() {
-  const [violations, setViolations] = useState<any[]>([]);
-  const [queues, setQueues] = useState<QueueOption[]>([]);
-  const [inspectors, setInspectors] = useState<InspectorOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const q = useComplianceWorkQueue("review", 25);
+
   const [reassignOpen, setReassignOpen] = useState(false);
-  const [selectedViolation, setSelectedViolation] = useState<any>(null);
+  const [selected, setSelected] = useState<WorkQueueRow | null>(null);
   const [reassignTarget, setReassignTarget] = useState({ type: "queue", queue_id: "", inspector_id: "" });
   const [saving, setSaving] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL_REVIEW");
-  const [queueScope, setQueueScope] = useState<"REV" | "ALL">("REV");
-  const navigate = useNavigate();
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const { data: allQData, error: qErr } = await supabase
-      .from("ce_assignment_queues")
-      .select("id, queue_name, queue_type")
-      .eq("is_active", true)
-      .order("queue_name");
-    if (qErr) toast.error("Failed to load queues: " + qErr.message);
-    const allQueues = allQData || [];
-    setQueues(allQueues);
-    const revQueueIds = allQueues.filter(q => q.queue_type === "REV").map(q => q.id);
+  const { data: inspectors = [] } = useQuery({
+    queryKey: ["ce-review-inspectors"],
+    queryFn: async (): Promise<InspectorOption[]> => {
+      const [{ data: insp }, { data: profiles }] = await Promise.all([
+        supabase.from("ce_inspectors").select("id, inspector_code, legacy_inspector_code, profile_id").eq("is_active", true),
+        supabase.from("profiles").select("id, full_name"),
+      ]);
+      const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.id, p.full_name]));
+      return (insp || []).map((i: any) => ({
+        id: i.id,
+        display_name: (i.profile_id ? profileMap[i.profile_id] : null) || i.inspector_code || i.legacy_inspector_code || i.id.slice(0, 8),
+      }));
+    },
+    staleTime: 300_000,
+  });
 
-    const [{ data: inspData }, { data: profiles }] = await Promise.all([
-      supabase.from("ce_inspectors").select("id, inspector_code, legacy_inspector_code, profile_id").eq("is_active", true),
-      supabase.from("profiles").select("id, full_name"),
-    ]);
-    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
-    const inspOptions: InspectorOption[] = (inspData || []).map(i => ({
-      id: i.id,
-      display_name: (i.profile_id ? profileMap[i.profile_id] : null) || i.inspector_code || i.legacy_inspector_code || i.id.slice(0, 8),
-    }));
-    setInspectors(inspOptions);
-
-    let q = supabase
-      .from("ce_violations")
-      .select("id, violation_number, employer_id, employer_name, status, priority, created_at, assigned_queue_id, assigned_to_user_id, zone_id")
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false })
-      .limit(200);
-
-    if (statusFilter === "ALL_REVIEW") {
-      q = q.in("status", ["UNDER_REVIEW", "OPEN", "IN_PROGRESS", "ESCALATED"]);
-    } else {
-      q = q.eq("status", statusFilter);
-    }
-
-    if (queueScope === "REV") {
-      if (revQueueIds.length === 0) { setViolations([]); setLoading(false); return; }
-      q = q.in("assigned_queue_id", revQueueIds);
-    }
-
-    const { data, error } = await q;
-    if (error) {
-      toast.error("Failed to load review queue: " + error.message);
-      setViolations([]); setLoading(false); return;
-    }
-
-    const qMap = Object.fromEntries(allQueues.map(qq => [qq.id, qq.queue_name]));
-    const iMap = Object.fromEntries(inspOptions.map(i => [i.id, i.display_name]));
-
-    setViolations((data || []).map((v: any) => ({
-      ...v,
-      queue_name: v.assigned_queue_id ? (qMap[v.assigned_queue_id] || "—") : "Unassigned",
-      assigned_officer_name: v.assigned_to_user_id ? iMap[v.assigned_to_user_id] || v.assigned_to_user_id.slice(0, 8) : "—",
-    })));
-    setLoading(false);
-  }, [statusFilter, queueScope]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const statusCounts = useMemo(() => {
-    const c: Record<string, number> = {};
-    violations.forEach(v => { c[v.status] = (c[v.status] || 0) + 1; });
-    return c;
-  }, [violations]);
-
-  const openReassign = (v: any) => {
-    setSelectedViolation(v);
-    setReassignTarget({ type: "queue", queue_id: v.assigned_queue_id || "", inspector_id: "" });
+  const openReassign = (row: WorkQueueRow) => {
+    setSelected(row);
+    setReassignTarget({ type: "queue", queue_id: "", inspector_id: "" });
     setReassignOpen(true);
   };
 
   const handleReassign = async () => {
-    if (!selectedViolation) return;
+    if (!selected) return;
     setSaving(true);
 
     // Governed server-side commands (Checkpoint F-S1): the database verifies the
@@ -112,14 +60,14 @@ export default function ReviewQueue() {
     let error: any = null;
     if (reassignTarget.type === "queue" && reassignTarget.queue_id) {
       ({ error } = await (supabase.rpc as any)("ce_violation_return_to_queue_v1", {
-        p_violation_id: selectedViolation.id,
+        p_violation_id: selected.record_id,
         p_reason: "MANUAL",
         p_notes: "Review queue reassignment",
         p_queue_id: reassignTarget.queue_id,
       }));
     } else if (reassignTarget.type === "officer" && reassignTarget.inspector_id) {
       ({ error } = await (supabase.rpc as any)("ce_violation_reassign_v1", {
-        p_violation_id: selectedViolation.id,
+        p_violation_id: selected.record_id,
         p_target_inspector_id: reassignTarget.inspector_id,
         p_reason: "MANUAL",
         p_notes: "Review queue reassignment",
@@ -133,82 +81,128 @@ export default function ReviewQueue() {
     if (error) { toast.error("Failed: " + error.message); setSaving(false); return; }
 
     toast.success("Violation reassigned");
-    setSaving(false); setReassignOpen(false); fetchData();
+    setSaving(false);
+    setReassignOpen(false);
+    q.refetch();
   };
-
 
   return (
     <div className="space-y-6 p-6">
       <div>
         <h1 className="t-page-title">Review Queue</h1>
-        <p className="t-page-subtitle">Violations under review or pending triage</p>
+        <p className="t-page-subtitle">
+          Work awaiting a review decision — searched, filtered and sorted across the whole authorised queue,
+          not just the visible page.
+        </p>
       </div>
+
+      <WorkQueueToolbar
+        filters={q.filters}
+        options={q.options}
+        sort={q.sort}
+        dir={q.dir}
+        activeFilterCount={q.activeFilterCount}
+        total={q.total}
+        grandTotal={q.grandTotal}
+        scope={q.scope}
+        showAssignmentChips
+        onPatch={q.patchFilters}
+        onReset={q.resetFilters}
+        onSort={q.changeSort}
+        onToggleDir={q.toggleDir}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Eye className="h-5 w-5" /> Review Items ({violations.length})
+            <Eye className="h-5 w-5" /> Review Items ({q.total.toLocaleString()})
           </CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            {STATUS_OPTIONS.map(s => (
-              <Badge key={s} variant={statusFilter === s ? "default" : "outline"} className="cursor-pointer"
-                onClick={() => setStatusFilter(s)}>
-                {s} {statusCounts[s] ? `(${statusCounts[s]})` : ""}
-              </Badge>
-            ))}
-            <Badge variant={statusFilter === "ALL_REVIEW" ? "default" : "outline"} className="cursor-pointer"
-              onClick={() => setStatusFilter("ALL_REVIEW")}>All</Badge>
-            <Select value={queueScope} onValueChange={(v: any) => setQueueScope(v)}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="REV">Review queues only</SelectItem>
-                <SelectItem value="ALL">All queues</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <span className="text-xs text-muted-foreground">
+            Waiting-time breach threshold: {q.slaHours}h
+          </span>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {q.error ? (
+            <p className="py-8 text-center text-sm text-destructive">
+              Review queue unavailable — {q.error.message}
+            </p>
+          ) : q.isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-          ) : violations.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No violations match the selected filters</p>
+          ) : q.rows.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">No work matches the selected filters</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Violation #</TableHead>
-                  <TableHead>Employer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Queue</TableHead>
-                  <TableHead>Officer</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {violations.map((v) => (
-                  <TableRow key={v.id}>
-                    <TableCell className="font-mono text-sm">{v.violation_number}</TableCell>
-                    <TableCell>{v.employer_name || v.employer_id || "—"}</TableCell>
-                    <TableCell><Badge variant="secondary">{v.status}</Badge></TableCell>
-                    <TableCell><Badge variant={v.priority === "CRITICAL" ? "destructive" : "secondary"}>{v.priority || "—"}</Badge></TableCell>
-                    <TableCell>{v.queue_name}</TableCell>
-                    <TableCell>{v.assigned_officer_name}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/compliance/violations/${v.id}`)} className="gap-1"><Eye className="h-3 w-3" /> View</Button>
-                      <Button variant="outline" size="sm" onClick={() => openReassign(v)} className="gap-1"><ArrowRight className="h-3 w-3" /> Reassign</Button>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Work type</TableHead>
+                    <TableHead>Employer</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Waiting</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {q.rows.map((r) => (
+                    <TableRow key={`${r.work_type}-${r.record_id}`}>
+                      <TableCell className="font-mono text-sm">{r.record_ref || "—"}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">{r.work_type}</div>
+                        <div className="text-xs text-muted-foreground">{r.item_type}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{r.employer_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{r.employer_id}</div>
+                      </TableCell>
+                      <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={r.priority_rank === 1 ? "destructive" : r.priority_rank === 2 ? "default" : "secondary"}>
+                          {r.priority || "—"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className={r.waiting_breach ? "text-destructive font-medium" : ""}>
+                        {r.waiting_hours != null ? `${Math.round(r.waiting_hours)}h` : "—"}
+                        {r.waiting_breach && <AlertTriangle className="ml-1 inline h-3 w-3" />}
+                      </TableCell>
+                      <TableCell className={r.overdue ? "text-destructive font-medium" : ""}>
+                        {r.due_date || "—"}
+                      </TableCell>
+                      <TableCell>{r.owner_name || (r.unassigned ? "Unassigned" : "—")}</TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => navigate(r.route)} className="gap-1">
+                          <Eye className="h-3 w-3" /> View
+                        </Button>
+                        {r.reassignable && (
+                          <Button variant="outline" size="sm" onClick={() => openReassign(r)} className="gap-1">
+                            <ArrowRight className="h-3 w-3" /> Reassign
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <WorkQueuePagination
+                page={q.page}
+                totalPages={q.totalPages}
+                pageSize={q.pageSize}
+                total={q.total}
+                onPage={q.setPage}
+                onPageSize={q.setPageSize}
+                isFetching={q.isFetching}
+              />
+            </>
           )}
         </CardContent>
       </Card>
 
       <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Reassign Violation {selectedViolation?.violation_number}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Reassign {selected?.record_ref}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Reassign To</Label>
@@ -226,7 +220,9 @@ export default function ReviewQueue() {
                 <Select value={reassignTarget.queue_id} onValueChange={v => setReassignTarget(t => ({ ...t, queue_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select queue" /></SelectTrigger>
                   <SelectContent>
-                    {queues.map(q => <SelectItem key={q.id} value={q.id}>{q.queue_name} ({q.queue_type})</SelectItem>)}
+                    {q.options.queues.map(qq => (
+                      <SelectItem key={qq.id} value={qq.id}>{qq.name} ({qq.type})</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -245,7 +241,9 @@ export default function ReviewQueue() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReassignOpen(false)}>Cancel</Button>
-            <Button onClick={handleReassign} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Reassign</Button>
+            <Button onClick={handleReassign} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Reassign
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

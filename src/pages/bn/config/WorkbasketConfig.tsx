@@ -25,6 +25,8 @@ import {
 } from '@/services/bn/workbasketRoleService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QueueAccessHealthPanel } from '@/components/bn/config/QueueAccessHealthPanel';
+
 
 function useEscalationPolicyOptions() {
   return useQuery({
@@ -68,6 +70,9 @@ export default function WorkbasketConfig() {
     manager_role: '',
     allow_auto_reassign: true,
     escalation_target_basket_id: '',
+    notify_title: '',
+    notify_body: '',
+    notify_action_label: '',
   });
 
   // All role mappings for the table view
@@ -112,6 +117,9 @@ export default function WorkbasketConfig() {
       manager_role: '',
       allow_auto_reassign: true,
       escalation_target_basket_id: '',
+      notify_title: '',
+      notify_body: '',
+      notify_action_label: '',
     });
     setEditItem({} as any);
   };
@@ -133,6 +141,9 @@ export default function WorkbasketConfig() {
       manager_role: item.manager_role || '',
       allow_auto_reassign: item.allow_auto_reassign ?? true,
       escalation_target_basket_id: item.escalation_target_basket_id || '',
+      notify_title: (item as any).notify_title || '',
+      notify_body: (item as any).notify_body || '',
+      notify_action_label: (item as any).notify_action_label || '',
     });
     setEditItem(item);
   };
@@ -161,6 +172,9 @@ export default function WorkbasketConfig() {
       manager_role: form.manager_role || null,
       allow_auto_reassign: form.allow_auto_reassign,
       escalation_target_basket_id: form.escalation_target_basket_id || null,
+      notify_title: form.notify_title.trim() || null,
+      notify_body: form.notify_body.trim() || null,
+      notify_action_label: form.notify_action_label.trim() || null,
     };
 
 
@@ -213,6 +227,10 @@ export default function WorkbasketConfig() {
           productAssemblyHint
           description="Reusable operational queues. A workbasket can be served by one primary role plus any number of additional roles, so small offices can let one user cover several stages."
         />
+
+        <QueueAccessHealthPanel />
+
+
 
         <BNDataGrid
           id="bn.workbaskets"
@@ -329,6 +347,42 @@ export default function WorkbasketConfig() {
                 </div>
                 <div className="space-y-1"><label className="text-sm font-medium">Max Capacity</label><Input type="number" value={form.max_capacity} onChange={(e) => setForm((p) => ({ ...p, max_capacity: e.target.value }))} placeholder="Optional" /></div>
               </div>
+
+              <div className="rounded-md border p-3 space-y-3">
+                <div className="text-sm font-semibold">Arrival Notification</div>
+                <p className="text-xs text-muted-foreground">
+                  Wording shown to every user holding this basket's roles when a claim arrives here.
+                  Tokens: {'{claim_number}'}, {'{benefit}'}, {'{status}'}, {'{basket_name}'}, {'{due_date}'}, {'{priority}'}.
+                  Leave blank to use the basket's default wording.
+                </p>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Notification Title</label>
+                  <Input
+                    value={form.notify_title}
+                    onChange={(e) => setForm((p) => ({ ...p, notify_title: e.target.value }))}
+                    placeholder="e.g. Eligibility review required"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Notification Message</label>
+                  <Textarea
+                    rows={2}
+                    value={form.notify_body}
+                    onChange={(e) => setForm((p) => ({ ...p, notify_body: e.target.value }))}
+                    placeholder="e.g. {claim_number} — {benefit} is waiting for an eligibility decision."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Action Label</label>
+                  <Input
+                    value={form.notify_action_label}
+                    onChange={(e) => setForm((p) => ({ ...p, notify_action_label: e.target.value }))}
+                    placeholder="e.g. Review eligibility"
+                  />
+                </div>
+              </div>
+
+
 
               <div className="rounded-md border p-3 space-y-3">
                 <div className="text-sm font-semibold">SLA / Escalation</div>

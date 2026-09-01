@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { BnEntitlementType, BnPaymentFrequency } from '@/services/bn/entitlementService';
 import { useUserCode } from '@/hooks/useUserCode';
 import { requireUserCode } from '@/lib/bn/requireUserCode';
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 
 const db = supabase as any;
 
@@ -243,6 +244,7 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
       await db.from('bn_claim')
         .update({ status: 'AWARD_SETUP', modified_by: actor, modified_at: now })
         .eq('id', selectedClaim.id);
+      await routeClaimAfterStatusChange(selectedClaim.id, actor);
 
       // Audit event
       await db.from('bn_claim_event').insert({

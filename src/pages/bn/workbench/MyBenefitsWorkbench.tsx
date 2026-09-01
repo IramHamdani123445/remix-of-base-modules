@@ -36,7 +36,7 @@ export default function MyBenefitsWorkbench() {
   );
 
   return (
-    <PermissionWrapper moduleName="benefits_management">
+    <PermissionWrapper moduleName="bn_claim_worklist">
       <div className="space-y-6 p-6">
         <div>
           <h1 className="t-page-title">My Workbench</h1>
