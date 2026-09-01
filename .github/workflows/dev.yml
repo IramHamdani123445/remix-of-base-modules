@@ -16,7 +16,8 @@ jobs:
       # --------------------------------
       - name: Checkout repository
         uses: actions/checkout@v6
-
+        with:
+          ref: development
 
       # --------------------------------
       # 2. Setup Node.js
