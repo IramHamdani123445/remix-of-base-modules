@@ -126359,6 +126359,14 @@ export type Database = {
           workflow_instance_id: string
         }[]
       }
+      bn_sync_workbasket_queue_permissions: {
+        Args: never
+        Returns: {
+          granted_action: string
+          granted_module: string
+          granted_role: string
+        }[]
+      }
       bn_uprating_check_actor_permission: {
         Args: {
           p_action_name: string
@@ -126554,6 +126562,16 @@ export type Database = {
           p_run_id: string
         }
         Returns: Json
+      }
+      bn_workbasket_permission_gaps: {
+        Args: never
+        Returns: {
+          assigned_role: string
+          basket_code: string
+          basket_name: string
+          missing_module: string
+          role_exists: boolean
+        }[]
       }
       bn_workbaskets_for_user: {
         Args: { p_user_id: string }
