@@ -225,63 +225,37 @@ export async function requestReferralApproval(
   return { status, workflowName: mapping?.workflowName ?? null, autoApproved };
 }
 
+/**
+ * Approve a referral for submission.
+ *
+ * Governance (capability + maker-checker + status gate + audit) is enforced
+ * server-side by `ce_legal_referral_approve_v1`; the client no longer writes
+ * to ce_legal_referrals directly.
+ */
 export async function approveReferral(
   referralId: string,
-  userCode: string | null,
+  _userCode: string | null,
   notes?: string,
 ): Promise<void> {
-  const ref = await loadReferral(referralId);
-  if (ref.status !== REFERRAL_STATUS.PENDING_APPROVAL) {
-    throw new Error(`Only referrals pending approval can be approved (current status: ${ref.status}).`);
-  }
-  if (ref.approval_requested_by && userCode && ref.approval_requested_by === userCode) {
-    throw new Error('Maker-checker: the officer who requested approval cannot approve their own legal referral.');
-  }
-  const now = new Date().toISOString();
-  const { error } = await sb
-    .from('ce_legal_referrals')
-    .update({
-      status: REFERRAL_STATUS.APPROVED_FOR_SUBMISSION,
-      approved_at: now,
-      approved_by: userCode,
-      approval_notes: notes ?? null,
-      updated_by: userCode,
-      updated_at: now,
-    })
-    .eq('id', referralId);
-  if (error) throw error;
-  await audit(
-    'LEGAL_REFERRAL_APPROVED',
-    referralId,
-    { referral_number: ref.referral_number, notes: notes ?? null },
-    userCode,
-  );
+  const { error } = await sb.rpc('ce_legal_referral_approve_v1', {
+    p_referral_id: referralId,
+    p_notes: notes ?? null,
+  });
+  if (error) throw new Error(error.message);
 }
 
+/** Reject a referral — governed server-side by `ce_legal_referral_reject_v1`. */
 export async function rejectReferral(
   referralId: string,
   reason: string,
-  userCode: string | null,
+  _userCode: string | null,
 ): Promise<void> {
   if (!reason?.trim()) throw new Error('A rejection reason is required.');
-  const ref = await loadReferral(referralId);
-  if (![REFERRAL_STATUS.PENDING_APPROVAL, REFERRAL_STATUS.DRAFT].includes(ref.status)) {
-    throw new Error(`Cannot reject a referral in status ${ref.status}.`);
-  }
-  const now = new Date().toISOString();
-  const { error } = await sb
-    .from('ce_legal_referrals')
-    .update({
-      status: REFERRAL_STATUS.REJECTED,
-      rejected_date: now,
-      rejected_by: userCode,
-      rejection_reason: reason,
-      updated_by: userCode,
-      updated_at: now,
-    })
-    .eq('id', referralId);
-  if (error) throw error;
-  await audit('LEGAL_REFERRAL_REJECTED', referralId, { referral_number: ref.referral_number, reason }, userCode);
+  const { error } = await sb.rpc('ce_legal_referral_reject_v1', {
+    p_referral_id: referralId,
+    p_reason: reason,
+  });
+  if (error) throw new Error(error.message);
 }
 
 /** Legal sends a referral back to Compliance for rework. */
