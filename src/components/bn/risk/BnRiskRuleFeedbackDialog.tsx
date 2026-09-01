@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { riskFeedbackService } from '@/services/bn/risk/riskFeedbackService';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   feedbackTargetLabel,
   type BnRiskFeedbackReadinessV1,
@@ -300,13 +301,13 @@ export const BnRiskRuleFeedbackDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={mutation.isPending}
             data-testid="bn-risk-feedback-submit"
             disabled={missing.length > 0 || mutation.isPending}
             onClick={() => { setError(null); mutation.mutate(); }}
           >
             {mode === 'CORRECT' ? 'Record superseding feedback' : 'Record feedback'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

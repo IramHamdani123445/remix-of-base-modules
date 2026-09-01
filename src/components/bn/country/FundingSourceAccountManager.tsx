@@ -26,6 +26,7 @@ import {
 import { EFT_FORMAT_PRESETS, getPreset } from '@/lib/bn/eftFormatPresets';
 import { getCurrentUserCode } from '@/hooks/useUserCode';
 import { requireUserCode } from '@/lib/bn/requireUserCode';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const STATUS_VARIANT: Record<SourceFormatStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   PENDING_BANK_SPECIFICATION: 'destructive',
@@ -306,10 +307,10 @@ const FundingSourceAccountManager: React.FC<Props> = ({ countryCode }) => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={saveMut.isPending}
               disabled={!form.source_account_code || !form.source_account_name || saveMut.isPending}
               onClick={() => saveMut.mutate(form)}
-            >Save</Button>
+            >Save</BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

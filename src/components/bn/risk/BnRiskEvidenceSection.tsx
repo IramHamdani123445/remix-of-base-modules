@@ -31,6 +31,7 @@ import type {
   BnRiskFactorRow,
 } from '@/types/bn/risk/riskAssessment';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const ASSESSMENT_SCOPE = '__ASSESSMENT__';
 
@@ -222,13 +223,13 @@ export const BnRiskEvidenceSection: React.FC<Props> = ({
                       >
                         Assess
                       </Button>
-                      <Button
+                      <BnBusyButton loading={unlinkMutation.isPending}
                         size="sm" variant="ghost"
                         disabled={!isActionEnabled('LINK_EVIDENCE') || unlinkMutation.isPending}
                         onClick={() => unlinkMutation.mutate(row)}
                       >
                         Unlink
-                      </Button>
+                      </BnBusyButton>
                     </TableCell>
                   </TableRow>
                 );
@@ -303,12 +304,12 @@ export const BnRiskEvidenceSection: React.FC<Props> = ({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkOpen(false)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={linkMutation.isPending}
               disabled={!documentId || linkMutation.isPending}
               onClick={() => linkMutation.mutate()}
             >
               {linkMutation.isPending ? 'Linking…' : 'Link document'}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -345,12 +346,12 @@ export const BnRiskEvidenceSection: React.FC<Props> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUsabilityRow(null)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={usabilityMutation.isPending}
               disabled={!usabilityCode || usabilityMutation.isPending}
               onClick={() => usabilityMutation.mutate()}
             >
               {usabilityMutation.isPending ? 'Saving…' : 'Save'}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -23,6 +23,7 @@ import {
 import { formatAuditDate } from '@/lib/dateFormat';
 import { riskScoringService } from '@/services/bn/risk/riskScoringService';
 import type { BnRiskScoringConfigCommand } from '@/types/bn/risk/riskScoring';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export const BnRiskScoringConfigurationPanel: React.FC = () => {
   const queryClient = useQueryClient();
@@ -179,7 +180,7 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
             </div>
             <div className="flex flex-wrap gap-2">
               {detail.status === 'DRAFT' && (
-                <Button
+                <BnBusyButton loading={lifecycle.isPending}
                   size="sm"
                   disabled={lifecycle.isPending}
                   onClick={() => lifecycle.mutate({
@@ -189,10 +190,10 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                   })}
                 >
                   Validate
-                </Button>
+                </BnBusyButton>
               )}
               {detail.status === 'VALIDATED' && (
-                <Button
+                <BnBusyButton loading={lifecycle.isPending}
                   size="sm"
                   disabled={lifecycle.isPending}
                   onClick={() => lifecycle.mutate({
@@ -202,9 +203,9 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                   })}
                 >
                   Activate
-                </Button>
+                </BnBusyButton>
               )}
-              <Button
+              <BnBusyButton loading={lifecycle.isPending}
                 size="sm"
                 variant="outline"
                 disabled={lifecycle.isPending}
@@ -215,9 +216,9 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                 })}
               >
                 Create new version
-              </Button>
+              </BnBusyButton>
               {detail.status !== 'RETIRED' && (
-                <Button
+                <BnBusyButton loading={lifecycle.isPending}
                   size="sm"
                   variant="outline"
                   disabled={lifecycle.isPending}
@@ -229,7 +230,7 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                   })}
                 >
                   Retire
-                </Button>
+                </BnBusyButton>
               )}
             </div>
           </CardHeader>

@@ -21,6 +21,7 @@ import {
 } from '@/services/bn/ruleGroupItemService';
 import { useRuleCatalogue } from '@/hooks/bn/useRuleCatalogue';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props { groupId: string; groupCode: string; }
 
@@ -229,7 +230,7 @@ function AddRulesToGroupDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy || !picked.size}>{busy ? 'Adding…' : `Add ${picked.size}`}</Button>
+          <BnBusyButton loading={busy} onClick={save} disabled={busy || !picked.size}>{busy ? 'Adding…' : `Add ${picked.size}`}</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

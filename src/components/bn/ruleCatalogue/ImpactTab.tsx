@@ -10,6 +10,7 @@ import { getFactImpact, type FactImpact } from '@/services/bn/factImpactService'
 import { useCoverageTypes, useCoverageTypeRules } from '@/hooks/bn/useCoverageTypes';
 import type { RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
 import type { EligibilityFact } from '@/services/bn/eligibilityFactService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export function ImpactTab({ rules, facts }: { rules: RuleCatalogueItem[]; facts: EligibilityFact[] }) {
   const { data: cts = [] } = useCoverageTypes();
@@ -48,7 +49,7 @@ export function ImpactTab({ rules, facts }: { rules: RuleCatalogueItem[]; facts:
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={run} disabled={busy}>{busy ? 'Analyzing…' : 'Analyze Impact'}</Button>
+          <BnBusyButton loading={busy} onClick={run} disabled={busy}>{busy ? 'Analyzing…' : 'Analyze Impact'}</BnBusyButton>
         </div>
 
         {impact && (

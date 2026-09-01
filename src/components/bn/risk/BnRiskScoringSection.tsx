@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import { formatAuditDate } from '@/lib/dateFormat';
 import { riskScoringService } from '@/services/bn/risk/riskScoringService';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   groupRiskContribution,
   type BnRiskScoreContribution,
@@ -185,23 +186,23 @@ export const BnRiskScoringSection: React.FC<Props> = ({
         </div>
         <div className="flex gap-2">
           {!ready.has_score && (
-            <Button
+            <BnBusyButton loading={scoreMutation.isPending}
               size="sm"
               disabled={!canCalculate || scoreMutation.isPending}
               onClick={() => { setError(null); scoreMutation.mutate('CALCULATE_SCORE'); }}
             >
               {scoreMutation.isPending ? 'Calculating…' : 'Calculate risk score'}
-            </Button>
+            </BnBusyButton>
           )}
           {ready.has_score && (
-            <Button
+            <BnBusyButton loading={scoreMutation.isPending}
               size="sm"
               variant={ready.is_stale ? 'default' : 'outline'}
               disabled={!canRecalculate || scoreMutation.isPending}
               onClick={() => { setError(null); setRecalcOpen(true); }}
             >
               Recalculate risk score
-            </Button>
+            </BnBusyButton>
           )}
         </div>
       </CardHeader>
@@ -438,12 +439,12 @@ export const BnRiskScoringSection: React.FC<Props> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRecalcOpen(false)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={scoreMutation.isPending}
               disabled={scoreMutation.isPending}
               onClick={() => scoreMutation.mutate('RECALCULATE_SCORE')}
             >
               {scoreMutation.isPending ? 'Recalculating…' : 'Recalculate'}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

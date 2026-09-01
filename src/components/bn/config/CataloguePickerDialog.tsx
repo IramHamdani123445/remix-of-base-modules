@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
 import type { RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -143,7 +144,7 @@ export function CataloguePickerDialog({ open, onOpenChange, versionId, onAdded }
         <DialogFooter>
           <span className="mr-auto text-sm text-muted-foreground">{selected.size} selected</span>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleAdd} disabled={busy || selected.size === 0}>{busy ? 'Adding…' : 'Add Selected'}</Button>
+          <BnBusyButton loading={busy} onClick={handleAdd} disabled={busy || selected.size === 0}>{busy ? 'Adding…' : 'Add Selected'}</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

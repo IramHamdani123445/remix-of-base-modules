@@ -17,6 +17,7 @@ import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
 import { recommendedGroupsForProduct } from '@/services/bn/eligibility/recommendedGroups';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -226,9 +227,9 @@ export function AddRuleGroupFromCatalogueDialog({ open, onOpenChange, versionId,
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleAdd} disabled={busy || !groupId || linked.length === 0 || blockedCount > 0}>
+          <BnBusyButton loading={busy} onClick={handleAdd} disabled={busy || !groupId || linked.length === 0 || blockedCount > 0}>
             {busy ? 'Adding…' : `Add ${linked.length} rule(s)`}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

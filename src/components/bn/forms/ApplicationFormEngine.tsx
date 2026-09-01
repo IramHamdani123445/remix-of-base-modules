@@ -33,6 +33,7 @@ import type {
   ApplicationPayload,
 } from '@/services/bn/forms/formDefinitionService';
 import { validateApplicationPayload, submitApplication } from '@/services/bn/forms/formDefinitionService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   definition: FormDefinition;
@@ -174,9 +175,9 @@ export function ApplicationFormEngine({ definition, channel, initialValues, read
 
       {!readOnly && (
         <div className="flex justify-end gap-2">
-          <Button type="submit" disabled={submitting}>
+          <BnBusyButton loading={submitting} type="submit" disabled={submitting}>
             {submitting ? 'Submitting…' : 'Submit Application'}
-          </Button>
+          </BnBusyButton>
         </div>
       )}
     </form>

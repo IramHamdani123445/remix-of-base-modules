@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertTriangle, ShieldAlert } from 'lucide-react';
 import { MeansDecisionRadioGroup, MeansGovernedSelect } from '@/components/bn/meansTests/controls/MeansControls';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   approvalStateLabel,
   decisionReasonOptions,
@@ -216,9 +217,9 @@ export const BnMeansFinalDecisionDialog: React.FC<BnMeansFinalDecisionDialogProp
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={busy} data-testid="means-final-decision-submit">
+          <BnBusyButton loading={busy} onClick={submit} disabled={busy} data-testid="means-final-decision-submit">
             Record decision
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

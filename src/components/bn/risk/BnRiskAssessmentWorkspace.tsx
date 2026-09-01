@@ -39,6 +39,7 @@ import { BnRiskControlExecutionSection } from './BnRiskControlExecutionSection';
 import { BnRiskOutcomeSection } from './BnRiskOutcomeSection';
 import { BnRiskClosureSection } from './BnRiskClosureSection';
 import { BnRiskRuleFeedbackSection } from './BnRiskRuleFeedbackSection';
+import { BnBusyButton } from '@/components/bn/shared';
 
 
 /** Journey stages, driven by the backend assessment status. */
@@ -564,12 +565,12 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCompleteOpen(false)}>Cancel</Button>
-            <Button
+            <BnBusyButton loading={completeMutation.isPending}
               disabled={completeMutation.isPending}
               onClick={() => completeMutation.mutate()}
             >
               {completeMutation.isPending ? 'Completing…' : 'Complete'}
-            </Button>
+            </BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

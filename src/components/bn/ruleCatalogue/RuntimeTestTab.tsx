@@ -31,6 +31,7 @@ import { ensureContributionSnapshot } from '@/services/bn/eligibility/contributi
 import { runProductEligibilityTest, type ProductTestResult } from '@/services/bn/eligibility/productEligibilityTest';
 import { validateAllRules } from '@/services/bn/ruleValidationService';
 import { supabase } from '@/integrations/supabase/client';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   rules: RuleCatalogueItem[];
@@ -341,7 +342,7 @@ function SingleRulePanel({ rules, factByKey }: { rules: RuleCatalogueItem[]; fac
             )}
           </div>
         </div>
-        <Button onClick={run} disabled={busy} className="gap-2"><FlaskConical className="h-4 w-4" /> {busy ? 'Resolving…' : 'Run Test'}</Button>
+        <BnBusyButton loading={busy} onClick={run} disabled={busy} className="gap-2"><FlaskConical className="h-4 w-4" /> {busy ? 'Resolving…' : 'Run Test'}</BnBusyButton>
         {result && (
           <Alert variant={result.outcome === 'FAIL' ? 'destructive' : 'default'}>
             {result.outcome === 'PASS' ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
@@ -546,7 +547,7 @@ function ProductTestPanel() {
             </Select>
           </div>
         </div>
-        <Button onClick={run} disabled={busy} className="gap-2"><PlayCircle className="h-4 w-4" /> {busy ? 'Running…' : 'Run Eligibility'}</Button>
+        <BnBusyButton loading={busy} onClick={run} disabled={busy} className="gap-2"><PlayCircle className="h-4 w-4" /> {busy ? 'Running…' : 'Run Eligibility'}</BnBusyButton>
         {res && (
           <>
             <div className="flex items-center gap-2">

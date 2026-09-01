@@ -14,6 +14,7 @@ import {
 import { listChequeStock, registerChequeStock } from '@/services/bn/payment/chequeStockService';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from 'sonner';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const ChequeStockPage: React.FC = () => {
   const qc = useQueryClient();
@@ -74,7 +75,7 @@ const ChequeStockPage: React.FC = () => {
           <div className="col-span-2 md:col-span-3"><Label className="text-xs">Notes</Label>
             <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           <div className="col-span-2 md:col-span-3">
-            <Button onClick={submit} disabled={busy}>Register</Button>
+            <BnBusyButton loading={busy} onClick={submit} disabled={busy}>Register</BnBusyButton>
           </div>
         </CardContent>
       </Card>

@@ -45,6 +45,7 @@ import { useUserCode } from '@/hooks/useUserCode';
 import { BN_PLACEHOLDERS, validatePlaceholders } from '@/services/bn/communication/bnPlaceholderRegistry';
 import TokenPicker, { useTokenDrop } from '@/components/bn/templates/TokenPicker';
 import TemplatePreview from '@/components/bn/templates/TemplatePreview';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const db = supabase as any;
 
@@ -495,7 +496,7 @@ const TemplateEditorDialog: React.FC<EditorProps> = ({ open, template, title, cr
 
         <DialogFooter className="p-6 pt-3 border-t bg-background">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => onSave(draft)} disabled={pending}>{pending ? 'Saving…' : createMode ? 'Create draft' : 'Save new version'}</Button>
+          <BnBusyButton loading={pending} onClick={() => onSave(draft)} disabled={pending}>{pending ? 'Saving…' : createMode ? 'Create draft' : 'Save new version'}</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

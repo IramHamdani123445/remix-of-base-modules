@@ -16,6 +16,7 @@ import { BnScreenRoleBanner } from '@/components/bn/shared';
 import { CodeFieldWithAutoGenerate } from '@/components/bn/smart';
 import { useBnConfigAudit } from '@/hooks/bn/useBnConfigAudit';
 import { BNDataGrid, type BNColumnDef } from '@/components/bn/grid';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const db = supabase as any;
 
@@ -196,7 +197,7 @@ export default function ReasonCodes() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
-              <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Save</Button>
+              <BnBusyButton loading={saveMutation.isPending} onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Save</BnBusyButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>

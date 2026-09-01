@@ -17,6 +17,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { BNDataGrid, type BNColumnDef } from '@/components/bn/grid';
 import { useUserCode } from '@/hooks/useUserCode';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface ProductParam {
   id: string; code: string; display_name: string; data_type: string;
@@ -158,9 +159,9 @@ export default function ProductParameterRegistry() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => create.mutate()} disabled={!form.code.trim() || !form.display_name.trim() || create.isPending}>
+              <BnBusyButton loading={create.isPending} onClick={() => create.mutate()} disabled={!form.code.trim() || !form.display_name.trim() || create.isPending}>
                 {create.isPending ? 'Saving…' : 'Save as DRAFT'}
-              </Button>
+              </BnBusyButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>

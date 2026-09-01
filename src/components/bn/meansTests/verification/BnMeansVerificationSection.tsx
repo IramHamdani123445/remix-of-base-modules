@@ -31,6 +31,7 @@ import {
 } from '@/types/bn/meansTests/meansVerification';
 import { BnMeansVerificationDecisionDialog } from './BnMeansVerificationDecisionDialog';
 import { BnMeansClarificationResponseDialog } from './BnMeansClarificationResponseDialog';
+import { BnBusyButton } from '@/components/bn/shared';
 
 export interface BnMeansVerificationSectionProps {
   readonly assessmentId: string;
@@ -195,7 +196,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
           )}
 
           <div className="flex justify-end">
-            <Button
+            <BnBusyButton loading={run.isPending}
               disabled={
                 run.isPending ||
                 !actor.can_verify ||
@@ -206,7 +207,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
               onClick={() => run.mutate({ command: 'BN_MEANS_COMPLETE_VERIFICATION', payload: {} })}
             >
               {readiness.verification_marked_complete ? 'Verification complete' : 'Complete verification'}
-            </Button>
+            </BnBusyButton>
           </div>
         </CardContent>
       </Card>
@@ -293,54 +294,54 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
 
               <div className="flex flex-wrap justify-end gap-2">
                 {canAct(fact, 'BN_MEANS_CLAIM_VERIFICATION_WORK') && (
-                  <Button
+                  <BnBusyButton loading={run.isPending}
                     size="sm" variant="outline" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_CLAIM_VERIFICATION_WORK', payload: { work_id: fact.work_id } })}
                   >
                     {ACTION_LABEL.BN_MEANS_CLAIM_VERIFICATION_WORK}
-                  </Button>
+                  </BnBusyButton>
                 )}
                 {canAct(fact, 'BN_MEANS_RELEASE_VERIFICATION_WORK') && (
-                  <Button
+                  <BnBusyButton loading={run.isPending}
                     size="sm" variant="ghost" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_RELEASE_VERIFICATION_WORK', payload: { work_id: fact.work_id } })}
                   >
                     {ACTION_LABEL.BN_MEANS_RELEASE_VERIFICATION_WORK}
-                  </Button>
+                  </BnBusyButton>
                 )}
                 {canAct(fact, 'BN_MEANS_CANCEL_CLARIFICATION') && (
-                  <Button
+                  <BnBusyButton loading={run.isPending}
                     size="sm" variant="ghost" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_CANCEL_CLARIFICATION', payload: { work_id: fact.work_id, request_id: fact.clarification?.request_id ?? null } })}
                   >
                     {ACTION_LABEL.BN_MEANS_CANCEL_CLARIFICATION}
-                  </Button>
+                  </BnBusyButton>
                 )}
                 {canAct(fact, 'BN_MEANS_REOPEN_VERIFICATION_FACT') && (
-                  <Button
+                  <BnBusyButton loading={run.isPending}
                     size="sm" variant="outline" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_REOPEN_VERIFICATION_FACT', payload: { work_id: fact.work_id } })}
                   >
                     {ACTION_LABEL.BN_MEANS_REOPEN_VERIFICATION_FACT}
-                  </Button>
+                  </BnBusyButton>
                 )}
                 {canAct(fact, 'BN_MEANS_RECORD_CLARIFICATION_RESPONSE') && (
-                  <Button
+                  <BnBusyButton loading={run.isPending}
                     size="sm" variant="outline" disabled={run.isPending}
                     onClick={() => setResponseFact(fact)}
                     data-testid={`means-open-response-${fact.work_id}`}
                   >
                     {ACTION_LABEL.BN_MEANS_RECORD_CLARIFICATION_RESPONSE}
-                  </Button>
+                  </BnBusyButton>
                 )}
                 {canAct(fact, 'BN_MEANS_RECORD_VERIFICATION_DECISION') && (
-                  <Button
+                  <BnBusyButton loading={run.isPending}
                     size="sm" disabled={run.isPending}
                     onClick={() => setDecisionFact(fact)}
                     data-testid={`means-open-decision-${fact.work_id}`}
                   >
                     {ACTION_LABEL.BN_MEANS_RECORD_VERIFICATION_DECISION}
-                  </Button>
+                  </BnBusyButton>
                 )}
               </div>
             </CardContent>
