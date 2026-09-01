@@ -1,6 +1,8 @@
 import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 import { supabase } from '@/integrations/supabase/client';
 import { isEvidenceComplete } from '@/services/bn/evidenceService';
+import { expandAllowedRoles, userHoldsAllowedRole } from '@/services/bn/roleVocabulary';
+
 import type {
   BnClaimTransitionRule,
   BnAvailableAction,
@@ -51,14 +53,16 @@ export async function getAvailableTransitions(
   const hasCalculation = (calcResults.data?.length || 0) > 0;
 
   // 4. Evaluate each rule
-  const isAdmin = userRoles.some(r => r.toLowerCase() === 'admin');
-
   return (rules || []).map((rule: BnClaimTransitionRule) => {
-    // Role check
-    const roleAllowed = isAdmin || rule.allowed_roles.some(r => userRoles.includes(r));
-    if (!roleAllowed) {
-      return { rule, blocked: true, blockedReason: 'Insufficient role permissions' };
+    // Role check — case-insensitive, legacy-alias tolerant, Admin bypass.
+    if (!userHoldsAllowedRole(userRoles, rule.allowed_roles)) {
+      return {
+        rule,
+        blocked: true,
+        blockedReason: `Restricted to: ${expandAllowedRoles(rule.allowed_roles).join(', ')}`,
+      };
     }
+
 
     // Product category filter
     if (rule.product_category && productCategory && rule.product_category !== productCategory) {
@@ -119,10 +123,27 @@ export async function executeTransition(params: ExecuteTransitionParams): Promis
 
   if (ruleErr || !rule) throw new Error('Transition rule not found');
 
+  // 2b. Re-check the caller's roles at execution time. The button state is a
+  // convenience; this is the check that actually decides.
+  const { data: authData } = await supabase.auth.getUser();
+  const authUserId = authData?.user?.id;
+  if (!authUserId) throw new Error('You must be signed in to perform this action');
+  const { data: roleRows } = await db
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', authUserId);
+  const callerRoles = (roleRows || []).map((r: any) => String(r.role));
+  if (!userHoldsAllowedRole(callerRoles, rule.allowed_roles)) {
+    throw new Error(
+      `You do not hold a role permitted for "${rule.action_label}". Restricted to: ${expandAllowedRoles(rule.allowed_roles).join(', ')}`,
+    );
+  }
+
   // 3. Validate current status matches
   if (claim.status !== rule.from_status) {
     throw new Error(`Claim status "${claim.status}" does not match expected "${rule.from_status}"`);
   }
+
 
   // 4. Validate reason if required
   if (rule.requires_reason && !reasonCodeId) {
