@@ -3,10 +3,14 @@ import { RECOMMENDED_ACTION_TAB, resolveRecommendedActionTab } from '../recommen
 import {
   AUDIT_ATTACHMENT_BUCKET,
   AUDIT_MAX_FILE_SIZE,
+  AUDIT_STORAGE_ROOT,
   buildAuditObjectPath,
   sanitizeAuditFileName,
+  storageClassOf,
+  storageEngagementOf,
   validateAuditFile,
 } from '@/lib/audit/auditAttachmentUpload';
+
 
 const ALL_KEYS = [
   'LAUNCH_AUDIT',
