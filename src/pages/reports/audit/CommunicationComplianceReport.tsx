@@ -46,12 +46,15 @@ const exportColumns: ExportColumn[] = [
 export default function CommunicationComplianceReport() {
   const [filters, setFilters] = useState<Record<string, any>>({});
 
-  const { data: stages = [], isLoading } = useQuery({
+  // DEF-A-02 — ia_audit_engagements has no `title` column; the canonical
+  // display field is `engagement_name`.
+  const { data: stages = [], isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ia_communication_compliance_report', filters],
+    retry: false,
     queryFn: async () => {
       let query = supabase
         .from('ia_communication_stages' as any)
-        .select('*, engagement:engagement_id(title, status)')
+        .select('*, engagement:engagement_id(engagement_name, status)')
         .order('created_at', { ascending: false });
 
       if (filters.status && filters.status !== 'all') {
@@ -66,8 +69,9 @@ export default function CommunicationComplianceReport() {
   const enriched = useMemo(() => stages.map((s: any) => ({
     ...s,
     stage_label: STAGE_LABELS[s.stage_code] || s.stage_code,
-    engagement_title: s.engagement?.title || s.engagement_id?.substring(0, 8),
+    engagement_title: s.engagement?.engagement_name || s.engagement_id?.substring(0, 8),
   })), [stages]);
+
 
   // Chart: stages completed per stage_code
   const chartData = useMemo(() => {
