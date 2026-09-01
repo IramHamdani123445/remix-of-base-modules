@@ -75151,6 +75151,9 @@ export type Database = {
           preparation_notes: string | null
           preparation_status: string
           primary_auditee_contact_id: string | null
+          prior_history_review_note: string | null
+          prior_history_reviewed_at: string | null
+          prior_history_reviewed_by: string | null
           quarter: string | null
           reviewer_id: string | null
           schedule_version: number
@@ -75223,6 +75226,9 @@ export type Database = {
           preparation_notes?: string | null
           preparation_status?: string
           primary_auditee_contact_id?: string | null
+          prior_history_review_note?: string | null
+          prior_history_reviewed_at?: string | null
+          prior_history_reviewed_by?: string | null
           quarter?: string | null
           reviewer_id?: string | null
           schedule_version?: number
@@ -75295,6 +75301,9 @@ export type Database = {
           preparation_notes?: string | null
           preparation_status?: string
           primary_auditee_contact_id?: string | null
+          prior_history_review_note?: string | null
+          prior_history_reviewed_at?: string | null
+          prior_history_reviewed_by?: string | null
           quarter?: string | null
           reviewer_id?: string | null
           schedule_version?: number
@@ -80060,6 +80069,72 @@ export type Database = {
             columns: ["engagement_id"]
             isOneToOne: false
             referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_prior_action_reference: {
+        Row: {
+          created_at: string
+          current_engagement_id: string
+          id: string
+          is_active: boolean
+          linked_at: string
+          linked_by: string | null
+          linked_by_profile: string | null
+          prior_action_id: string
+          prior_engagement_id: string | null
+          relationship_type: string
+          relevance_reason: string | null
+          unlinked_at: string | null
+          unlinked_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_engagement_id: string
+          id?: string
+          is_active?: boolean
+          linked_at?: string
+          linked_by?: string | null
+          linked_by_profile?: string | null
+          prior_action_id: string
+          prior_engagement_id?: string | null
+          relationship_type?: string
+          relevance_reason?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_engagement_id?: string
+          id?: string
+          is_active?: boolean
+          linked_at?: string
+          linked_by?: string | null
+          linked_by_profile?: string | null
+          prior_action_id?: string
+          prior_engagement_id?: string | null
+          relationship_type?: string
+          relevance_reason?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_prior_action_reference_current_engagement_id_fkey"
+            columns: ["current_engagement_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_engagements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_prior_action_reference_prior_action_id_fkey"
+            columns: ["prior_action_id"]
+            isOneToOne: false
+            referencedRelation: "ia_action_tracking"
             referencedColumns: ["id"]
           },
         ]
@@ -131013,6 +131088,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_access_matrix: { Args: never; Returns: Json }
+      ia_acknowledge_prior_history: {
+        Args: { p_engagement_id: string; p_note?: string }
+        Returns: Json
+      }
       ia_action_assign: {
         Args: {
           p_accountable_department_id?: string
@@ -131088,7 +131168,16 @@ export type Database = {
         Returns: boolean
       }
       ia_actor_label: { Args: never; Returns: string }
+      ia_annual_plan_coverage: { Args: { p_plan_id: string }; Returns: Json }
+      ia_annual_plan_portfolio_summary: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       ia_annual_plan_readiness: { Args: { p_plan_id: string }; Returns: Json }
+      ia_annual_plan_version_diff: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
       ia_apply_manual_override: {
         Args: {
           p_candidate_id?: string
@@ -131159,6 +131248,7 @@ export type Database = {
         Args: { p_engagement_id: string; p_reason: string }
         Returns: Json
       }
+      ia_capability_modules: { Args: never; Returns: string[] }
       ia_capacity_schedule_candidates: {
         Args: { p_plan_id: string }
         Returns: Json
@@ -131502,6 +131592,15 @@ export type Database = {
         Args: { p_action_id: string; p_evidence_ids: string[] }
         Returns: Json
       }
+      ia_link_prior_action: {
+        Args: {
+          p_engagement_id: string
+          p_prior_action_id: string
+          p_relationship_type?: string
+          p_relevance_reason?: string
+        }
+        Returns: Json
+      }
       ia_log_event: {
         Args: {
           _annual_plan_id?: string
@@ -131548,6 +131647,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_permission_reconciliation: {
+        Args: { p_expected: Json }
+        Returns: Json
+      }
       ia_persist_plan_engagements: {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
@@ -131564,6 +131667,14 @@ export type Database = {
       ia_plan_working_copy_statuses: { Args: never; Returns: string[] }
       ia_postpone_engagement: {
         Args: { p_engagement_id: string; p_reason: string }
+        Returns: Json
+      }
+      ia_prior_action_detail: {
+        Args: { p_engagement_id: string; p_same_function_only?: boolean }
+        Returns: Json
+      }
+      ia_prior_audit_history: {
+        Args: { p_engagement_id: string; p_same_function_only?: boolean }
         Returns: Json
       }
       ia_q_action_centre_counts: { Args: { p_filters?: Json }; Returns: Json }
@@ -131746,6 +131857,10 @@ export type Database = {
           p_reason?: string
           p_target_status: string
         }
+        Returns: Json
+      }
+      ia_unlink_prior_action: {
+        Args: { p_reference_id: string }
         Returns: Json
       }
       ia_update_annual_plan_working_copy: {
