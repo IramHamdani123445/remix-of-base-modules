@@ -97,9 +97,9 @@ export function WaiverDetailDialog({ waiverId, onClose }: Props) {
       const amount = Number(decisionAmount);
       if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter a valid approved amount');
       await approveWaiver({
-        waiver_id: waiver.waiver_id,
-        amount_approved: amount,
-        comments: comments.trim() || null,
+        waiverId: waiver.waiver_id,
+        approvedAmount: amount,
+        comments: comments.trim() || undefined,
       });
     },
     onSuccess: () => {
@@ -114,7 +114,7 @@ export function WaiverDetailDialog({ waiverId, onClose }: Props) {
     mutationFn: async () => {
       if (!waiver) return;
       if (rejectReason.trim().length < 10) throw new Error('Provide a rejection reason (minimum 10 characters)');
-      await rejectWaiver({ waiver_id: waiver.waiver_id, reason: rejectReason.trim() });
+      await rejectWaiver({ waiverId: waiver.waiver_id, reason: rejectReason.trim() });
     },
     onSuccess: () => {
       toast.success('Waiver request rejected');
@@ -128,7 +128,7 @@ export function WaiverDetailDialog({ waiverId, onClose }: Props) {
     mutationFn: async () => {
       if (!waiver) return;
       if (cancelReason.trim().length < 5) throw new Error('Provide a withdrawal reason');
-      await cancelWaiver({ waiver_id: waiver.waiver_id, reason: cancelReason.trim() });
+      await cancelWaiver({ waiverId: waiver.waiver_id, reason: cancelReason.trim() });
     },
     onSuccess: () => {
       toast.success('Waiver request withdrawn');
