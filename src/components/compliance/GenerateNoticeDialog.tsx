@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { fetchNoticeTemplates } from '@/services/noticeTemplateService';
 import { generateNotice, resolveTemplate } from '@/services/noticeWorkflowService';
 import { useUserCode } from '@/hooks/useUserCode';
+import { supabase } from '@/integrations/supabase/client';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
 
 interface Props {
@@ -36,7 +37,7 @@ export const GenerateNoticeDialog = ({ open, onOpenChange, source }: Props) => {
   const [templateId, setTemplateId] = useState('');
   const [employerId, setEmployerId] = useState(source?.employerId || '');
   const [employerName, setEmployerName] = useState(source?.employerName || '');
-  const [noticeType, setNoticeType] = useState('LATE_C3');
+  const [noticeType, setNoticeType] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState('EMAIL');
   const [dueDate, setDueDate] = useState('');
   const [requireApproval, setRequireApproval] = useState(true);
@@ -45,6 +46,21 @@ export const GenerateNoticeDialog = ({ open, onOpenChange, source }: Props) => {
   const { data: templates = [] } = useQuery({
     queryKey: ['ce_notice_templates_active'],
     queryFn: async () => (await fetchNoticeTemplates()).filter(t => t.is_active),
+  });
+
+  // Notice types come from the canonical ce_notice_ref configuration, never
+  // from hardcoded frontend values.
+  const { data: noticeTypes = [] } = useQuery({
+    queryKey: ['ce_notice_ref', 'TYPE'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('ce_notice_ref')
+        .select('code,label,display_order')
+        .eq('domain', 'TYPE').eq('is_active', true)
+        .order('display_order');
+      if (error) throw error;
+      return (data || []) as { code: string; label: string }[];
+    },
   });
 
   const tpl = templates.find(t => t.id === templateId);
@@ -118,11 +134,9 @@ export const GenerateNoticeDialog = ({ open, onOpenChange, source }: Props) => {
             <Select value={noticeType} onValueChange={setNoticeType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="LATE_C3">Late C3</SelectItem>
-                <SelectItem value="C3_NOT_SUBMITTED">C3 Not Submitted</SelectItem>
-                <SelectItem value="PAYMENT_NOT_RECEIVED">Payment Not Received</SelectItem>
-                <SelectItem value="FINAL_WARNING">Final Warning</SelectItem>
-                <SelectItem value="LEGAL_WARNING">Legal Warning</SelectItem>
+                {noticeTypes.map(t => (
+                  <SelectItem key={t.code} value={t.code}>{t.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
