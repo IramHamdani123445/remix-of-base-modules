@@ -221,7 +221,7 @@ const IA_WORKFLOW_GROUPS: IAGroupDef[] = [
     groupTitle: 'Resources', icon: Users,
     paths: ['/audit/auditors', '/audit/auditor-profiles', '/audit/workload', '/audit/time-tracking', '/audit/leave'],
   },
-  { groupTitle: 'Reference Data', icon: Database, paths: ['/audit/departments', '/audit/functions', '/audit/templates', '/audit/user-manuals'] },
+  { groupTitle: 'Reference Data', icon: Database, paths: ['/audit/departments', '/audit/functions', '/audit/access-matrix', '/audit/templates', '/audit/user-manuals'] },
   { groupTitle: 'Reporting', icon: FileBarChart, paths: ['/audit/audit-reports'] },
   { groupTitle: 'Configuration', icon: Settings, paths: ['/audit/config', '/audit/risk-settings', '/audit/document-templates'] },
 ];
@@ -241,6 +241,7 @@ const IA_ITEM_OVERRIDES: Record<string, { title?: string; icon?: LucideIcon; des
   '/audit/leave':            { title: 'Leave & Vacation',        icon: Calendar,        description: 'Manage auditor leave schedules' },
   '/audit/departments':      { title: 'Departments',             icon: Building2,       description: 'Manage department information' },
   '/audit/functions':        { title: 'Business Functions',      icon: FolderTree,      description: 'Manage department functions' },
+  '/audit/access-matrix':    { title: 'Access Matrix',            icon: Shield,          description: 'Effective Internal Audit access, capabilities and SoD' },
   '/audit/templates':        { title: 'Communication Templates', icon: FileText,        description: 'Reusable templates for letters, reports, and notices' },
   '/audit/user-manuals':     { title: 'User Manuals',            icon: BookOpen,        description: 'Download role-based user manuals (PDF/DOCX)' },
   '/audit/audit-reports':    { title: 'Report Center',           icon: FileBarChart,    description: 'Create and manage audit reports' },
