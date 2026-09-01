@@ -50,12 +50,15 @@ export function EngagementBuilder({ planId, planStatus, planFiscalYear }: Engage
       const { id: engId, risk_override_reason, derived_risk_rating, ...fields } = payload;
 
       if (engId) {
-        // UPDATE existing
-        const { error } = await supabase
-          .from('ia_audit_engagements' as any)
-          .update({ ...fields, updated_by: userCode || 'system', updated_at: new Date().toISOString() } as any)
-          .eq('id', engId);
+        // UPDATE existing — governed command only (no direct table writes)
+        const { data, error } = await supabase.rpc('ia_persist_plan_engagements' as any, {
+          p_plan_id: planId,
+          p_engagements: [{ ...fields, id: engId }],
+          p_created_by: userCode || 'system',
+        });
         if (error) throw error;
+        const updateResult = data as any;
+        if (!updateResult?.success) throw new Error(updateResult?.error || 'Failed to update the audit');
 
         // If plan is approved, log amendment
         if (isApproved) {
@@ -116,6 +119,8 @@ export function EngagementBuilder({ planId, planStatus, planFiscalYear }: Engage
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ia_plan_engagements', planId] });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness', planId] });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness_map'] });
       setShowDialog(false);
       setEditTarget(null);
       toast({ title: editTarget ? 'Engagement Updated' : 'Engagement Added', description: editTarget ? 'Changes saved.' : 'Added to the plan.' });
@@ -127,15 +132,22 @@ export function EngagementBuilder({ planId, planStatus, planFiscalYear }: Engage
 
   const removeEngagement = useMutation({
     mutationFn: async (engagementId: string) => {
-      const { error } = await supabase
-        .from('ia_audit_engagements' as any)
-        .update({ is_active: false, updated_by: userCode || 'system', updated_at: new Date().toISOString() })
-        .eq('id', engagementId);
+      const { data, error } = await supabase.rpc('ia_remove_plan_engagement' as any, {
+        p_plan_id: planId,
+        p_engagement_id: engagementId,
+        p_actor: userCode || 'system',
+        p_reason: 'Removed from plan in the plan workspace',
+      });
       if (error) throw error;
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.error || 'Failed to remove the audit from the plan');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ia_plan_engagements', planId] });
-      toast({ title: 'Engagement Removed' });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness', planId] });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness_map'] });
+      queryClient.invalidateQueries({ queryKey: ['ia_plan_change_log', planId] });
+      toast({ title: 'Audit Removed', description: 'The audit was deactivated and the change was logged.' });
     },
     onError: (e: any) => {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });

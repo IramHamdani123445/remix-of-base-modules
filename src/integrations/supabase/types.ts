@@ -131608,6 +131608,15 @@ export type Database = {
         Args: { p_filters?: Json }
         Returns: Json
       }
+      ia_remove_plan_engagement: {
+        Args: {
+          p_actor?: string
+          p_engagement_id: string
+          p_plan_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       ia_reopen_annual_plan: {
         Args: { p_plan_id: string; p_reason: string }
         Returns: Json
