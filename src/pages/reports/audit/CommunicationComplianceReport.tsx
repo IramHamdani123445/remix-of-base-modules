@@ -167,7 +167,7 @@ export default function CommunicationComplianceReport() {
       </div>
       )}
 
-
+      {!isError && (
       <Card>
         <CardHeader><CardTitle>Stage Completion Overview</CardTitle></CardHeader>
         <CardContent>
@@ -185,7 +185,9 @@ export default function CommunicationComplianceReport() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+      )}
 
+      {!isError && (
       <Card>
         <CardHeader><CardTitle>Communication Log</CardTitle></CardHeader>
         <CardContent>
