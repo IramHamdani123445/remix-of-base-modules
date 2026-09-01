@@ -174,12 +174,13 @@ export default function AuditAccessMatrix() {
             <Alert variant="destructive"><AlertDescription>Permission reconciliation is not available to your role.</AlertDescription></Alert>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 {[
                   { label: 'Capabilities', value: reconStats.total },
                   { label: 'Pass', value: reconStats.pass },
                   { label: 'Missing', value: reconStats.missing },
                   { label: 'Mismatched', value: reconStats.mismatched },
+                  { label: 'Over-broad', value: reconStats.overBroad },
                   { label: 'Unused', value: reconStats.unused },
                 ].map((s) => (
                   <div key={s.label} className="rounded-lg border bg-card p-3">
