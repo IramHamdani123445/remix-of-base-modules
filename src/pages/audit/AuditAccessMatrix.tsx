@@ -20,6 +20,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | '
   PASS: 'default',
   MISSING: 'destructive',
   MISMATCHED: 'destructive',
+  'OVER-BROAD': 'destructive',
   UNUSED: 'outline',
 };
 
