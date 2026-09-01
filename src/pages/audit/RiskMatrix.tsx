@@ -97,7 +97,7 @@ export default function RiskMatrix() {
               ))}
 
               {[5, 4, 3, 2, 1].map((likelihood) => (
-                <React.Fragment key={likelihood}>
+                <div key={likelihood} className="contents">
                   <div className="flex items-center justify-center rounded-md border bg-muted/40 p-2 text-center font-medium">{likelihood}</div>
                   {[1, 2, 3, 4, 5].map((impact) => {
                     const score = likelihood * impact;
@@ -118,7 +118,7 @@ export default function RiskMatrix() {
                       </button>
                     );
                   })}
-                </React.Fragment>
+                </div>
               ))}
             </div>
           </CardContent>
