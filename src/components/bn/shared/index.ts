@@ -5,6 +5,9 @@ export type { FilterConfig, FilterOption } from './BnFilterBar';
 export { BnStatCard } from './BnStatCard';
 export { BnDetailRow, BnDetailSection } from './BnDetailRow';
 export { BnActionToolbar, BnToolbarGroup } from './BnActionToolbar';
+export { BnBusyButton } from './BnBusyButton';
+export type { BnBusyButtonProps } from './BnBusyButton';
+
 export { BnScreenRoleBanner } from './BnScreenRoleBanner';
 export type { BnScreenRole } from './BnScreenRoleBanner';
 
