@@ -197,7 +197,7 @@ export default function ReasonCodes() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
-              <BnBusyButton loading={saveMutation.isPending} onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>>Save</BnBusyButton>
+              <BnBusyButton loading={saveMutation.isPending} onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>Save</BnBusyButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>

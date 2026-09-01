@@ -188,7 +188,7 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                     ruleSetId: detail.rule_set_id,
                     rowVersion: detail.row_version,
                   })}
-                >>
+                >
                   Validate
                 </BnBusyButton>
               )}
@@ -201,7 +201,7 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                     ruleSetId: detail.rule_set_id,
                     rowVersion: detail.row_version,
                   })}
-                >>
+                >
                   Activate
                 </BnBusyButton>
               )}
@@ -214,7 +214,7 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                   ruleSetId: detail.rule_set_id,
                   rowVersion: detail.row_version,
                 })}
-              >>
+              >
                 Create new version
               </BnBusyButton>
               {detail.status !== 'RETIRED' && (
@@ -228,7 +228,7 @@ export const BnRiskScoringConfigurationPanel: React.FC = () => {
                     rowVersion: detail.row_version,
                     justification: 'Retired from the scoring configuration screen.',
                   })}
-                >>
+                >
                   Retire
                 </BnBusyButton>
               )}

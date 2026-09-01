@@ -155,7 +155,7 @@ export const BnRiskControlExecutionDialog: React.FC<Props> = ({
           <BnBusyButton loading={mutation.isPending}
             disabled={mutation.isPending}
             onClick={() => { setError(null); mutation.mutate(); }}
-          >>
+          >
             {mutation.isPending
               ? 'Submitting…'
               : mode === 'RETRY' ? 'Retry execution' : 'Submit to owning domain'}

@@ -306,7 +306,7 @@ export const BnRiskOutcomeDialog: React.FC<Props> = ({
             data-testid="bn-risk-outcome-submit"
             disabled={missing.length > 0 || mutation.isPending}
             onClick={() => { setError(null); setConflict(false); mutation.mutate(); }}
-          >>
+          >
             {mutation.isPending
               ? 'Recording…'
               : mode === 'CORRECT' ? 'Record superseding outcome' : 'Record outcome'}

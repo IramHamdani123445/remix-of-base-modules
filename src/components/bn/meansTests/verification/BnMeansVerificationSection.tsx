@@ -205,7 +205,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
               }
               data-testid="means-complete-verification"
               onClick={() => run.mutate({ command: 'BN_MEANS_COMPLETE_VERIFICATION', payload: {} })}
-            >>
+            >
               {readiness.verification_marked_complete ? 'Verification complete' : 'Complete verification'}
             </BnBusyButton>
           </div>
@@ -297,7 +297,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
                   <BnBusyButton loading={run.isPending}
                     size="sm" variant="outline" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_CLAIM_VERIFICATION_WORK', payload: { work_id: fact.work_id } })}
-                  >>
+                  >
                     {ACTION_LABEL.BN_MEANS_CLAIM_VERIFICATION_WORK}
                   </BnBusyButton>
                 )}
@@ -305,7 +305,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
                   <BnBusyButton loading={run.isPending}
                     size="sm" variant="ghost" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_RELEASE_VERIFICATION_WORK', payload: { work_id: fact.work_id } })}
-                  >>
+                  >
                     {ACTION_LABEL.BN_MEANS_RELEASE_VERIFICATION_WORK}
                   </BnBusyButton>
                 )}
@@ -313,7 +313,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
                   <BnBusyButton loading={run.isPending}
                     size="sm" variant="ghost" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_CANCEL_CLARIFICATION', payload: { work_id: fact.work_id, request_id: fact.clarification?.request_id ?? null } })}
-                  >>
+                  >
                     {ACTION_LABEL.BN_MEANS_CANCEL_CLARIFICATION}
                   </BnBusyButton>
                 )}
@@ -321,7 +321,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
                   <BnBusyButton loading={run.isPending}
                     size="sm" variant="outline" disabled={run.isPending}
                     onClick={() => run.mutate({ command: 'BN_MEANS_REOPEN_VERIFICATION_FACT', payload: { work_id: fact.work_id } })}
-                  >>
+                  >
                     {ACTION_LABEL.BN_MEANS_REOPEN_VERIFICATION_FACT}
                   </BnBusyButton>
                 )}
@@ -330,7 +330,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
                     size="sm" variant="outline" disabled={run.isPending}
                     onClick={() => setResponseFact(fact)}
                     data-testid={`means-open-response-${fact.work_id}`}
-                  >>
+                  >
                     {ACTION_LABEL.BN_MEANS_RECORD_CLARIFICATION_RESPONSE}
                   </BnBusyButton>
                 )}
@@ -339,7 +339,7 @@ export const BnMeansVerificationSection: React.FC<BnMeansVerificationSectionProp
                     size="sm" disabled={run.isPending}
                     onClick={() => setDecisionFact(fact)}
                     data-testid={`means-open-decision-${fact.work_id}`}
-                  >>
+                  >
                     {ACTION_LABEL.BN_MEANS_RECORD_VERIFICATION_DECISION}
                   </BnBusyButton>
                 )}

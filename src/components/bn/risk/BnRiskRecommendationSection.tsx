@@ -146,7 +146,7 @@ export const BnRiskRecommendationSection: React.FC<Props> = ({
               variant="outline"
               disabled={withdrawMutation.isPending}
               onClick={() => withdrawMutation.mutate()}
-            >>
+            >
               Withdraw
             </BnBusyButton>
           )}

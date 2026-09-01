@@ -161,7 +161,7 @@ export const BnRiskClosureDialog: React.FC<Props> = ({
             data-testid="bn-risk-closure-submit"
             disabled={!reasonCode || mutation.isPending || !readiness.can_close}
             onClick={() => { setError(null); setConflict(false); mutation.mutate(); }}
-          >>
+          >
             {mutation.isPending ? 'Closing…' : 'Close Risk assessment'}
           </BnBusyButton>
         </DialogFooter>

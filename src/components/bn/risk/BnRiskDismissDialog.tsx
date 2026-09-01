@@ -108,7 +108,7 @@ export const BnRiskDismissDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <BnBusyButton loading={mutation.isPending} variant="destructive" disabled={!canSubmit} onClick={() => mutation.mutate()}>>
+          <BnBusyButton loading={mutation.isPending} variant="destructive" disabled={!canSubmit} onClick={() => mutation.mutate()}>
             {mutation.isPending ? 'Dismissing…' : 'Dismiss signal'}
           </BnBusyButton>
         </DialogFooter>

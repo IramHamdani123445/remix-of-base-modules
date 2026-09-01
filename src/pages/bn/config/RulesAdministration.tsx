@@ -541,7 +541,7 @@ export default function RulesAdministration() {
                 <label className="text-sm font-medium">Change Notes</label>
                 <Textarea value={cloneNotes} onChange={(e) => setCloneNotes(e.target.value)} placeholder="Describe the reason for this revision..." rows={3} />
               </div>
-              <BnBusyButton loading={cloneMutation.isPending} onClick={handleClone} disabled={!cloneLabel || cloneMutation.isPending} className="w-full">>
+              <BnBusyButton loading={cloneMutation.isPending} onClick={handleClone} disabled={!cloneLabel || cloneMutation.isPending} className="w-full">
                 <Copy className="h-4 w-4 mr-2" /> Create Draft
               </BnBusyButton>
             </div>

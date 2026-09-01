@@ -309,7 +309,7 @@ export default function ClaimWorklistEnhanced() {
               <BnBusyButton loading={reassignMutation.isPending}
                 onClick={() => reassignMutation.mutate({ ids: Array.from(selectedIds), officer: reassignTo })}
                 disabled={!reassignTo.trim() || reassignMutation.isPending}
-              >>
+              >
                 Reassign
               </BnBusyButton>
             </DialogFooter>

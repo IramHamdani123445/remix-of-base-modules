@@ -88,7 +88,7 @@ const CountryProfileEditor: React.FC<Props> = ({ countryCode, open, onOpenChange
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <BnBusyButton loading={save.isPending} onClick={() => save.mutate()} disabled={save.isPending || isLoading}>>Save</BnBusyButton>
+          <BnBusyButton loading={save.isPending} onClick={() => save.mutate()} disabled={save.isPending || isLoading}>Save</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

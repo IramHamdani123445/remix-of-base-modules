@@ -205,7 +205,7 @@ export const BnRiskAssessmentReviewSection: React.FC<Props> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <BnBusyButton loading={completeMutation.isPending} disabled={completeMutation.isPending} onClick={() => completeMutation.mutate()}>>
+            <BnBusyButton loading={completeMutation.isPending} disabled={completeMutation.isPending} onClick={() => completeMutation.mutate()}>
               {completeMutation.isPending ? 'Completing…' : 'Complete review'}
             </BnBusyButton>
           </DialogFooter>

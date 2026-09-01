@@ -310,7 +310,7 @@ const FundingSourceAccountManager: React.FC<Props> = ({ countryCode }) => {
             <BnBusyButton loading={saveMut.isPending}
               disabled={!form.source_account_code || !form.source_account_name || saveMut.isPending}
               onClick={() => saveMut.mutate(form)}
-            >>Save</BnBusyButton>
+            >Save</BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

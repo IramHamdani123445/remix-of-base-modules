@@ -547,7 +547,7 @@ export default function EscalationConfig() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
-              <BnBusyButton loading={saveMutation.isPending} onClick={handleSave} disabled={saveMutation.isPending}>>Save</BnBusyButton>
+              <BnBusyButton loading={saveMutation.isPending} onClick={handleSave} disabled={saveMutation.isPending}>Save</BnBusyButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>

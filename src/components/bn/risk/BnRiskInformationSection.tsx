@@ -351,7 +351,7 @@ export const BnRiskInformationSection: React.FC<Props> = ({
                 !typeCode || !recipientKind || required.trim() === '' || requestMutation.isPending
               }
               onClick={() => requestMutation.mutate()}
-            >>
+            >
               {requestMutation.isPending ? 'Recording…' : 'Record request'}
             </BnBusyButton>
           </DialogFooter>
@@ -392,7 +392,7 @@ export const BnRiskInformationSection: React.FC<Props> = ({
             <BnBusyButton loading={responseMutation.isPending}
               disabled={!outcome || responseMutation.isPending}
               onClick={() => responseMutation.mutate()}
-            >>
+            >
               {responseMutation.isPending ? 'Saving…' : 'Record response'}
             </BnBusyButton>
           </DialogFooter>
@@ -420,7 +420,7 @@ export const BnRiskInformationSection: React.FC<Props> = ({
             <BnBusyButton loading={closeMutation.isPending}
               disabled={closeJustification.trim() === '' || closeMutation.isPending}
               onClick={() => closeMutation.mutate()}
-            >>
+            >
               {closeMutation.isPending ? 'Closing…' : 'Close request'}
             </BnBusyButton>
           </DialogFooter>

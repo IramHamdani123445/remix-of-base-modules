@@ -227,7 +227,7 @@ export const BnRiskEvidenceSection: React.FC<Props> = ({
                         size="sm" variant="ghost"
                         disabled={!isActionEnabled('LINK_EVIDENCE') || unlinkMutation.isPending}
                         onClick={() => unlinkMutation.mutate(row)}
-                      >>
+                      >
                         Unlink
                       </BnBusyButton>
                     </TableCell>
@@ -307,7 +307,7 @@ export const BnRiskEvidenceSection: React.FC<Props> = ({
             <BnBusyButton loading={linkMutation.isPending}
               disabled={!documentId || linkMutation.isPending}
               onClick={() => linkMutation.mutate()}
-            >>
+            >
               {linkMutation.isPending ? 'Linking…' : 'Link document'}
             </BnBusyButton>
           </DialogFooter>
@@ -349,7 +349,7 @@ export const BnRiskEvidenceSection: React.FC<Props> = ({
             <BnBusyButton loading={usabilityMutation.isPending}
               disabled={!usabilityCode || usabilityMutation.isPending}
               onClick={() => usabilityMutation.mutate()}
-            >>
+            >
               {usabilityMutation.isPending ? 'Saving…' : 'Save'}
             </BnBusyButton>
           </DialogFooter>

@@ -160,7 +160,7 @@ export function ProductWorkflowChannelGrid({ productVersionId, isReadOnly }: Pro
           <Button size="sm" variant="outline" onClick={add} disabled={isReadOnly}>
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
-          <BnBusyButton loading={saveMutation.isPending} size="sm" onClick={() => saveMutation.mutate()} disabled={!dirty || isReadOnly || saveMutation.isPending || validation.length > 0}>>
+          <BnBusyButton loading={saveMutation.isPending} size="sm" onClick={() => saveMutation.mutate()} disabled={!dirty || isReadOnly || saveMutation.isPending || validation.length > 0}>
             <Save className="h-4 w-4 mr-1" /> Save
           </BnBusyButton>
         </div>

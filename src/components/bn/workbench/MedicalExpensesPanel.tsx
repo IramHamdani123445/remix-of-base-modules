@@ -193,7 +193,7 @@ export const MedicalExpensesPanel: React.FC<Props> = ({ claimId, userCode }) => 
                 onChange={e => setForm(f => ({ ...f, provider: e.target.value }))} placeholder="Facility / practitioner" />
             </div>
             <div className="flex items-end gap-2">
-              <BnBusyButton loading={addMutation.isPending} size="sm" onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>>Save line</BnBusyButton>
+              <BnBusyButton loading={addMutation.isPending} size="sm" onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>Save line</BnBusyButton>
               <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
             </div>
           </div>

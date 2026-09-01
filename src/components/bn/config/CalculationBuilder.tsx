@@ -353,7 +353,7 @@ export function CalculationBuilder({ versionId, isReadOnly }: Props) {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <BnBusyButton loading={saveMutation.isPending} onClick={() => saveMutation.mutate()} disabled={isReadOnly || saveMutation.isPending} className="gap-2">>
+              <BnBusyButton loading={saveMutation.isPending} onClick={() => saveMutation.mutate()} disabled={isReadOnly || saveMutation.isPending} className="gap-2">
                 <Save className="h-4 w-4" /> {saveMutation.isPending ? 'Saving…' : 'Save calculation'}
               </BnBusyButton>
             </div>

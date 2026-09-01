@@ -165,7 +165,7 @@ export const BnRiskLinkSignalsDialog: React.FC<Props> = ({
           <BnBusyButton loading={mutation.isPending}
             disabled={!selected || mutation.isPending}
             onClick={() => mutation.mutate()}
-          >>
+          >
             {mutation.isPending ? 'Linking…' : 'Link signals'}
           </BnBusyButton>
         </DialogFooter>

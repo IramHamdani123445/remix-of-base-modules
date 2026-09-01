@@ -139,7 +139,7 @@ export function CoverageTypesTab({ rules, facts }: { rules: RuleCatalogueItem[];
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
-            <BnBusyButton loading={upsert.isPending} onClick={onSave} disabled={upsert.isPending}>>{upsert.isPending ? 'Saving…' : 'Save'}</BnBusyButton>
+            <BnBusyButton loading={upsert.isPending} onClick={onSave} disabled={upsert.isPending}>{upsert.isPending ? 'Saving…' : 'Save'}</BnBusyButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -163,7 +163,7 @@ export function CoverageTypesTab({ rules, facts }: { rules: RuleCatalogueItem[];
                 </Select>
               </div>
               <div className="space-y-2"><Label>Priority</Label><Input type="number" value={pickPriority} onChange={e => setPickPriority(e.target.value)} /></div>
-              <BnBusyButton loading={assign.isPending} onClick={onAssign} disabled={!pickRule || assign.isPending}>>Assign</BnBusyButton>
+              <BnBusyButton loading={assign.isPending} onClick={onAssign} disabled={!pickRule || assign.isPending}>Assign</BnBusyButton>
             </div>
 
             <Table>

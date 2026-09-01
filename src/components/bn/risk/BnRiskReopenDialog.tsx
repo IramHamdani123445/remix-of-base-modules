@@ -170,7 +170,7 @@ export const BnRiskReopenDialog: React.FC<Props> = ({
             disabled={!reasonCode || !justificationValid || mutation.isPending
               || !readiness.can_reopen}
             onClick={() => { setError(null); setConflict(false); mutation.mutate(); }}
-          >>
+          >
             {mutation.isPending ? 'Reopening…' : 'Reopen Risk assessment'}
           </BnBusyButton>
         </DialogFooter>

@@ -141,7 +141,7 @@ export const BnRiskControlDecisionDialog: React.FC<Props> = ({
           <BnBusyButton loading={mutation.isPending}
             disabled={reasonCode === '' || mutation.isPending || !decision}
             onClick={() => mutation.mutate()}
-          >>
+          >
             {mutation.isPending ? 'Recording…' : 'Record decision'}
           </BnBusyButton>
         </DialogFooter>

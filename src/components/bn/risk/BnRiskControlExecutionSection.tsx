@@ -123,7 +123,7 @@ export const BnRiskControlExecutionSection: React.FC<Props> = ({ assessmentId, o
               variant="outline"
               disabled={refreshStatus.isPending}
               onClick={() => { setRefreshError(null); refreshStatus.mutate(); }}
-            >>
+            >
               <RefreshCw className="mr-1 h-3.5 w-3.5" />
               {refreshStatus.isPending ? 'Refreshing…' : 'Refresh status'}
             </BnBusyButton>

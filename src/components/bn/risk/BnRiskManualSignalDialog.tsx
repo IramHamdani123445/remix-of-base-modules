@@ -229,7 +229,7 @@ export const BnRiskManualSignalDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <BnBusyButton loading={mutation.isPending} disabled={!canSubmit} onClick={() => mutation.mutate()}>>
+          <BnBusyButton loading={mutation.isPending} disabled={!canSubmit} onClick={() => mutation.mutate()}>
             {mutation.isPending ? 'Registering…' : 'Register signal'}
           </BnBusyButton>
         </DialogFooter>

@@ -305,7 +305,7 @@ export const BnRiskRuleFeedbackDialog: React.FC<Props> = ({
             data-testid="bn-risk-feedback-submit"
             disabled={missing.length > 0 || mutation.isPending}
             onClick={() => { setError(null); mutation.mutate(); }}
-          >>
+          >
             {mode === 'CORRECT' ? 'Record superseding feedback' : 'Record feedback'}
           </BnBusyButton>
         </DialogFooter>

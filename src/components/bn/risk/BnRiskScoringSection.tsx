@@ -190,7 +190,7 @@ export const BnRiskScoringSection: React.FC<Props> = ({
               size="sm"
               disabled={!canCalculate || scoreMutation.isPending}
               onClick={() => { setError(null); scoreMutation.mutate('CALCULATE_SCORE'); }}
-            >>
+            >
               {scoreMutation.isPending ? 'Calculating…' : 'Calculate risk score'}
             </BnBusyButton>
           )}
@@ -200,7 +200,7 @@ export const BnRiskScoringSection: React.FC<Props> = ({
               variant={ready.is_stale ? 'default' : 'outline'}
               disabled={!canRecalculate || scoreMutation.isPending}
               onClick={() => { setError(null); setRecalcOpen(true); }}
-            >>
+            >
               Recalculate risk score
             </BnBusyButton>
           )}
@@ -442,7 +442,7 @@ export const BnRiskScoringSection: React.FC<Props> = ({
             <BnBusyButton loading={scoreMutation.isPending}
               disabled={scoreMutation.isPending}
               onClick={() => scoreMutation.mutate('RECALCULATE_SCORE')}
-            >>
+            >
               {scoreMutation.isPending ? 'Recalculating…' : 'Recalculate'}
             </BnBusyButton>
           </DialogFooter>

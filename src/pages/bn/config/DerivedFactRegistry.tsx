@@ -175,7 +175,7 @@ export function DerivedFactsTab() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <BnBusyButton loading={create.isPending} onClick={() => create.mutate()} disabled={!form.code.trim() || !form.display_name.trim() || create.isPending}>>
+              <BnBusyButton loading={create.isPending} onClick={() => create.mutate()} disabled={!form.code.trim() || !form.display_name.trim() || create.isPending}>
                 {create.isPending ? 'Saving…' : 'Save as DRAFT'}
               </BnBusyButton>
             </DialogFooter>

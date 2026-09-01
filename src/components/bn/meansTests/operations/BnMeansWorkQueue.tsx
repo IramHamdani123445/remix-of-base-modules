@@ -286,7 +286,7 @@ export const BnMeansWorkQueue: React.FC<BnMeansWorkQueueProps> = ({
                                 })
                               }
                               data-testid={`means-ops-assign-${row.record_id}`}
-                            >>
+                            >
                               {row.is_mine ? 'Release' : 'Claim'}
                             </BnBusyButton>
                           )}

@@ -355,7 +355,7 @@ export default function ProductEditor() {
               <Plus className="h-4 w-4" /> New Version
             </Button>
           )}
-          <BnBusyButton loading={createMutation.isPending} onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="gap-2">>
+          <BnBusyButton loading={createMutation.isPending} onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="gap-2">
             <Save className="h-4 w-4" />
             {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : 'Save Product'}
           </BnBusyButton>

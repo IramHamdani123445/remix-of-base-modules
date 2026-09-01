@@ -568,7 +568,7 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
             <BnBusyButton loading={completeMutation.isPending}
               disabled={completeMutation.isPending}
               onClick={() => completeMutation.mutate()}
-            >>
+            >
               {completeMutation.isPending ? 'Completing…' : 'Complete'}
             </BnBusyButton>
           </DialogFooter>
