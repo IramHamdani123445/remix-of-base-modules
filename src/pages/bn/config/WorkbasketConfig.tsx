@@ -214,6 +214,10 @@ export default function WorkbasketConfig() {
           description="Reusable operational queues. A workbasket can be served by one primary role plus any number of additional roles, so small offices can let one user cover several stages."
         />
 
+        <QueueAccessHealthPanel />
+
+
+
         <BNDataGrid
           id="bn.workbaskets"
           columns={[
