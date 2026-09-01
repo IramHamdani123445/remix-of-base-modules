@@ -124996,6 +124996,25 @@ export type Database = {
       }
       ce_is_trusted_session: { Args: never; Returns: boolean }
       ce_ledger_settlement_order: { Args: never; Returns: string[] }
+      ce_legal_referral_approve_v1: {
+        Args: { p_notes?: string; p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_referral_facets_v1: { Args: never; Returns: Json }
+      ce_legal_referral_queue_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_legal_referral_reject_v1: {
+        Args: { p_reason: string; p_referral_id: string }
+        Returns: Json
+      }
       ce_legal_workbench_analytics: {
         Args: {
           p_from: string
@@ -125053,6 +125072,7 @@ export type Database = {
       }
       ce_next_number_v1: { Args: { p_applies_to: string }; Returns: string }
       ce_officer_identities: { Args: { _user_id: string }; Returns: string[] }
+      ce_officer_label: { Args: { _code: string }; Returns: string }
       ce_override_sector_benchmark_v1: {
         Args: {
           p_benchmark_id: string
@@ -125491,6 +125511,10 @@ export type Database = {
           p_status: string
         }
         Returns: string
+      }
+      ce_setting_num: {
+        Args: { _default: number; _key: string }
+        Returns: number
       }
       ce_settle_partial_payment_v1: {
         Args: {
