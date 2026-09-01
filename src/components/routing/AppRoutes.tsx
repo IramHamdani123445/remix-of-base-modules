@@ -1,10 +1,14 @@
-import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 
 // Legacy /audit/engagements/:id — keep deep links alive on the canonical spine.
+// DEF-A-01 / §8: the query string (e.g. ?tab=activities) must survive the redirect.
 const AuditEngagementIdRedirect = () => {
   const { id } = useParams();
-  return <Navigate to={id ? `/audit/audits/${id}` : '/audit/audits'} replace />;
+  const { search, hash } = useLocation();
+  const suffix = `${search || ''}${hash || ''}`;
+  return <Navigate to={id ? `/audit/audits/${id}${suffix}` : `/audit/audits${suffix}`} replace />;
 };
+
 
 const LegalAdvancedMatterRedirect = () => {
   const { id } = useParams();
