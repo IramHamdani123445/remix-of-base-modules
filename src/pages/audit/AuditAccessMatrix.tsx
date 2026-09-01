@@ -201,6 +201,7 @@ export default function AuditAccessMatrix() {
                         <th className="text-left p-2 font-medium">Action</th>
                         <th className="text-left p-2 font-medium">Registry</th>
                         <th className="text-left p-2 font-medium">Roles Granted</th>
+                        <th className="text-left p-2 font-medium">Unexpected Roles</th>
                         <th className="text-left p-2 font-medium">Final Status</th>
                       </tr>
                     </thead>
@@ -212,6 +213,7 @@ export default function AuditAccessMatrix() {
                           <td className="p-2 text-xs">{r.action}</td>
                           <td className="p-2 text-xs">{r.registry_status}</td>
                           <td className="p-2 text-xs">{(r.roles_granted || []).join(', ') || '—'}</td>
+                          <td className="p-2 text-xs text-destructive">{(r.unexpected_roles || []).join(', ') || '—'}</td>
                           <td className="p-2">
                             <Badge variant={STATUS_VARIANT[r.final_status] || 'secondary'}>{r.final_status}</Badge>
                           </td>
