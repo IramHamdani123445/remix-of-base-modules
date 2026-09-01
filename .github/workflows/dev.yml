@@ -4,15 +4,14 @@ on:
   workflow_dispatch:
 
 jobs:
-
   deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
 
     steps:
 
-      # -------------------------------
-      # 1. Checkout source code
+      # --------------------------------
+      # 1. Checkout development branch
       # --------------------------------
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -20,6 +19,7 @@ jobs:
           ref: development
 
       # -------------------------------
+      # --------------------------------
       # 2. Setup Node.js
       # --------------------------------
       - name: Setup Node.js
@@ -68,6 +68,8 @@ jobs:
 
       # --------------------------------
       # 7. Build React application
+      # --------------------------------
+      # 4. Build React application
       # --------------------------------
       - name: Build React application
         env:

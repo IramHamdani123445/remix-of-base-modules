@@ -153,6 +153,17 @@ export const upsertDocumentRule = async (rule: Partial<BnDocumentRule>): Promise
     max_file_size_mb: rule.max_file_size_mb ?? 10,
     sort_order: rule.sort_order ?? 0,
     is_active: rule.is_active ?? true,
+    // These 7 real columns used to be silently dropped here — the dialog's
+    // toggles (Blocks Submission/Decision/Payment, visibility, channel,
+    // condition) all wrote to local state fine, but the save payload never
+    // included them, so nothing typed here ever reached the database.
+    channel_code: rule.channel_code || 'BOTH',
+    public_visible: rule.public_visible ?? true,
+    internal_visible: rule.internal_visible ?? true,
+    blocks_submission: rule.blocks_submission ?? false,
+    blocks_decision: rule.blocks_decision ?? true,
+    blocks_payment: rule.blocks_payment ?? false,
+    condition_json: rule.condition_json ?? {},
   };
   if (rule.id) payload.id = rule.id;
   const { data, error } = await db.from('bn_doc_requirement').upsert(payload).select().single();

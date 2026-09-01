@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { BnChannelCode, BnDocumentRule, BnProductChannelConfig } from '@/types/bn';
-import { fetchEligibilityRules, fetchCalculationRules, fetchTimelineRules } from './productService';
+import { fetchEligibilityRulesEffective, fetchCalculationRules, fetchTimelineRules } from './productService';
 import { getChannelConfig } from './productChannelConfigService';
 
 const db = supabase as any;
@@ -72,7 +72,7 @@ export async function getProductApplicationConfig(
   }
 
   const [eligibility, calculation, timelines, allDocs] = await Promise.all([
-    fetchEligibilityRules(version.id),
+    fetchEligibilityRulesEffective(version.id),
     fetchCalculationRules(version.id),
     fetchTimelineRules(version.id),
     fetchDocsForProduct(product.id),

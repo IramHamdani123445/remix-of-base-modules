@@ -10,6 +10,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { detectEligibilityConflicts, summarizeConflicts, type CandidateRule } from '@/services/bn/eligibility/productEligibilityConflictService';
 import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
+import { useRuleCatalogue } from '@/hooks/bn/useRuleCatalogue';
+import type { RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
+import { resolveEffectiveRuleShape, type CatalogueShapeSource } from '@/lib/bn/effectiveRuleShape';
 
 interface Props {
   rules: any[];
@@ -17,14 +20,27 @@ interface Props {
 
 export function EligibilityConflictPanel({ rules }: Props) {
   const { data: facts = [] } = useEligibilityFacts();
+  // GAP-039 — a catalogue-linked rule's shape is checked live against the
+  // catalogue, not the product's own possibly-stale copy, so a fact-key fix
+  // made once in the Rule Catalogue clears this panel's warning immediately
+  // for every product using it, with no per-product resave needed.
+  const { data: catalogueRules = [] } = useRuleCatalogue();
+  const catalogueById = useMemo(
+    () => new Map<string, CatalogueShapeSource>(catalogueRules.map((c: RuleCatalogueItem) => [c.id, c])),
+    [catalogueRules],
+  );
 
   const candidates: CandidateRule[] = useMemo(() => rules.map(r => {
     const def = (r.rule_definition ?? {}) as any;
+    const shape = resolveEffectiveRuleShape(r, catalogueById);
     return {
       id: r.id,
       rule_code: r.rule_code,
       rule_name: r.rule_name,
-      fact_key: r.fact_key ?? def.field_key ?? null,
+      fact_key: shape.fact_key ?? def.field_key ?? null,
+      rule_kind: shape.rule_kind ?? null,
+      start_fact_key: shape.start_fact_key ?? null,
+      end_fact_key: shape.end_fact_key ?? null,
       operator: def.operator ?? r.operator ?? 'EQUALS',
       value_from: def.value_from ?? def.value ?? null,
       value_to: def.value_to ?? def.range_to ?? null,
@@ -32,7 +48,7 @@ export function EligibilityConflictPanel({ rules }: Props) {
       is_active: r.is_active !== false,
       rule_category: r.rule_category ?? null,
     };
-  }), [rules]);
+  }), [rules, catalogueById]);
 
   const conflicts = useMemo(() => detectEligibilityConflicts(candidates, facts as any), [candidates, facts]);
   const sum = summarizeConflicts(conflicts);

@@ -16,7 +16,7 @@
  *   2. Real Claim — runs the production fact resolver against an existing
  *      claim (UUID or claim_number).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { runProductEligibilityTest, type ProductTestResult } from '@/services/bn/eligibility/productEligibilityTest';
 import { useBnEligibilityRules } from '@/hooks/bn/useBnProduct';
 import { getFact } from '@/services/bn/eligibility/eligibilityFactRegistry';
+import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 import { OPERATORS, type EligibilityOperator } from '@/services/bn/eligibility/operators';
 import type { BnEligibilityRule } from '@/types/bn';
 
@@ -64,17 +65,54 @@ interface SimRow {
 
 type Mode = 'sample' | 'real';
 
+/**
+ * `getFact()` only searches the hardcoded ELIGIBILITY_FACTS registry, not the
+ * real `bn_eligibility_fact` table — so a fresh, database-only fact (any fact
+ * created via the Facts screen) was invisible here. Its data type silently
+ * fell back to 'string', which meant a boolean fact's sample value was never
+ * coerced to true/false — typing literally anything non-empty (even "f")
+ * satisfied `Boolean(a) === Boolean(b)` and always PASSed, regardless of what
+ * the rule actually required. Same root cause as the Group-default gap in
+ * RuleWizardDialog.tsx: this dialog needs the database facts unioned in too.
+ */
+function normaliseDataType(raw: unknown): string {
+  const t = String(raw ?? '').trim().toLowerCase();
+  if (t === 'boolean') return 'bool';
+  if (t === 'integer' || t === 'numeric' || t === 'decimal') return 'number';
+  if (t === 'text' || t === 'varchar') return 'string';
+  if (t === 'timestamp' || t === 'datetime') return 'date';
+  return t || 'string';
+}
+
 export function TestEligibilityDialog({ open, onOpenChange, versionId }: Props) {
   const { toast } = useToast();
   const { data: rules = [] } = useBnEligibilityRules(versionId);
+  const { data: dbFacts = [] } = useEligibilityFacts();
   const [mode, setMode] = useState<Mode>('sample');
+
+  const factLookup = useMemo(() => {
+    const m = new Map<string, { label: string; data_type: string }>();
+    for (const f of dbFacts as any[]) {
+      const key = String(f?.fact_key ?? '').trim();
+      if (!key) continue;
+      m.set(key, { label: String(f.label ?? key), data_type: normaliseDataType(f.data_type) });
+    }
+    return m;
+  }, [dbFacts]);
+
+  const lookupFact = useCallback((key: string): { label: string; data_type: string } | undefined => {
+    const dbHit = factLookup.get(key);
+    if (dbHit) return dbHit;
+    const reg = getFact(key);
+    return reg ? { label: reg.label, data_type: normaliseDataType(reg.data_type) } : undefined;
+  }, [factLookup]);
 
   // ── Sample mode state ──────────────────────────────────────────────────
   const factsUsed = useMemo(() => {
-    const set = new Map<string, { fact: ReturnType<typeof getFact>; label: string; dataType: string }>();
+    const set = new Map<string, { fact: { label: string; data_type: string } | undefined; label: string; dataType: string }>();
     const addKey = (key: unknown) => {
       if (!key || typeof key !== 'string' || set.has(key)) return;
-      const f = getFact(key);
+      const f = lookupFact(key);
       set.set(key, { fact: f, label: f?.label ?? key, dataType: f?.data_type ?? 'string' });
     };
     for (const r of rules) {
@@ -92,7 +130,7 @@ export function TestEligibilityDialog({ open, onOpenChange, versionId }: Props) 
       addKey(rd.end_field_key);
     }
     return Array.from(set.entries()).map(([k, v]) => ({ factKey: k, ...v }));
-  }, [rules]);
+  }, [rules, lookupFact]);
 
   const [sampleValues, setSampleValues] = useState<Record<string, string>>({});
   const [simRows, setSimRows] = useState<SimRow[] | null>(null);
@@ -116,7 +154,7 @@ export function TestEligibilityDialog({ open, onOpenChange, versionId }: Props) 
       if (!r.is_active) continue;
       const rd = (r.rule_definition || {}) as Record<string, any>;
       const factKey = (rd.field_key ?? (r as any).fact_key) as string | null;
-      const factDef = factKey ? getFact(factKey) : undefined;
+      const factDef = factKey ? lookupFact(factKey) : undefined;
       const opKey = (OPERATOR_ALIASES[rd.operator] ?? rd.operator) as EligibilityOperator;
       const opDef = OPERATORS[opKey];
 
@@ -525,7 +563,10 @@ function coerceSample(raw: string | undefined, dataType?: string): unknown {
       const v = raw.trim().toLowerCase();
       if (['true', 'yes', 'y', '1'].includes(v)) return true;
       if (['false', 'no', 'n', '0'].includes(v)) return false;
-      return raw;
+      // Unrecognized text for a boolean fact must not fall through as a raw
+      // string — every non-empty string is JS-truthy, so eq() would compare
+      // it against `true` and silently pass regardless of what was typed.
+      return null;
     }
     case 'date': return raw;
     default: return raw;

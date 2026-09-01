@@ -76,7 +76,7 @@ import {
   type ExistingClaimRecord,
   type LegacyClaimRecord,
 } from '@/services/bn/forms/formLookupService';
-import { fetchEligibilityRules } from '@/services/bn/productService';
+import { fetchEligibilityRulesEffective } from '@/services/bn/productService';
 import {
   evaluateEligibilityRules,
   summariseEligibility,
@@ -364,7 +364,7 @@ export default function ClaimRegistration() {
     async function run() {
       if (!resolvedVersion) return;
       const [rules, docList] = await Promise.all([
-        fetchEligibilityRules(resolvedVersion.version.id).catch(() => []),
+        fetchEligibilityRulesEffective(resolvedVersion.version.id).catch(() => []),
         getRequiredDocuments(resolvedVersion.version.id, 'INTERNAL'),
       ]);
       if (cancel) return;
@@ -920,7 +920,7 @@ export default function ClaimRegistration() {
                     disabled={!resolvedVersion}
                     onClick={async () => {
                       if (!resolvedVersion) return;
-                      const fresh = await fetchEligibilityRules(resolvedVersion.version.id).catch(() => []);
+                      const fresh = await fetchEligibilityRulesEffective(resolvedVersion.version.id).catch(() => []);
                       setEligRules(fresh);
                       const traces = await runEligibilityPrecheck(fresh);
                       const sum = summariseEligibility(traces, { phase: 'INTAKE' });

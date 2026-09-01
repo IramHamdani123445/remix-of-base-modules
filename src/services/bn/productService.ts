@@ -7,6 +7,12 @@ import { assertSafeToPublish } from './config/publishGateService';
 import { findUngovernedAttachedRules, activateAttachedRules } from './governance/ruleGovernanceService';
 import { registerProductRuleInCatalogue, type RegisterResult } from './governance/registerRuleInCatalogue';
 import { resolveRuleFieldKey, isInformationalRule } from './eligibility/ruleFieldMapping';
+import {
+  resolveEffectiveRuleShape,
+  collectCatalogueRuleIds,
+  type CatalogueShapeSource,
+  type ProductRuleShapeSource,
+} from '@/lib/bn/effectiveRuleShape';
 
 const db = supabase as any;
 
@@ -495,6 +501,26 @@ export async function fetchEligibilityRules(versionId: string): Promise<BnEligib
   const { data, error } = await db.from('bn_eligibility_rule').select('*').eq('product_version_id', versionId).order('sort_order');
   if (error) throw error;
   return (data ?? []) as BnEligibilityRule[];
+}
+
+/**
+ * As `fetchEligibilityRules`, but with each rule's structural fields
+ * (rule_kind/fact_key/start_fact_key/etc.) resolved live from its linked
+ * catalogue rule where the catalogue carries one (GAP-039) — for evaluating
+ * or checking rules, never for editing/cloning them. `upsertEligibilityRule`
+ * and the version-clone path must keep reading/writing the product row's own
+ * raw columns, or a clone would silently bake the catalogue's current values
+ * into the new row and a save could overwrite a legitimate stored value with
+ * a merely-displayed one.
+ */
+export async function fetchEligibilityRulesEffective(versionId: string): Promise<BnEligibilityRule[]> {
+  const rules = await fetchEligibilityRules(versionId);
+  const catalogueIds = collectCatalogueRuleIds(rules as unknown as ProductRuleShapeSource[]);
+  if (catalogueIds.length === 0) return rules;
+  const { data: catalogueRows, error } = await db.from('bn_rule_catalogue').select('*').in('id', catalogueIds);
+  if (error) throw error;
+  const catalogueById = new Map<string, CatalogueShapeSource>((catalogueRows ?? []).map((c: CatalogueShapeSource) => [c.id, c]));
+  return rules.map((rule) => ({ ...rule, ...resolveEffectiveRuleShape(rule as unknown as ProductRuleShapeSource, catalogueById) })) as BnEligibilityRule[];
 }
 
 export interface UpsertEligibilityRuleOptions {

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Edit, Copy, Trash2, Power, Search, AlertTriangle, CheckCircle2, FlaskConical, Database, ListChecks, Activity, ShieldCheck, XCircle, PlayCircle, LayoutDashboard, BadgeCheck, GitBranch, Sigma } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Power, Search, AlertTriangle, CheckCircle2, FlaskConical, Database, ListChecks, Activity, ShieldCheck, XCircle, PlayCircle, LayoutDashboard, BadgeCheck, GitBranch, Sigma, Lock } from 'lucide-react';
 import { BNDataGrid, type BNColumnDef } from '@/components/bn/grid';
 import { resolveFact } from '@/services/bn/eligibility/eligibilityFactResolver';
 import { computeRuleCoverage, type CoverageRow } from '@/services/bn/eligibility/factCoverageService';
@@ -102,6 +102,14 @@ export default function RuleCatalogue() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<RuleCatalogueInput>(emptyInput);
   const [valuesText, setValuesText] = useState('');
+  // A rule already approved and in real use must not be editable in place —
+  // nothing here checked this before, so an approved rule's fact/operator/
+  // value could be silently changed with no version bump and no
+  // re-approval, while its governance status kept reading unchanged.
+  const [editingGovernanceStatus, setEditingGovernanceStatus] = useState<string | null>(null);
+  const [editingSourceRow, setEditingSourceRow] = useState<RuleCatalogueItem | null>(null);
+  const LOCKED_GOVERNANCE_STATUSES = ['READY_FOR_PRODUCT_USE', 'ACTIVE', 'RETIRED'];
+  const isEditingLocked = !!editingGovernanceStatus && LOCKED_GOVERNANCE_STATUSES.includes(editingGovernanceStatus);
 
   const filtered = useMemo(() => rules.filter(r => {
     if (groupFilter !== 'ALL' && r.group_type !== groupFilter) return false;
@@ -136,7 +144,7 @@ export default function RuleCatalogue() {
     };
   }, [rules, usage, factByKey]);
 
-  const openNew = () => { setEditing({ ...emptyInput }); setValuesText(''); setDialogOpen(true); };
+  const openNew = () => { setEditing({ ...emptyInput }); setValuesText(''); setEditingGovernanceStatus(null); setDialogOpen(true); };
   const openEdit = (r: RuleCatalogueItem) => {
     setEditing({
       id: r.id, rule_code: r.rule_code, rule_name: r.rule_name, description: r.description,
@@ -152,7 +160,15 @@ export default function RuleCatalogue() {
       default_rule_sort_order: r.default_rule_sort_order ?? 0,
     });
     setValuesText(Array.isArray(r.values) ? r.values.join(', ') : '');
+    setEditingGovernanceStatus((r as any).governance_status ?? null);
+    setEditingSourceRow(r);
     setDialogOpen(true);
+  };
+
+  const onCloneAsNewVersion = async () => {
+    if (!editingSourceRow) return;
+    setDialogOpen(false);
+    await onClone(editingSourceRow);
   };
 
   const selectedFact = editing.fact_key ? factByKey.get(editing.fact_key) : null;
@@ -191,6 +207,12 @@ export default function RuleCatalogue() {
   }, [duplicateCode, editing.rule_code, rules]);
 
   const onSave = async () => {
+    if (isEditingLocked) {
+      toast.error('Rule is locked', {
+        description: `This rule is ${editingGovernanceStatus} — already approved and in real use. Retire it and create a new one instead of editing it in place.`,
+      });
+      return;
+    }
     const payload = { ...editing };
     const payloadOp = canonicalOperator(payload.operator);
     if (payloadOp === 'IN' || payloadOp === 'NOT_IN') {
@@ -506,6 +528,21 @@ export default function RuleCatalogue() {
             <DialogTitle>{editing.id ? 'Edit' : 'Add'} Catalogue Rule</DialogTitle>
             <DialogDescription>Reusable rule referenced by product versions</DialogDescription>
           </DialogHeader>
+          {isEditingLocked && (
+            <Alert variant="destructive">
+              <Lock className="h-4 w-4" />
+              <AlertDescription className="space-y-2">
+                <p>
+                  This rule is <strong>{editingGovernanceStatus}</strong> — already approved and in real use.
+                  Editing is locked; changes here would silently apply everywhere this rule is used without a
+                  new approval.
+                </p>
+                <Button size="sm" variant="outline" onClick={onCloneAsNewVersion}>
+                  <Copy className="h-3.5 w-3.5 mr-1" /> Clone as New Version
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Rule Code *</Label>
@@ -686,7 +723,7 @@ export default function RuleCatalogue() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={onSave} disabled={upsert.isPending || !!duplicateCode}>
+            <Button onClick={onSave} disabled={upsert.isPending || !!duplicateCode || isEditingLocked}>
               {upsert.isPending ? 'Saving…' : 'Save'}
             </Button>
           </DialogFooter>

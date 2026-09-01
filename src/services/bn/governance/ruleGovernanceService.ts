@@ -357,6 +357,26 @@ export async function executeTransition(
   const { error: updErr } = await db.from('bn_rule_catalogue').update(update).eq('id', ruleId);
   if (updErr) return { ok: false, error: updErr.message };
 
+  // The publish gate (legalReadinessService.ts) reads legislative_reference/
+  // confidence_status off the REAL rule (bn_eligibility_rule), not this
+  // catalogue mirror — approving legal here used to update only the mirror,
+  // so a rule could be approved endlessly and the real publish gate would
+  // never clear. Propagate to every product rule registered from this
+  // catalogue entry, not just the one that happened to create it, since
+  // approving a legal citation approves it for every reuse.
+  if (action === 'APPROVE_LEGAL') {
+    const finalReference = update.legal_reference ?? rule.legal_reference ?? null;
+    const { error: propErr } = await db
+      .from('bn_eligibility_rule')
+      .update({ legislative_reference: finalReference, confidence_status: 'CONFIRMED' })
+      .eq('catalogue_rule_id', ruleId);
+    if (propErr) {
+      // The catalogue-side approval already committed; surface this rather
+      // than silently leaving the real rule's gate unresolved.
+      return { ok: false, error: `Legal approval saved, but propagating to the real rule failed: ${propErr.message}` };
+    }
+  }
+
   // Audit (critical for legal/retire/restore; info otherwise)
   const critical = ['APPROVE_LEGAL','REJECT_LEGAL','RETIRE','RESTORE'].includes(action);
   await writeBnAudit({

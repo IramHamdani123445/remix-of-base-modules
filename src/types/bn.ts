@@ -157,6 +157,12 @@ export interface BnEligibilityRule {
   reason_code_group?: string | null;
   conditional_when?: Record<string, unknown> | null;
   message_template?: string | null;
+  /** Read by legalReadinessService.ts's publish gate — never exposed in any
+   *  UI before this, so a rule could never actually clear "Legal/coverage"
+   *  no matter how many times its bn_rule_catalogue mirror was approved
+   *  (a separate table the publish gate never reads). */
+  legislative_reference?: string | null;
+  confidence_status?: 'DRAFT' | 'NEEDS_LEGAL_CONFIRMATION' | 'CONFIRMED' | null;
 }
 
 export interface BnFormulaTemplate {
