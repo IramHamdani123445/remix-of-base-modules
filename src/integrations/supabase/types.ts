@@ -42431,44 +42431,170 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_legal_pack_event: {
+        Row: {
+          actor_code: string | null
+          actor_name: string | null
+          created_at: string
+          description: string | null
+          event_code: string
+          id: string
+          payload: Json
+          referral_id: string
+          version_no: number | null
+        }
+        Insert: {
+          actor_code?: string | null
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          event_code: string
+          id?: string
+          payload?: Json
+          referral_id: string
+          version_no?: number | null
+        }
+        Update: {
+          actor_code?: string | null
+          actor_name?: string | null
+          created_at?: string
+          description?: string | null
+          event_code?: string
+          id?: string
+          payload?: Json
+          referral_id?: string
+          version_no?: number | null
+        }
+        Relationships: []
+      }
+      ce_legal_pack_item_def: {
+        Row: {
+          applies_reason_codes: string[]
+          auto_source: string | null
+          code: string
+          created_at: string
+          description: string | null
+          display_order: number
+          document_type_code: string | null
+          group_code: string
+          guidance: string | null
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          min_amount: number
+          requires_document: boolean
+          updated_at: string
+          updated_by: string | null
+          validation_mode: string
+        }
+        Insert: {
+          applies_reason_codes?: string[]
+          auto_source?: string | null
+          code: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          document_type_code?: string | null
+          group_code?: string
+          guidance?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          min_amount?: number
+          requires_document?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          validation_mode?: string
+        }
+        Update: {
+          applies_reason_codes?: string[]
+          auto_source?: string | null
+          code?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          document_type_code?: string | null
+          group_code?: string
+          guidance?: string | null
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          min_amount?: number
+          requires_document?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          validation_mode?: string
+        }
+        Relationships: []
+      }
       ce_legal_pack_items: {
         Row: {
+          auto_evidence: Json
+          auto_source: string | null
+          completion_mode: string
           created_at: string
+          display_order: number
+          group_code: string
           id: string
           is_required: boolean
           is_satisfied: boolean
           item_key: string
           item_label: string
+          item_status: string
           notes: string | null
+          pack_version_no: number
           referral_id: string
+          requires_document: boolean
           satisfied_at: string | null
           satisfied_by: string | null
+          satisfied_by_name: string | null
           updated_at: string
         }
         Insert: {
+          auto_evidence?: Json
+          auto_source?: string | null
+          completion_mode?: string
           created_at?: string
+          display_order?: number
+          group_code?: string
           id?: string
           is_required?: boolean
           is_satisfied?: boolean
           item_key: string
           item_label: string
+          item_status?: string
           notes?: string | null
+          pack_version_no?: number
           referral_id: string
+          requires_document?: boolean
           satisfied_at?: string | null
           satisfied_by?: string | null
+          satisfied_by_name?: string | null
           updated_at?: string
         }
         Update: {
+          auto_evidence?: Json
+          auto_source?: string | null
+          completion_mode?: string
           created_at?: string
+          display_order?: number
+          group_code?: string
           id?: string
           is_required?: boolean
           is_satisfied?: boolean
           item_key?: string
           item_label?: string
+          item_status?: string
           notes?: string | null
+          pack_version_no?: number
           referral_id?: string
+          requires_document?: boolean
           satisfied_at?: string | null
           satisfied_by?: string | null
+          satisfied_by_name?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -42480,6 +42606,108 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ce_legal_pack_ref: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          group_code: string | null
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          text_value: string | null
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          group_code?: string | null
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          text_value?: string | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          group_code?: string | null
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          text_value?: string | null
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_legal_pack_version: {
+        Row: {
+          checklist_snapshot: Json
+          created_at: string
+          documents_snapshot: Json
+          id: string
+          referral_id: string
+          return_reason: string | null
+          returned_at: string | null
+          returned_by: string | null
+          status: string
+          submission_key: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_name: string | null
+          totals_snapshot: Json
+          updated_at: string
+          version_no: number
+          workflow_snapshot: Json
+        }
+        Insert: {
+          checklist_snapshot?: Json
+          created_at?: string
+          documents_snapshot?: Json
+          id?: string
+          referral_id: string
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          status?: string
+          submission_key?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          totals_snapshot?: Json
+          updated_at?: string
+          version_no: number
+          workflow_snapshot?: Json
+        }
+        Update: {
+          checklist_snapshot?: Json
+          created_at?: string
+          documents_snapshot?: Json
+          id?: string
+          referral_id?: string
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          status?: string
+          submission_key?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          totals_snapshot?: Json
+          updated_at?: string
+          version_no?: number
+          workflow_snapshot?: Json
+        }
+        Relationships: []
       }
       ce_legal_proceeding_ref: {
         Row: {
@@ -125114,6 +125342,7 @@ export type Database = {
         Returns: boolean
       }
       ce_actor_code: { Args: { _user_id: string }; Returns: string }
+      ce_actor_display_name: { Args: { _user_id: string }; Returns: string }
       ce_actor_user_code: { Args: { _user_id: string }; Returns: string }
       ce_allocate_employer_payment: {
         Args: {
@@ -125970,6 +126199,45 @@ export type Database = {
       }
       ce_is_trusted_session: { Args: never; Returns: boolean }
       ce_ledger_settlement_order: { Args: never; Returns: string[] }
+      ce_legal_pack_auto_v1: { Args: { p_referral_id: string }; Returns: Json }
+      ce_legal_pack_confirm_item_v1: {
+        Args: {
+          p_item_key: string
+          p_notes?: string
+          p_referral_id: string
+          p_satisfied: boolean
+        }
+        Returns: Json
+      }
+      ce_legal_pack_detach_document_v1: {
+        Args: { p_document_id: string; p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_pack_detail_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_pack_register_v1: { Args: { p_params?: Json }; Returns: Json }
+      ce_legal_pack_rollup_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
+      ce_legal_pack_submit_v1: {
+        Args: {
+          p_idempotency_key?: string
+          p_notes?: string
+          p_referral_id: string
+        }
+        Returns: Json
+      }
+      ce_legal_pack_sync_v1: {
+        Args: { p_referral_id: string }
+        Returns: undefined
+      }
+      ce_legal_pack_workflow_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
       ce_legal_proceeding_detail_v1: {
         Args: { p_row_key: string }
         Returns: Json
