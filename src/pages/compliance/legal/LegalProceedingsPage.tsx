@@ -632,7 +632,7 @@ const LegalProceedingsPage = () => {
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <div className="font-mono text-xs font-medium">{r.proceeding_no ?? '—'}</div>
                           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                             {r.court_case_no && <span>Court {r.court_case_no}</span>}
