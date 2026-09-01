@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ENGAGEMENT_WORKSPACE_TABS, ENGAGEMENT_MANAGEMENT_TABS, useUrlTab } from '@/lib/audit/workspaceTabs';
 import { Separator } from '@/components/ui/separator';
 import { StatusBadge } from '@/components/common';
 import { useIAEngagements } from '@/hooks/useAuditDataPhase2';
