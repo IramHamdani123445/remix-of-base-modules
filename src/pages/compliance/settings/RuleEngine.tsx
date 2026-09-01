@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
 import { Card } from '@/components/ui/card';
 import { EnhancedDetectionRuleDialog } from '@/components/compliance/detection/DetectionRuleDialog';
 import { EnhancedCalculationRuleDialog } from '@/components/compliance/detection/CalculationRuleDialog';
@@ -36,6 +38,7 @@ import {
 import { buildRuleExport, downloadRuleExport } from '@/lib/compliance/ruleExport';
 import RuleHistoryDialog, { RuleHistoryTable } from '@/components/compliance/detection/RuleHistoryDialog';
 import RuleActivationImpactDialog, { RuleImpactInfo } from '@/components/compliance/detection/RuleActivationImpactDialog';
+import RuleRuntimeHealthPanel from '@/components/compliance/detection/RuleRuntimeHealthPanel';
 import { History, Download, ShieldCheck } from 'lucide-react';
 
 // ── Types ──
@@ -825,9 +828,24 @@ const EscalationRuleDialog = ({
 
 // ── Main Component ──
 
+const VALID_RULE_ENGINE_TABS = ['detection', 'calculation', 'escalation'] as const;
+
 const RuleEngine = () => {
-  const [activeTab, setActiveTab] = useState('detection');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = (VALID_RULE_ENGINE_TABS as readonly string[]).includes(tabParam ?? '')
+    ? (tabParam as string)
+    : 'detection';
+  const setActiveTab = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams);
+      params.set('tab', next);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
   const queryClient = useQueryClient();
+
   const { userCode } = useUserCode();
   const canManage =
     useHasPermission('ce_admin_settings', 'edit') ||
@@ -1143,6 +1161,7 @@ const RuleEngine = () => {
 
           <TabsContent value="detection">
             <div className="space-y-3">
+              <RuleRuntimeHealthPanel codePrefix="DR-" />
               <p className="text-sm text-muted-foreground mb-4">Detection rules automatically create violations when compliance conditions are met.</p>
               {detectionRules.length === 0 && <p className="text-center text-muted-foreground py-8">No detection rules configured. Click "Add Rule" to create one.</p>}
               {detectionRules.map(rule => (
@@ -1179,6 +1198,7 @@ const RuleEngine = () => {
 
           <TabsContent value="calculation">
             <div className="space-y-3">
+              <RuleRuntimeHealthPanel codePrefix="CR-" />
               <p className="text-sm text-muted-foreground mb-4">Calculation rules define how penalties, interest, and fines are computed. Financial rates are referenced from C3 Configuration.</p>
               {calculationRules.length === 0 && <p className="text-center text-muted-foreground py-8">No calculation rules configured. Click "Add Rule" to create one.</p>}
               {calculationRules.map(rule => {

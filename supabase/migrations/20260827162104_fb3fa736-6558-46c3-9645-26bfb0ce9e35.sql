@@ -1,0 +1,1 @@
+ALTER TABLE public.ia_action_extensions ALTER COLUMN approved_by DROP NOT NULL;

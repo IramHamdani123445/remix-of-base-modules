@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Briefcase, Loader2, AlertTriangle, ClipboardCheck,
   FileText, MessageSquare, CheckCircle, BarChart3, Clock, Shield, ListChecks, Eye,
-  Paperclip, FolderOpen, Search, ArrowRight
+  Paperclip, FolderOpen, Search, ArrowRight, Network, ShieldCheck, BadgeCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +18,8 @@ import { useTransitionExecutionStatus, type ExecutionStatus } from '@/hooks/useE
 import { AuditWorkspaceShell } from '@/components/audit/workspace/AuditWorkspaceShell';
 import { AuditEmptyState } from '@/components/audit/workspace/AuditEmptyState';
 import { formatDepartmentLabel } from '@/lib/audit/departmentLabel';
+import { useInternalAuditPersona } from '@/hooks/audit/useInternalAuditPersona';
+
 
 import {
   AuditOverviewTab,
@@ -32,7 +34,10 @@ import {
   AuditControlTestsTab,
   AuditFollowUpsTab,
   AuditClosureTab,
+  AuditProgrammeRcmTab,
+  AuditQualityReviewTab,
 } from '@/components/audit/execution';
+
 
 // ===== Tab Badge =====
 function TabBadge({ count, variant = 'default' }: { count: number; variant?: 'default' | 'warning' | 'danger' | 'success' }) {
@@ -80,10 +85,12 @@ function SmartAlertsBanner({ audit, auditFindings, auditResponses, auditActions 
     alerts.push({ type: 'error', message: `${overdueActions.length} overdue action item(s).` });
   }
 
-  const findingsWithoutEvidence = auditFindings.filter(f =>
+  const isEngagementClosed = ['Closed', 'Closed – Actions Pending', 'Closed - Actions Pending', 'Cancelled'].includes(execStatus);
+  const findingsWithoutEvidence = isEngagementClosed ? [] : auditFindings.filter(f =>
     f.status !== 'Closed' && (!f.evidence_ids || (Array.isArray(f.evidence_ids) && f.evidence_ids.length === 0))
   );
   if (findingsWithoutEvidence.length > 0) {
+
     alerts.push({ type: 'info', message: `${findingsWithoutEvidence.length} finding(s) have no supporting evidence attached.` });
   }
 
@@ -168,6 +175,20 @@ export default function EngagementDetail() {
 
   const [activeTab, setActiveTab] = useState('overview');
 
+  // UAT-DEF-02 — the audited department (management respondent) must never see the
+  // auditor-private workspace (preparation, programme/RCM, activities, control tests,
+  // evidence, working papers, follow-ups, quality review, closure).
+  const { isManagementOnly, isLoading: personaLoading } = useInternalAuditPersona();
+  const canSeeAuditorWorkspace = !personaLoading && !isManagementOnly;
+
+  const MANAGEMENT_TABS = ['overview', 'findings', 'responses', 'actions', 'timeline'];
+  React.useEffect(() => {
+    if (!canSeeAuditorWorkspace && !MANAGEMENT_TABS.includes(activeTab)) {
+      setActiveTab('overview');
+    }
+  }, [canSeeAuditorWorkspace, activeTab]);
+
+
   const engagementContext = useMemo(() => {
     if (!audit) return undefined;
     const dept = getDeptObj(audit.department_id);
@@ -189,20 +210,22 @@ export default function EngagementDetail() {
   // where the closure gate is evaluated and the disposition is captured.
   const handleCloseAudit = () => setActiveTab('closure');
 
-  // Workspace counts for overview quick-jump
+  // Workspace counts for overview quick-jump. Auditor-private volumes are suppressed
+  // for management respondents (UAT-DEF-02).
   const workspaceCounts = useMemo(() => ({
-    activities: auditActivities.length,
-    evidence: auditEvidence.length,
-    workingPapers: auditWorkingPapers.length,
-    controlTests: auditControlTests.length,
+    activities: canSeeAuditorWorkspace ? auditActivities.length : 0,
+    evidence: canSeeAuditorWorkspace ? auditEvidence.length : 0,
+    workingPapers: canSeeAuditorWorkspace ? auditWorkingPapers.length : 0,
+    controlTests: canSeeAuditorWorkspace ? auditControlTests.length : 0,
     findings: auditFindings.length,
     openFindings: openFindings.length,
     responses: auditResponses.length,
     pendingResponses: pendingResponsesCount,
     actions: auditActions.length,
     overdueActions: overdueActionsCount,
-    followUps: auditFollowUps.length,
-  }), [auditActivities, auditEvidence, auditWorkingPapers, auditControlTests, auditFindings, openFindings, auditResponses, pendingResponsesCount, auditActions, overdueActionsCount, auditFollowUps]);
+    followUps: canSeeAuditorWorkspace ? auditFollowUps.length : 0,
+  }), [canSeeAuditorWorkspace, auditActivities, auditEvidence, auditWorkingPapers, auditControlTests, auditFindings, openFindings, auditResponses, pendingResponsesCount, auditActions, overdueActionsCount, auditFollowUps]);
+
 
   if (!audit && !isLoading) {
     return (
@@ -265,25 +288,39 @@ export default function EngagementDetail() {
             <TabsTrigger value="overview" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Eye className="h-3.5 w-3.5 mr-1.5" />Overview
             </TabsTrigger>
-            <TabsTrigger value="preparation" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              Preparation
-            </TabsTrigger>
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="preparation" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                Preparation
+              </TabsTrigger>
+            )}
 
-            <TabSep />
+            {canSeeAuditorWorkspace && (
+              <>
+                <TabSep />
 
-            {/* === Fieldwork Group === */}
-            <TabsTrigger value="activities" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />Activities
-              <TabBadge count={auditActivities.length} />
-            </TabsTrigger>
-            <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Paperclip className="h-3.5 w-3.5 mr-1.5" />Evidence
-              <TabBadge count={auditEvidence.length} />
-            </TabsTrigger>
-            <TabsTrigger value="working-papers" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <FolderOpen className="h-3.5 w-3.5 mr-1.5" />Working Papers
-              <TabBadge count={auditWorkingPapers.length} />
-            </TabsTrigger>
+                {/* === Fieldwork Group (audit team only) === */}
+                <TabsTrigger value="programme" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Network className="h-3.5 w-3.5 mr-1.5" />Programme / RCM
+                </TabsTrigger>
+                <TabsTrigger value="activities" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />Activities
+                  <TabBadge count={auditActivities.length} />
+                </TabsTrigger>
+                <TabsTrigger value="control-tests" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />Control Tests
+                  <TabBadge count={auditControlTests.length} />
+                </TabsTrigger>
+                <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Paperclip className="h-3.5 w-3.5 mr-1.5" />Evidence
+                  <TabBadge count={auditEvidence.length} />
+                </TabsTrigger>
+
+                <TabsTrigger value="working-papers" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <FolderOpen className="h-3.5 w-3.5 mr-1.5" />Working Papers
+                  <TabBadge count={auditWorkingPapers.length} />
+                </TabsTrigger>
+              </>
+            )}
 
             <TabSep />
 
@@ -300,21 +337,31 @@ export default function EngagementDetail() {
               <CheckCircle className="h-3.5 w-3.5 mr-1.5" />Actions
               <TabBadge count={overdueActionsCount} variant="danger" />
             </TabsTrigger>
-            <TabsTrigger value="follow-ups" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Search className="h-3.5 w-3.5 mr-1.5" />Follow-ups
-              <TabBadge count={auditFollowUps.length} />
-            </TabsTrigger>
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="follow-ups" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <Search className="h-3.5 w-3.5 mr-1.5" />Follow-ups
+                <TabBadge count={auditFollowUps.length} />
+              </TabsTrigger>
+            )}
 
             <TabSep />
 
             {/* === Output Group === */}
-
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="quality-review" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <BadgeCheck className="h-3.5 w-3.5 mr-1.5" />Quality Review
+              </TabsTrigger>
+            )}
             <TabsTrigger value="timeline" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Clock className="h-3.5 w-3.5 mr-1.5" />Timeline
             </TabsTrigger>
-            <TabsTrigger value="closure" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-              <Shield className="h-3.5 w-3.5 mr-1.5" />Closure
-            </TabsTrigger>
+
+            {canSeeAuditorWorkspace && (
+              <TabsTrigger value="closure" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                <Shield className="h-3.5 w-3.5 mr-1.5" />Closure
+              </TabsTrigger>
+            )}
+
 
 
             {/* === Report Center CTA === */}
@@ -341,21 +388,33 @@ export default function EngagementDetail() {
             />
           </TabsContent>
 
-          <TabsContent value="preparation">
-            <AuditPreparationTab auditId={id!} audit={audit} engagementContext={engagementContext} />
-          </TabsContent>
+          {canSeeAuditorWorkspace && (
+            <>
+              <TabsContent value="preparation">
+                <AuditPreparationTab auditId={id!} audit={audit} engagementContext={engagementContext} />
+              </TabsContent>
 
-          <TabsContent value="activities">
-            <AuditActivitiesTab auditId={id!} auditors={auditors} />
-          </TabsContent>
+              <TabsContent value="programme">
+                <AuditProgrammeRcmTab auditId={id!} departmentId={audit?.department_id} functionId={(audit as any)?.function_id} />
+              </TabsContent>
 
-          <TabsContent value="evidence">
-            <AuditEvidenceTab auditId={id!} auditFindings={auditFindings} auditActivities={auditActivities} />
-          </TabsContent>
+              <TabsContent value="activities">
+                <AuditActivitiesTab auditId={id!} auditors={auditors} />
+              </TabsContent>
 
-          <TabsContent value="working-papers">
-            <AuditWorkingPapersTab auditId={id!} />
-          </TabsContent>
+              <TabsContent value="control-tests">
+                <AuditControlTestsTab auditId={id!} />
+              </TabsContent>
+
+              <TabsContent value="evidence">
+                <AuditEvidenceTab auditId={id!} auditFindings={auditFindings} auditActivities={auditActivities} />
+              </TabsContent>
+
+              <TabsContent value="working-papers">
+                <AuditWorkingPapersTab auditId={id!} />
+              </TabsContent>
+            </>
+          )}
 
           <TabsContent value="findings">
             <AuditFindingsTab auditId={id!} auditFindings={auditFindings} auditResponses={auditResponses} auditActions={auditActions} auditEvidence={auditEvidence} auditWorkingPapers={auditWorkingPapers} departmentId={audit?.department_id} />
@@ -369,18 +428,30 @@ export default function EngagementDetail() {
             <AuditActionsTab auditId={id!} audit={audit} auditFindings={auditFindings} auditActions={auditActions} auditResponses={auditResponses} auditEvidence={auditEvidence} onClose={handleCloseAudit} />
           </TabsContent>
 
-          <TabsContent value="follow-ups">
-            <AuditFollowUpsTab auditId={id!} auditFindings={auditFindings} departmentId={audit?.department_id} />
-          </TabsContent>
+          {canSeeAuditorWorkspace && (
+            <>
+              <TabsContent value="follow-ups">
+                <AuditFollowUpsTab auditId={id!} auditFindings={auditFindings} departmentId={audit?.department_id} />
+              </TabsContent>
+
+              <TabsContent value="quality-review">
+                <AuditQualityReviewTab auditId={id!} />
+              </TabsContent>
+            </>
+          )}
 
 
           <TabsContent value="timeline">
             <AuditTimelineTab auditId={id!} departmentId={audit?.department_id} />
           </TabsContent>
 
-          <TabsContent value="closure">
-            <AuditClosureTab auditId={id!} audit={audit} />
-          </TabsContent>
+
+          {canSeeAuditorWorkspace && (
+            <TabsContent value="closure">
+              <AuditClosureTab auditId={id!} audit={audit} />
+            </TabsContent>
+          )}
+
         </Tabs>
       </AuditWorkspaceShell>
     </div>

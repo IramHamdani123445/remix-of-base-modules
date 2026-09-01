@@ -57,11 +57,19 @@ function isRenderContext(value: unknown): value is RenderContext {
   );
 }
 
+export interface RenderStageDeployment {
+  /** Revision this runtime artifact actually is. */
+  deployedRevision: string | null;
+  /** Project ref of the backend this runtime is writing to. */
+  currentProjectRef: string | null;
+}
+
 export async function runRenderStage(
   admin: RpcClient,
   actorId: string,
   requestId: string,
   organizationId: string,
+  deployment?: RenderStageDeployment | null,
 ): Promise<RenderStageOutcome> {
   const { data: ctxData, error: ctxErr } = await admin.rpc(
     "omni_comms_priv_load_render_context",
@@ -71,7 +79,26 @@ export async function runRenderStage(
   if (!isRenderContext(ctxData)) throw new RenderStageError("render_context_invalid");
 
   const context = ctxData;
+
+  // Governed dispatch-certification snapshot. Absence always denies: when the
+  // snapshot cannot be read, or the deployment identity is unknown, the
+  // context stays without a certification block and every leg is held.
+  if (deployment?.deployedRevision && deployment.currentProjectRef) {
+    const { data: certData, error: certErr } = await admin.rpc(
+      "omni_comms_priv_dispatch_certification_snapshot",
+      { p_actor_id: actorId, p_request_id: requestId, p_organization_id: organizationId },
+    );
+    if (!certErr && certData && typeof certData === "object") {
+      context.dispatch_certification = {
+        ...(certData as Record<string, unknown>),
+        deployed_revision: deployment.deployedRevision,
+        current_project_ref: deployment.currentProjectRef,
+      } as typeof context.dispatch_certification;
+    }
+  }
+
   const outcome = await orchestrateRendering(context);
+
 
   const { data: persistData, error: persistErr } = await admin.rpc(
     "omni_comms_priv_persist_rendered_messages",
@@ -90,6 +117,21 @@ export async function runRenderStage(
 
   const persisted = (persistData ?? {}) as { status?: string; held_job_count?: number };
 
+  // DEF-3 — apply the governed attachment channel policy to every persisted
+  // message. Channels that cannot carry an attachment DROP it; an attachment
+  // marked required for delivery BLOCKS the message instead of quietly
+  // delivering an incomplete communication.
+  const attachmentBlockers: string[] = [];
+  const { data: attData, error: attErr } = await admin.rpc(
+    "omni_comms_priv_resolve_request_attachments",
+    { p_request_id: requestId },
+  );
+  if (attErr) throw new RenderStageError("attachment_resolution_failed");
+  const attachmentOutcome = (attData ?? {}) as { ok?: boolean; code?: string };
+  if (attachmentOutcome.ok === false) {
+    attachmentBlockers.push(attachmentOutcome.code ?? "attachment_required_unsupported");
+  }
+
   // Re-read the persisted messages through the canonical projection so the
   // fresh response carries real message ids and held dispatch-job ids, and is
   // byte-comparable with the replay response.
@@ -103,7 +145,7 @@ export async function runRenderStage(
   return {
     status: persisted.status ?? outcome.finalStatus,
     messages,
-    blockers: outcome.requestBlockers,
+    blockers: [...outcome.requestBlockers, ...attachmentBlockers],
     heldJobCount: persisted.held_job_count ?? outcome.jobs.length,
     renderedCount: outcome.messages.filter((m) => m.status === "rendered").length,
     blockedCount: outcome.messages.filter((m) => m.status === "blocked").length,

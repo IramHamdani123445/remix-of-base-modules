@@ -3,12 +3,13 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardCheck, Plus, Eye, MapPin, Loader2, Inbox } from 'lucide-react';
+import { ClipboardCheck, Eye, MapPin, Loader2, Inbox } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchInspections, InspectionRecord } from '@/services/complianceReportingService';
 import { supabase } from '@/integrations/supabase/client';
 import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
 import { Link } from 'react-router-dom';
+import ScheduleInspectionDialog from '@/components/compliance/inspection/ScheduleInspectionDialog';
 
 export default function InspectionManagement() {
   const [statusFilter, setStatusFilter] = useState('All');
@@ -71,7 +72,7 @@ export default function InspectionManagement() {
           <Button variant="outline" asChild>
             <Link to="/compliance/inspections/convert-finding">Convert Finding</Link>
           </Button>
-          <Button className="gap-2"><Plus className="h-4 w-4" />Schedule Inspection</Button>
+          <ScheduleInspectionDialog />
           <ReferToLegalButton module="compliance" reasonCode="AUDIT_FINDING_RECOVERY" />
 
         </div>

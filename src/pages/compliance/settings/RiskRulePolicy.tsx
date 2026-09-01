@@ -1,15 +1,31 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Target } from 'lucide-react';
+import OpenDecisionNotice from '@/components/compliance/governance/OpenDecisionNotice';
+import RiskModelTab from './risk-policy/RiskModelTab';
 import RiskFactorsTab from './risk-policy/RiskFactorsTab';
 import RiskPoliciesTab from './risk-policy/RiskPoliciesTab';
 import RiskBandsTab from './risk-policy/RiskBandsTab';
 import LegalEscalationTab from './risk-policy/LegalEscalationTab';
 
+const VALID_TABS = ['model', 'factors', 'policies', 'bands', 'escalation'];
+
 export default function RiskRulePolicy() {
-  const [activeTab, setActiveTab] = useState('factors');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = VALID_TABS.includes(tabParam ?? '') ? (tabParam as string) : 'model';
+  const setActiveTab = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams);
+      params.set('tab', next);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -29,19 +45,27 @@ export default function RiskRulePolicy() {
         </div>
       </div>
 
+      <OpenDecisionNotice codes={['E-RISK-FACTOR-WEIGHTS', 'D-LEGAL-ARREARS-MULTIPLIER']} />
+
       {/* Tabs */}
       <Card className="p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="factors">Risk Factors & Weights</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="model">Five-Factor Model</TabsTrigger>
+            <TabsTrigger value="factors">Factor Catalogue</TabsTrigger>
             <TabsTrigger value="policies">Risk Policies</TabsTrigger>
             <TabsTrigger value="bands">Risk Bands & Behaviour</TabsTrigger>
             <TabsTrigger value="escalation">Legal Escalation</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="model" className="space-y-4">
+            <RiskModelTab />
+          </TabsContent>
+
           <TabsContent value="factors" className="space-y-4">
             <RiskFactorsTab />
           </TabsContent>
+
 
           <TabsContent value="policies" className="space-y-4">
             <RiskPoliciesTab />

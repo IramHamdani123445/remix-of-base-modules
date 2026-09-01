@@ -9,6 +9,8 @@
  * "Provider accepted" and only callback evidence may say "Delivered".
  */
 import type { OpsRequestListItem } from './operationsTypes';
+import { classifyHold } from './holdClassification';
+
 
 export type ActivityFilterId =
   | 'all'
@@ -16,7 +18,8 @@ export type ActivityFilterId =
   | 'accepted'
   | 'delivered'
   | 'failed'
-  | 'needs_attention';
+  | 'needs_attention'
+  | 'historical';
 
 export const ACTIVITY_FILTERS: ReadonlyArray<{ id: ActivityFilterId; label: string }> = [
   { id: 'all', label: 'All' },
@@ -25,15 +28,24 @@ export const ACTIVITY_FILTERS: ReadonlyArray<{ id: ActivityFilterId; label: stri
   { id: 'delivered', label: 'Delivered' },
   { id: 'failed', label: 'Failed' },
   { id: 'needs_attention', label: 'Needs attention' },
+  { id: 'historical', label: 'Historical (not sent)' },
 ];
 
-/** Business label for one activity row. */
+
+/**
+ * Business label for one activity row.
+ *
+ * When a hold reason is available the specific situation is shown (historical
+ * pre-activation, recipient not allowlisted, release approval required,
+ * provider configuration required). The generic wording is only a fallback.
+ */
 export function activityStatusLabel(row: {
   status: string;
   mode: string;
   held_job_count: number;
   message_count: number;
   blocker_count: number;
+  hold_reason?: string | null;
 }): string {
   if (row.status === 'blocked') return 'Needs configuration';
   if (row.status === 'failed') return 'Failed';
@@ -41,22 +53,40 @@ export function activityStatusLabel(row: {
   if (row.status === 'accepted') return 'Event queued';
   if (row.status === 'processing') return 'Preparing';
   if (row.mode === 'dry_run' || row.mode === 'shadow') return 'Test only';
-  if (row.held_job_count > 0) return 'Waiting to send';
+  if (row.held_job_count > 0) {
+    const reason = row.hold_reason ?? null;
+    if (reason) return classifyHold(reason).label;
+    return 'Held — awaiting authorisation';
+  }
   if (row.message_count > 0) return 'Sending';
   return 'Preparing';
+
 }
+
 
 /** Does this row belong to the chosen normal filter? */
 export function matchesActivityFilter(
-  row: Pick<OpsRequestListItem, 'status' | 'mode' | 'held_job_count' | 'message_count' | 'blocker_count'>,
+  row: Pick<OpsRequestListItem, 'status' | 'mode' | 'held_job_count' | 'message_count' | 'blocker_count'> & {
+    hold_reason?: string | null;
+  },
   filter: ActivityFilterId,
 ): boolean {
   const label = activityStatusLabel(row);
+  const classification = classifyHold(row.hold_reason ?? null);
+  const held = row.held_job_count > 0;
+  const heldActionable = held && classification.actionable;
+  // A permanently held historical record is audit evidence. It is not pending
+  // work, so it is excluded from "Waiting" and gets its own filter.
+  const heldHistorical = held && classification.bucket === 'PERMANENT_HISTORICAL';
   switch (filter) {
     case 'all':
       return true;
     case 'waiting':
-      return label === 'Event queued' || label === 'Preparing' || label === 'Waiting to send';
+      return (
+        label === 'Event queued' ||
+        label === 'Preparing' ||
+        (held && !heldActionable && !heldHistorical)
+      );
     case 'accepted':
       return label === 'Sending' || label === 'Provider accepted';
     case 'delivered':
@@ -64,11 +94,20 @@ export function matchesActivityFilter(
     case 'failed':
       return label === 'Failed';
     case 'needs_attention':
-      return label === 'Needs configuration' || label === 'Needs review' || label === 'Failed';
+      return (
+        label === 'Needs configuration' ||
+        label === 'Needs review' ||
+        label === 'Failed' ||
+        heldActionable
+      );
+    case 'historical':
+      return heldHistorical;
     default:
       return true;
   }
+
 }
+
 
 /** Bounded "needs attention" count from the summary projection. */
 export function needsAttentionCount(input: {

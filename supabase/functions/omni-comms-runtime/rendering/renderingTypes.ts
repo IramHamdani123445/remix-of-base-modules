@@ -102,6 +102,9 @@ export interface PersistedChannelResolution {
   provider_id: string | null;
   provider_account_id: string | null;
   sender_channel_ready: boolean;
+  /** Adapter key of the resolved provider, when the snapshot carries one. */
+  provider_adapter_key?: string | null;
+
   live_delivery_ready: boolean;
   blockers: string[];
 }
@@ -149,7 +152,49 @@ export interface RenderContext {
     organization_id: string;
     department_id: string | null;
   }>;
+  /**
+   * Governance snapshot consumed by the fail-closed dispatch-authorisation
+   * decision. OPTIONAL by design: when the render-context RPC does not supply
+   * it, every dispatch job stays held.
+   */
+  dispatch_certification?: DispatchCertificationSnapshot | null;
 }
+
+/** Per-request certification/governance facts, read inside the render transaction. */
+export interface DispatchCertificationSnapshot {
+  runtime_environment: string | null;
+  marker_environment_kind: string | null;
+  marker_allows_controlled_test_activation: boolean | null;
+  marker_project_ref: string | null;
+  current_project_ref: string | null;
+  deployed_revision: string | null;
+  caller_module_code: string | null;
+  dispatch_certified_from: string | null;
+  request_created_at: string | null;
+  quarantined: boolean | null;
+  as_of: string | null;
+  /**
+   * Adapters currently approved for controlled-pilot dispatch by the governed
+   * database registry. Absence denies every credential-bearing adapter.
+   */
+  certification_safe_adapters?: string[] | null;
+  channels: Array<{
+    channel: string;
+    release_state: string | null;
+    release_expires_at: string | null;
+    approved_commit: string | null;
+    permitted_caller_modules: string[] | null;
+    permitted_modes: string[] | null;
+    recipient_allowlisted: boolean | null;
+    /**
+     * Adapter the database resolved for this channel on this request. Supplied
+     * so the dispatch decision can distinguish internal/simulation delivery
+     * from credential-bearing external providers. Absence denies.
+     */
+    provider_adapter_key?: string | null;
+  }>;
+}
+
 
 export interface RenderedOutput {
   subject: string | null;

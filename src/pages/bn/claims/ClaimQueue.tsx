@@ -1,27 +1,118 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Inbox, HandMetal, ArrowUpRight, Clock } from 'lucide-react';
-import { useBnWorkbaskets, useBnQueueClaims, useBnMyQueue, usePickBnClaim, useReleaseBnClaim } from '@/hooks/bn/useBnWorkbasket';
+import {
+  useBnWorkbaskets,
+  useBnQueueClaims,
+  useBnMyQueue,
+  usePickBnClaim,
+  useReleaseBnClaim,
+  useBasketClaimCounts,
+} from '@/hooks/bn/useBnWorkbasket';
+import { useMyWorkbaskets } from '@/hooks/bn/useMyWorkbaskets';
+import { useMyEffectiveRoles } from '@/hooks/bn/useEffectiveRoles';
 import { useUserCode } from '@/hooks/useUserCode';
 import { BN_CLAIM_STATUS_LABELS } from '@/types/bn';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { toast } from 'sonner';
 import type { BnClaimQueueAssignment, BnWorkbasket } from '@/types/bn';
+import { UnroutedClaimsPanel } from '@/components/bn/claims/UnroutedClaimsPanel';
+
+/** Roles allowed to look beyond their own baskets. */
+const OVERSIGHT_ROLES = ['BN_SUPERVISOR', 'BN_MANAGER', 'BN_DIRECTOR', 'BN_CONFIG_ADMIN'];
+/** Generic oversight markers so tenant role names (Admin, LEGAL_ADMIN, FinanceManager…) count too. */
+const OVERSIGHT_MARKERS = ['ADMIN', 'SUPERVISOR', 'MANAGER', 'DIRECTOR'];
+
+const isOversightRole = (role: string) => {
+  const upper = (role || '').toUpperCase();
+  return OVERSIGHT_ROLES.includes(upper) || OVERSIGHT_MARKERS.some((m) => upper.includes(m));
+};
+
+interface QueueBasket {
+  id: string;
+  basket_name: string;
+  role_name?: string;
+  is_primary?: boolean;
+}
 
 export default function ClaimQueue() {
   const navigate = useNavigate();
   const { userCode } = useUserCode();
-  const { data: workbaskets = [] } = useBnWorkbaskets();
+  const { data: myBaskets = [], isLoading: myBasketsLoading } = useMyWorkbaskets();
+  const { data: myRoles = [] } = useMyEffectiveRoles();
+  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  const { data: allBaskets = [] } = useBnWorkbaskets();
   const [selectedBasket, setSelectedBasket] = useState<string | null>(null);
   const { data: queueClaims = [], isLoading: queueLoading } = useBnQueueClaims(selectedBasket || undefined);
   const { data: myQueue = [] } = useBnMyQueue(userCode);
   const pickClaim = usePickBnClaim();
   const releaseClaim = useReleaseBnClaim();
+
+  const roleNames = useMemo(
+    () => Array.from(new Set(myRoles.map((r) => r.role_name))).sort(),
+    [myRoles],
+  );
+  const canSeeAll = roleNames.some(isOversightRole);
+
+  // Deduplicate: the same basket can be reachable through several roles.
+  const mineBaskets: QueueBasket[] = useMemo(() => {
+    const map = new Map<string, QueueBasket>();
+    for (const b of myBaskets) {
+      const existing = map.get(b.workbasket_id);
+      if (existing) {
+        existing.is_primary = existing.is_primary || b.is_primary;
+        continue;
+      }
+      map.set(b.workbasket_id, {
+        id: b.workbasket_id,
+        basket_name: b.basket_name,
+        role_name: b.role_name,
+        is_primary: b.is_primary,
+      });
+    }
+    return Array.from(map.values()).sort((a, b) => a.basket_name.localeCompare(b.basket_name));
+  }, [myBaskets]);
+
+  // Oversight users with no basket of their own start on the "All baskets" scope.
+  const autoSwitched = useRef(false);
+  useEffect(() => {
+    if (autoSwitched.current || myBasketsLoading) return;
+    if (canSeeAll && mineBaskets.length === 0) {
+      autoSwitched.current = true;
+      setScope('all');
+    }
+  }, [canSeeAll, mineBaskets.length, myBasketsLoading]);
+
+
+  const baskets: QueueBasket[] =
+    scope === 'all'
+      ? (allBaskets as BnWorkbasket[]).map((b) => ({
+          id: b.id,
+          basket_name: b.basket_name,
+          role_name: (b as any).assigned_role,
+        }))
+      : mineBaskets;
+
+  const basketIds = useMemo(() => baskets.map((b) => b.id), [baskets]);
+  const { data: counts = {} } = useBasketClaimCounts(basketIds);
+
+  // Auto-select: primary basket first, then the first basket holding work.
+  useEffect(() => {
+    if (baskets.length === 0) {
+      setSelectedBasket(null);
+      return;
+    }
+    if (selectedBasket && baskets.some((b) => b.id === selectedBasket)) return;
+    const withWork = baskets.find((b) => (counts[b.id]?.total ?? 0) > 0);
+    const primary = baskets.find((b) => b.is_primary && (counts[b.id]?.total ?? 0) > 0);
+    setSelectedBasket((primary || withWork || baskets.find((b) => b.is_primary) || baskets[0]).id);
+  }, [baskets, counts, selectedBasket]);
+
 
   const handlePick = async (assignmentId: string) => {
     if (!userCode) return;
@@ -98,10 +189,42 @@ export default function ClaimQueue() {
     );
   };
 
+  const selected = baskets.find((b) => b.id === selectedBasket);
+
   return (
     <PermissionWrapper moduleName="benefits_management">
       <div className="space-y-6 p-6">
-        <h1 className="t-page-title">Claim Queue</h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="t-page-title">Claim Queue</h1>
+            <p className="t-page-subtitle mt-1">
+              {scope === 'mine'
+                ? `Workbaskets you serve as ${roleNames.length ? roleNames.join(', ') : 'your assigned roles'}.`
+                : 'All active workbaskets.'}
+            </p>
+          </div>
+          {canSeeAll && (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={scope === 'mine' ? 'default' : 'outline'}
+                onClick={() => { setScope('mine'); setSelectedBasket(null); }}
+              >
+                My baskets
+              </Button>
+              <Button
+                size="sm"
+                variant={scope === 'all' ? 'default' : 'outline'}
+                onClick={() => { setScope('all'); setSelectedBasket(null); }}
+              >
+                All baskets
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Claims no queue owns — invisible until now. */}
+        <UnroutedClaimsPanel />
 
         {/* My Queue */}
         {myQueue.length > 0 && (
@@ -134,20 +257,39 @@ export default function ClaimQueue() {
         {/* Workbaskets */}
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-3 space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Workbaskets</h3>
-            {workbaskets.map((basket: BnWorkbasket) => (
-              <Button
-                key={basket.id}
-                variant={selectedBasket === basket.id ? 'default' : 'outline'}
-                className="w-full justify-start"
-                onClick={() => setSelectedBasket(basket.id)}
-              >
-                <Inbox className="mr-2 h-4 w-4" />
-                {basket.basket_name}
-              </Button>
-            ))}
-            {workbaskets.length === 0 && (
-              <p className="text-sm text-muted-foreground">No workbaskets configured</p>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">
+              {scope === 'mine' ? 'My Workbaskets' : 'All Workbaskets'}
+            </h3>
+            {baskets.map((basket) => {
+              const count = counts[basket.id];
+              return (
+                <Button
+                  key={basket.id}
+                  variant={selectedBasket === basket.id ? 'default' : 'outline'}
+                  className="w-full justify-start"
+                  onClick={() => setSelectedBasket(basket.id)}
+                >
+                  <Inbox className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">{basket.basket_name}</span>
+                  <span className="ml-auto flex items-center gap-1">
+                    {count?.overdue ? (
+                      <Badge variant="destructive" className="px-1.5">{count.overdue}</Badge>
+                    ) : null}
+                    <Badge variant="secondary" className="px-1.5">{count?.total ?? 0}</Badge>
+                  </span>
+                </Button>
+              );
+            })}
+            {baskets.length === 0 && !myBasketsLoading && (
+              <p className="text-sm text-muted-foreground">
+                {scope === 'mine'
+                  ? canSeeAll
+                    ? 'You have no personal workbasket — switch to All baskets to work on behalf of any role.'
+                    : roleNames.length > 0
+                      ? `No workbasket is configured for your role${roleNames.length > 1 ? 's' : ''} (${roleNames.join(', ')}).`
+                      : 'You hold no benefits role, so no workbasket is assigned to you.'
+                  : 'No workbaskets configured'}
+              </p>
             )}
           </div>
 
@@ -156,14 +298,19 @@ export default function ClaimQueue() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
-                    {workbaskets.find(b => b.id === selectedBasket)?.basket_name || 'Queue'}
+                    {selected?.basket_name || 'Queue'}
+                    {selected?.role_name && (
+                      <Badge variant="outline" className="ml-2 font-normal">{selected.role_name}</Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {queueLoading ? (
                     <p className="text-sm text-muted-foreground">Loading...</p>
                   ) : queueClaims.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No claims in this queue</p>
+                    <p className="text-sm text-muted-foreground">
+                      No claims currently in {selected?.basket_name || 'this queue'}.
+                    </p>
                   ) : (
                     <Table>
                       <TableHeader>
@@ -192,6 +339,7 @@ export default function ClaimQueue() {
             )}
           </div>
         </div>
+
       </div>
     </PermissionWrapper>
   );

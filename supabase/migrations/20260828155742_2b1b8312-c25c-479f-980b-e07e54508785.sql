@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.ia_record_communication_stage(uuid, text, uuid, text, text, text, text, boolean);

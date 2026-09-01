@@ -435,6 +435,52 @@ const RESOLVERS: Record<string, ResolverFn> = {
   resolveDeceasedContribRecentWeeks: async (ctx) => deceasedWindowOrSnapshot(ctx, 'paid', 13 * 7),
   resolveDeceasedContribWeeksLast12Months: async (ctx) => deceasedWindowOrSnapshot(ctx, 'paid', 365),
 
+  /** Age of the deceased at the recorded death date — needed for age-banded
+   * grant tables (e.g. Funeral Grant's child amount tiers). Prefers the
+   * claim's own recorded death_date over ip_master.date_died, matching
+   * resolveDeathConfirmed's precedence above. */
+  resolveDeceasedAgeAtDeath: async (ctx) => {
+    const deceasedSsn = await resolveDeceasedSsn(ctx);
+    if (!deceasedSsn) return null;
+    const ip = await loadIpMaster(deceasedSsn);
+    if (!ip?.dob) return null;
+    let deathDate: string | null = null;
+    if (ctx.claimId) {
+      const { data } = await db
+        .from('bn_claim')
+        .select('death_date')
+        .eq('id', ctx.claimId)
+        .maybeSingle();
+      deathDate = (data as any)?.death_date ?? null;
+    }
+    if (!deathDate) deathDate = (ip as any).date_died ?? null;
+    if (!deathDate) return null;
+    return yearsBetween(ip.dob, deathDate);
+  },
+
+  /** Funeral Grant's rate-table lookup key. An employment-injury death always
+   * wins regardless of age (confirmed: the augmented amount is about cause of
+   * death, not who died). Otherwise banded by age at death — confirmed with
+   * the product owner: OVER_9 absorbs ages 9 through 17 (there is no row for
+   * 10-17 otherwise), ADULT starts at 18. Calls the two resolvers above via
+   * RESOLVERS rather than duplicating their logic — safe because by the time
+   * any resolver actually runs, this object literal has finished building. */
+  resolveFuneralGrantAgeCategory: async (ctx) => {
+    const isWorkRelated = await RESOLVERS.resolveInjuryWorkRelated(ctx);
+    if (isWorkRelated) return 'EMPLOYMENT_INJURY_DEATH';
+    const age = await RESOLVERS.resolveDeceasedAgeAtDeath(ctx);
+    if (age === null || age === undefined || typeof age !== 'number') return null;
+    if (age < 3) return 'UNDER_3';
+    if (age === 3) return 'AGE_3';
+    if (age === 4) return 'AGE_4';
+    if (age === 5) return 'AGE_5';
+    if (age === 6) return 'AGE_6';
+    if (age === 7) return 'AGE_7';
+    if (age === 8) return 'AGE_8';
+    if (age === 9) return 'AGE_9';
+    if (age < 18) return 'OVER_9';
+    return 'ADULT';
+  },
 
   // Employer
   resolveEmployerExists: async (ctx) => {

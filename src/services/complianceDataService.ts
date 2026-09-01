@@ -395,7 +395,9 @@ export async function fetchViolationSummaryCounts(filters: ViolationFilters = {}
   let query = supabase
     .from("ce_violations")
     .select("status", { count: "exact" })
-    .eq("is_deleted", false);
+    .eq("is_deleted", false)
+    .limit(1);
+
 
   // Apply filters but skip status filter for summary (we want counts per status across all)
   const filtersWithoutStatus = { ...filters, status: 'ALL' };
@@ -408,16 +410,21 @@ export async function fetchViolationSummaryCounts(filters: ViolationFilters = {}
 
   // Now get per-status counts in parallel
   const statusCountPromises = statuses.map(async (s) => {
+    // NOTE: `head: true` count requests are aborted by the client transport on
+    // this deployment (response arrives, request reports ERR_ABORTED), which
+    // silently zeroed every status card. Use a normal 1-row exact count instead.
     let sq = supabase
       .from("ce_violations")
-      .select("id", { count: "exact", head: true })
+      .select("id", { count: "exact" })
       .eq("is_deleted", false)
-      .eq("status", s);
+      .eq("status", s)
+      .limit(1);
     sq = applyViolationFilters(sq, filtersWithoutStatus, searchValue, targetMonth, employerIds);
     const { count: c, error: e } = await sq;
     if (e) return [s, 0] as [string, number];
     return [s, c ?? 0] as [string, number];
   });
+
 
   const statusResults = await Promise.all(statusCountPromises);
   const counts: Record<string, number> = { total };

@@ -210,7 +210,7 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
                           {isOverridden ? (
                             <ShieldAlert className="h-4 w-4 text-amber-600" />
                           ) : r.result_state === 'UNEVALUATED' ? (
-                            <AlertCircle className="h-4 w-4 text-amber-600" title={r.unevaluated_reason ?? 'Could not be evaluated'} />
+                            <span title={r.unevaluated_reason ?? 'Could not be evaluated'}><AlertCircle className="h-4 w-4 text-amber-600" /></span>
                           ) : r.passed ? (
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                           ) : r.fail_action === 'WARN' ? (

@@ -320,7 +320,20 @@ export async function executeClaimAction(
       metadata: { reason_code: reasonCode ?? null, ...sideEffect },
     });
 
+    // ── 3b. Re-route the claim to the workbasket its new status implies ──
+    // Without this a claim keeps the basket it was given at intake for its
+    // whole life, so every queue except intake stays empty. Non-blocking: a
+    // routing failure must not undo a legitimate status change.
+    try {
+      const { routeClaimToWorkbasket } = await import('./workflow/routeClaimToWorkbasket');
+      const routed = await routeClaimToWorkbasket(claimId, userCode);
+      sideEffect.workbasketOutcome = routed.outcome;
+      sideEffect.workbasketName = routed.workbasketName;
+      sideEffect.workbasketReason = routed.reason;
+    } catch (e) { /* non-blocking */ }
+
     // ── 4. Fire configured communications via bridge (non-blocking) ──
+
     try {
       const { onWorkflowActionExecuted } = await import('./communication/workflowCommunicationBridge');
       await onWorkflowActionExecuted({

@@ -12,6 +12,7 @@
  * "Legal Confirmation Required" badges.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { resolveEffectiveRuleShape, collectCatalogueRuleIds, type CatalogueShapeSource } from '@/lib/bn/effectiveRuleShape';
 
 const db = supabase as any;
 
@@ -42,18 +43,55 @@ export interface LegalReadinessReport {
 
 const PROVISIONAL_REF_RE = /^\s*(TBD|TODO|PENDING|N\/A)/i;
 
+interface RuleReadinessRow {
+  id: string;
+  rule_code: string;
+  rule_name: string;
+  fact_key: string | null;
+  rule_kind: string | null;
+  start_fact_key: string | null;
+  end_fact_key: string | null;
+  rule_definition: Record<string, unknown> | null;
+  legislative_reference: string | null;
+  confidence_status: string | null;
+  is_active: boolean;
+  catalogue_rule_id: string | null;
+}
+
 export async function checkLegalReadiness(versionId: string): Promise<LegalReadinessReport> {
-  const { data: rules, error } = await db
+  const { data: rawRules, error } = await db
     .from('bn_eligibility_rule')
     .select(
-      'id, rule_code, rule_name, fact_key, rule_definition, legislative_reference, confidence_status, is_active',
+      'id, rule_code, rule_name, fact_key, rule_kind, start_fact_key, end_fact_key, rule_definition, legislative_reference, confidence_status, is_active, catalogue_rule_id',
     )
     .eq('product_version_id', versionId)
     .eq('is_active', true);
   if (error) throw error;
 
+  // GAP-039 — a rule attached from the Rule Catalogue reads its structural
+  // shape (rule_kind/fact_key/start_fact_key/end_fact_key) live from the
+  // catalogue where the catalogue actually carries a value, so a fact-key fix
+  // made once there reaches every product's readiness check immediately.
+  const catalogueIds = collectCatalogueRuleIds(rawRules ?? []);
+  let catalogueById: Map<string, CatalogueShapeSource> | undefined;
+  if (catalogueIds.length) {
+    const { data: catalogueRows } = await db.from('bn_rule_catalogue').select('*').in('id', catalogueIds);
+    catalogueById = new Map((catalogueRows ?? []).map((c: CatalogueShapeSource) => [c.id, c]));
+  }
+  const rules = ((rawRules ?? []) as RuleReadinessRow[]).map((r) => ({ ...r, ...resolveEffectiveRuleShape(r, catalogueById) }));
+
+  // DATE_DIFFERENCE rules carry no single fact_key by design — they compare
+  // start_fact_key/end_fact_key instead. Both need to be in the fetched fact
+  // set so the linkage check below can validate them the same way as any
+  // other fact, instead of always reporting "no fact_key (UNLINKED)".
   const factKeys = Array.from(
-    new Set((rules || []).map((r: any) => r.fact_key).filter(Boolean)),
+    new Set(
+      (rules || []).flatMap((r: any) =>
+        r.rule_kind === 'DATE_DIFFERENCE'
+          ? [r.start_fact_key, r.end_fact_key].filter(Boolean)
+          : [r.fact_key].filter(Boolean),
+      ),
+    ),
   ) as string[];
 
   let facts: any[] = [];
@@ -97,39 +135,51 @@ export async function checkLegalReadiness(versionId: string): Promise<LegalReadi
       );
     }
 
-    // Fact linkage
-    if (!r.fact_key) {
-      push('FACT_UNLINKED', 'BLOCK', 'Rule has no fact_key (UNLINKED)');
-    } else {
-      const f = factByKey[r.fact_key];
+    // Fact linkage — DATE_DIFFERENCE rules have no single fact_key by design
+    // (see the comment on factKeys above), so check both date facts instead.
+    const checkFact = (key: string) => {
+      const f = factByKey[key];
       if (!f) {
-        push('FACT_UNLINKED', 'BLOCK', `Fact "${r.fact_key}" not found in catalogue`);
-      } else {
-        if (f.implementation_status === 'NOT_IMPLEMENTED') {
-          push('FACT_NOT_IMPLEMENTED', 'BLOCK', `Fact "${r.fact_key}" is NOT_IMPLEMENTED`);
-        } else if (f.implementation_status === 'PARTIAL') {
-          push('FACT_PARTIAL', 'WARN', `Fact "${r.fact_key}" is PARTIAL — review before publish`);
-        }
-        if (f.source_type === 'DERIVED_AGGREGATE') {
-          if (!f.output_json_key || !f.snapshot_builder) {
-            push(
-              'DERIVED_SNAPSHOT_INCOMPLETE',
-              'BLOCK',
-              `Derived fact "${r.fact_key}" missing snapshot_builder or output_json_key`,
-            );
-          }
-        }
-        if (r.fact_key.startsWith('deceased.')) {
-          const resolver = (f.resolver_function || '').toLowerCase();
-          if (!resolver.includes('deceased')) {
-            push(
-              'DECEASED_RESOLVER_MISSING',
-              'BLOCK',
-              `Fact "${r.fact_key}" requires a deceased-aware resolver (must reference deceased_ssn)`,
-            );
-          }
+        push('FACT_UNLINKED', 'BLOCK', `Fact "${key}" not found in catalogue`);
+        return;
+      }
+      if (f.implementation_status === 'NOT_IMPLEMENTED') {
+        push('FACT_NOT_IMPLEMENTED', 'BLOCK', `Fact "${key}" is NOT_IMPLEMENTED`);
+      } else if (f.implementation_status === 'PARTIAL') {
+        push('FACT_PARTIAL', 'WARN', `Fact "${key}" is PARTIAL — review before publish`);
+      }
+      if (f.source_type === 'DERIVED_AGGREGATE') {
+        if (!f.output_json_key || !f.snapshot_builder) {
+          push(
+            'DERIVED_SNAPSHOT_INCOMPLETE',
+            'BLOCK',
+            `Derived fact "${key}" missing snapshot_builder or output_json_key`,
+          );
         }
       }
+      if (key.startsWith('deceased.')) {
+        const resolver = (f.resolver_function || '').toLowerCase();
+        if (!resolver.includes('deceased')) {
+          push(
+            'DECEASED_RESOLVER_MISSING',
+            'BLOCK',
+            `Fact "${key}" requires a deceased-aware resolver (must reference deceased_ssn)`,
+          );
+        }
+      }
+    };
+
+    if (r.rule_kind === 'DATE_DIFFERENCE') {
+      if (!r.start_fact_key || !r.end_fact_key) {
+        push('FACT_UNLINKED', 'BLOCK', 'Date difference rule is missing its start or end date fact');
+      } else {
+        checkFact(r.start_fact_key);
+        checkFact(r.end_fact_key);
+      }
+    } else if (!r.fact_key) {
+      push('FACT_UNLINKED', 'BLOCK', 'Rule has no fact_key (UNLINKED)');
+    } else {
+      checkFact(r.fact_key);
     }
 
     // Threshold present

@@ -22,8 +22,8 @@ import {
 import { formatDateForDisplay } from '@/lib/format-config';
 import { useToast } from '@/hooks/use-toast';
 import { useUserCode } from '@/hooks/useUserCode';
-import { supabase } from '@/integrations/supabase/client';
 import { StandardModal } from '@/components/common/StandardModal';
+import { distributeAuditPlan } from '@/services/audit/planDistributionCommunicationService';
 
 interface PlanDistributionTabProps {
   planId: string;
@@ -144,7 +144,9 @@ export function PlanDistributionTab({ planId, plan }: PlanDistributionTabProps) 
     setMessageBody((prev) => prev + ' ' + field);
   };
 
-  // ===== ACTUAL EMAIL SEND WITH STATUS TRACKING =====
+  // ===== GOVERNED OMNI-COMMS DISTRIBUTION (DEF-2B) =====
+  // The module supplies facts + a governed attachment id only. Subject, body,
+  // sender, provider, channel and delivery evidence belong to Omni-Comms.
   const handleSend = async () => {
     if (recipients.length === 0) {
       toast({ title: 'No Recipients', description: 'Add at least one recipient before sending.', variant: 'destructive' });
@@ -161,129 +163,83 @@ export function PlanDistributionTab({ planId, plan }: PlanDistributionTabProps) 
     }
 
     setSending(true);
-    let successCount = 0;
-    let failCount = 0;
 
     try {
-      // Download the PDF as base64 if artifact has a file path
-      let pdfBase64: string | null = null;
-      let pdfFileName = 'Internal-Audit-Plan.pdf';
-      if (selectedArtifact?.file_path) {
-        pdfFileName = selectedArtifact.file_name || 'Internal-Audit-Plan.pdf';
-        try {
-          const { data: fileData, error: fileError } = await supabase.storage
-            .from('ia-artifacts')
-            .download(selectedArtifact.file_path);
-          if (fileError) {
-            console.error('[Distribution] Failed to download artifact:', fileError);
-            toast({ title: 'Attachment Error', description: 'Could not download the PDF for attachment. Emails will be sent without attachment.', variant: 'destructive' });
-          } else if (fileData) {
-            const arrayBuffer = await fileData.arrayBuffer();
-            const bytes = new Uint8Array(arrayBuffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            pdfBase64 = btoa(binary);
-          }
-        } catch (dlErr) {
-          console.error('[Distribution] Exception downloading artifact:', dlErr);
-        }
+      const distribution = await distributeAuditPlan({
+        planId,
+        plan,
+        artifact: selectedArtifact,
+        recipients: recipients.map((r) => ({ name: r.name, email: r.email, type: r.type })),
+        purpose,
+      });
+
+      if (!distribution.attachment.ok) {
+        toast({
+          title: 'Distribution Blocked',
+          description: `The plan document could not be verified and registered (${distribution.attachment.code}). Nothing was sent.`,
+          variant: 'destructive',
+        });
       }
 
-      for (const recipient of recipients) {
-        const resolvedSubject = resolveMergeFields(subject, recipient.name);
-        const resolvedBody = resolveMergeFields(messageBody, recipient.name);
-
-        // Build HTML email body
-        const htmlBody = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="border-bottom: 2px solid #1a365d; padding-bottom: 15px; margin-bottom: 20px;">
-              <h2 style="color: #1a365d; margin: 0;">Social Security Board</h2>
-              <p style="color: #666; margin: 5px 0 0;">Internal Audit Department</p>
-            </div>
-            ${resolvedBody.split('\n').map((line) => (line.trim() ? `<p style="margin: 0 0 10px; line-height: 1.6; color: #333;">${line}</p>` : '<br/>')).join('')}
-            ${selectedArtifact?.file_path ? `<div style="margin: 25px 0; padding: 15px; background: #f0f4f8; border-radius: 8px; border-left: 4px solid #1a365d;">
-              <p style="margin: 0 0 8px; font-weight: 600; color: #1a365d;">📎 Attached Document</p>
-              <p style="margin: 0; color: #555;">${pdfFileName}</p>
-            </div>` : ''}
-            <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #999;">
-              <p>This is an official communication from the Internal Audit Department.</p>
-            </div>
-          </div>`;
-
-        let sendStatus = 'Pending';
-        let providerMessageId: string | null = null;
-
-        // Build attachments array
-        const emailAttachments = pdfBase64 ? [{
-          filename: pdfFileName,
-          content: pdfBase64,
-          contentType: 'application/pdf',
-        }] : undefined;
-
-        // Call the edge function and track result
-        try {
-          const { data: sendResult, error: sendError } = await supabase.functions.invoke('send-notification', {
-            body: {
-              recipient_email: recipient.email,
-              subject: resolvedSubject,
-              body: htmlBody,
-              from_name: 'SSBM Internal Audit',
-              from_email: 'Audit@secureserve.biz',
-              attachments: emailAttachments,
-            },
-          });
-
-          if (sendError) {
-            sendStatus = 'Failed';
-            failCount++;
-            console.error(`[Distribution] Send failed for ${recipient.email}:`, sendError);
-          } else if (sendResult?.success) {
-            sendStatus = 'Sent';
-            providerMessageId = sendResult.resend_id || null;
-            successCount++;
-          } else {
-            sendStatus = 'Failed';
-            failCount++;
-            console.error(`[Distribution] Send failed for ${recipient.email}:`, sendResult?.message);
-          }
-        } catch (err: any) {
-          sendStatus = 'Failed';
-          failCount++;
-          console.error(`[Distribution] Exception for ${recipient.email}:`, err);
-        }
-
-        // Log distribution with actual status
+      // Distribution evidence: one log row per recipient, carrying the
+      // Omni-Comms request id as the correlation reference.
+      for (const result of distribution.results) {
+        const sendStatus =
+          result.outcome === 'sent'
+            ? 'Sent'
+            : result.outcome === 'queued'
+              ? 'Queued'
+              : result.outcome === 'skipped'
+                ? 'Skipped'
+                : 'Failed';
         await createLog.mutateAsync({
           plan_id: planId,
           artifact_id: selectedArtifactId || null,
-          recipient_name: recipient.name,
-          recipient_email: recipient.email,
-          recipient_type: recipient.type,
-          subject: resolvedSubject,
-          message_body: resolvedBody,
+          recipient_name: result.recipient.name,
+          recipient_email: result.recipient.email,
+          recipient_type: result.recipient.type,
+          subject: resolveMergeFields(subject, result.recipient.name),
+          message_body: [
+            resolveMergeFields(messageBody, result.recipient.name),
+            `— Omni-Comms request ${result.requestId ?? 'not issued'}`,
+            `— Attachment ${distribution.attachment.fileName} (sha256 ${distribution.attachment.checksum ?? 'unverified'})`,
+            result.blockers.length ? `— Blockers: ${result.blockers.join(', ')}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
           send_status: sendStatus,
-          provider_message_id: providerMessageId,
-          sent_at: sendStatus === 'Sent' ? new Date().toISOString() : null,
+          provider_message_id: result.requestId,
+          sent_at: result.outcome === 'sent' ? new Date().toISOString() : null,
           sent_by: userCode || 'system',
         });
       }
 
-      if (failCount === 0) {
-        toast({ title: 'Distribution Complete', description: `Successfully sent to ${successCount} recipient(s).` });
-      } else if (successCount > 0) {
-        toast({ title: 'Partially Sent', description: `${successCount} sent, ${failCount} failed. Check distribution history.`, variant: 'destructive' });
-      } else {
-        toast({ title: 'Send Failed', description: `All ${failCount} emails failed to send. Check the logs.`, variant: 'destructive' });
+      if (distribution.acceptedCount > 0 && distribution.blockedCount === 0) {
+        toast({
+          title: 'Distribution Accepted',
+          description: `${distribution.acceptedCount} recipient(s) accepted by Omni-Comms with the verified plan document attached.`,
+        });
+        setRecipients([]);
+      } else if (distribution.acceptedCount > 0) {
+        toast({
+          title: 'Partially Accepted',
+          description: `${distribution.acceptedCount} accepted, ${distribution.blockedCount} blocked. Check distribution history.`,
+          variant: 'destructive',
+        });
+      } else if (distribution.attachment.ok) {
+        toast({
+          title: 'Distribution Blocked',
+          description: 'Omni-Comms blocked every recipient. Check distribution history for the reason.',
+          variant: 'destructive',
+        });
       }
-      setRecipients([]);
     } catch (err: any) {
       toast({ title: 'Send Error', description: err.message, variant: 'destructive' });
     } finally {
       setSending(false);
     }
   };
+
 
   // ===== QUICK SEND: Load defaults and all board members in one click =====
   const handleQuickSend = () => {

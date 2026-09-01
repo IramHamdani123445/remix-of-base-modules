@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { isRetiredCalculationRule } from "../_shared/compliance/detectionRuleParameterSpec.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,19 +63,31 @@ Deno.serve(async (req) => {
 
     if (runError) throw runError;
 
-    // Get calculation rule
+    // ── Checkpoint C: NO generic universal late-payment penalty. ──
+    // CR-001 is retired. A penalty may only be raised by a fund-specific
+    // calculation rule that carries a configured rate; there is no code
+    // default and lateness alone never produces a charge. Interest is a
+    // separate component handled by CR-002 (ce-ledger-penalty-accrual).
     let ruleQuery = supabase
       .from("ce_calculation_rules")
       .select("*")
       .eq("is_enabled", true)
-      .eq("applies_to", "penalty");
+      .in("applies_to", ["penalty", "fine"])
+      .not("fund_type", "is", null);
 
     if (ruleCode) {
       ruleQuery = ruleQuery.eq("rule_code", ruleCode);
     }
 
-    const { data: rules, error: rulesError } = await ruleQuery;
+    const { data: allRules, error: rulesError } = await ruleQuery;
     if (rulesError) throw rulesError;
+
+    const rules = (allRules ?? []).filter(
+      (r: any) => !isRetiredCalculationRule(r.rule_code) && r.fund_type === fundType,
+    );
+    const retiredSkipped = (allRules ?? [])
+      .filter((r: any) => isRetiredCalculationRule(r.rule_code))
+      .map((r: any) => r.rule_code);
 
     if (!rules || rules.length === 0) {
       // No active rules, mark as completed
@@ -85,37 +98,56 @@ Deno.serve(async (req) => {
           status: "Completed",
           records_processed: 0,
           records_affected: 0,
-          execution_log: { message: "No active penalty calculation rules found" },
+          execution_log: {
+            message:
+              "No fund-specific penalty/fine calculation rule is configured for this fund. " +
+              "A generic late-payment penalty is deliberately not available (CR-001 retired at Checkpoint C).",
+            retired_rules_skipped: retiredSkipped,
+          },
         })
         .eq("id", run.id);
 
       return new Response(
-        JSON.stringify({ message: "No active rules", run_id: run.id }),
+        JSON.stringify({ message: "No active fund-specific rules", run_id: run.id, retired_rules_skipped: retiredSkipped }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    // Get employers with outstanding balances
+    // Employers with outstanding contribution PRINCIPAL.
+    // Checkpoint C-L1: penalties are charged on unpaid principal, never on the
+    // generic cached balance (which also contains penalties and interest).
     const { data: employers, error: empError } = await supabase
-      .from("ce_ledger_periods")
-      .select("employer_id, balance, principal_due")
+      .from("ce_v_ledger_period_balances")
+      .select("employer_id, principal_due, principal_outstanding, total_outstanding")
       .eq("fund_type", fundType)
-      .gt("balance", 0);
+      .gt("principal_outstanding", 0);
+
 
     if (empError) throw empError;
 
     let processed = 0;
     let affected = 0;
     const errors: string[] = [];
+    const configurationErrors: string[] = [];
 
     for (const emp of employers || []) {
       try {
         for (const rule of rules) {
-          // Simple percentage-based penalty calculation
           const params = rule.parameters || {};
-          const penaltyRate = params.penalty_rate || 0.05; // 5% default
-          const minAmount = params.min_amount || 0;
-          const penaltyAmount = Math.max(emp.principal_due * penaltyRate, minAmount);
+          const configuredRate = Number(
+            params.penalty_rate ?? params.initial_rate ?? params.rate,
+          );
+
+          // No configured rate → configuration error, never a code default.
+          if (!Number.isFinite(configuredRate) || configuredRate <= 0) {
+            const msg = `${rule.rule_code}: no configured penalty rate — rule skipped (no code default exists)`;
+            if (!configurationErrors.includes(msg)) configurationErrors.push(msg);
+            continue;
+          }
+
+          const minAmount = Number(params.min_amount ?? 0);
+          const penaltyBase = Number(emp.principal_outstanding);
+          const penaltyAmount = Math.max(penaltyBase * configuredRate, minAmount);
 
           if (penaltyAmount > 0) {
             const idemKey = `penalty-${emp.employer_id}-${period}-${fundType}-${rule.rule_code}`;
@@ -126,7 +158,7 @@ Deno.serve(async (req) => {
               p_fund_type: fundType,
               p_period: period,
               p_amount: penaltyAmount,
-              p_description: `Penalty: ${rule.name} (${(penaltyRate * 100).toFixed(1)}% of ${emp.principal_due})`,
+              p_description: `${rule.fund_type} ${rule.applies_to}: ${rule.name} (${(configuredRate * 100).toFixed(1)}% of outstanding principal ${penaltyBase})`,
               p_reference_type: "calculation_rule",
               p_idempotency_key: idemKey,
               p_posted_by: triggeredBy,
@@ -143,6 +175,7 @@ Deno.serve(async (req) => {
       } catch (e) {
         errors.push(`${emp.employer_id}: ${e.message}`);
       }
+
     }
 
     // Update run record
@@ -158,6 +191,9 @@ Deno.serve(async (req) => {
           period, fund_type: fundType, rules_applied: rules.length,
           employers_processed: processed, penalties_posted: affected,
           errors: errors.slice(0, 20),
+          configuration_errors: configurationErrors,
+          retired_rules_skipped: retiredSkipped,
+          generic_late_payment_penalty: "retired (CR-001) — not applied",
         },
       })
       .eq("id", run.id);

@@ -15,9 +15,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Lock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TestRulePanel } from './TestRulePanel';
+import { supabase } from '@/integrations/supabase/client';
 import type { BnEligibilityRule } from '@/types/bn';
+
+const db = supabase as any;
+
+/** Once a catalogue rule reaches these stages, neither this dialog nor the
+ *  Rule Catalogue's own editor may change it — a rule already legally
+ *  approved and in real use must not silently change under live claims.
+ *  Confirmed via code review: previously nothing on either screen checked
+ *  this at all, so an approved, in-use rule could be edited with no version
+ *  bump and no re-approval, while its governance status kept showing
+ *  "Ready for Product Use" as if nothing had changed. */
+const LOCKED_GOVERNANCE_STATUSES = ['READY_FOR_PRODUCT_USE', 'ACTIVE', 'RETIRED'];
 import { useToast } from '@/hooks/use-toast';
 import { useUpsertBnEligibilityRule } from '@/hooks/bn/useBnProduct';
 import {
@@ -28,6 +41,7 @@ import {
 } from '@/services/bn/eligibility/eligibilityFactRegistry';
 import { OPERATORS } from '@/services/bn/eligibility/operators';
 import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
+import { LegalConfidenceBadge } from '@/components/bn/ruleCatalogue/LegalConfidenceBadge';
 
 type Kind = NonNullable<BnEligibilityRule['rule_kind']>;
 const KINDS: { value: Kind; label: string; description: string }[] = [
@@ -106,12 +120,30 @@ function FactSelectField({
   dateOnly?: boolean;
   grouped: FactGroup[];
 }) {
+  const [search, setSearch] = useState('');
+  const q = search.trim().toLowerCase();
+
   return (
     <Select value={value ?? ''} onValueChange={onValueChange}>
       <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent className="max-h-80">
+        <div className="sticky top-0 z-10 bg-popover p-1 pb-2">
+          <Input
+            autoFocus
+            placeholder="Search facts…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="h-8"
+          />
+        </div>
         {grouped.map(([cat, facts]) => {
-          const filtered = dateOnly ? facts.filter((f) => f.data_type === 'date') : facts;
+          let filtered = dateOnly ? facts.filter((f) => f.data_type === 'date') : facts;
+          if (q) {
+            filtered = filtered.filter(
+              (f) => f.label.toLowerCase().includes(q) || f.fact_key.toLowerCase().includes(q),
+            );
+          }
           if (!filtered.length) return null;
           return (
             <div key={cat}>
@@ -140,10 +172,28 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
   const { toast } = useToast();
   const upsert = useUpsertBnEligibilityRule();
   const [rule, setRule] = useState<Partial<BnEligibilityRule>>(EMPTY);
+  const [catalogueGovernanceStatus, setCatalogueGovernanceStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) setRule({ ...EMPTY, ...(initial ?? {}), product_version_id: productVersionId });
   }, [open, initial, productVersionId]);
+
+  useEffect(() => {
+    let alive = true;
+    const catalogueRuleId = (initial as any)?.catalogue_rule_id;
+    if (!open || !catalogueRuleId) { setCatalogueGovernanceStatus(null); return; }
+    (async () => {
+      const { data } = await db
+        .from('bn_rule_catalogue')
+        .select('governance_status')
+        .eq('id', catalogueRuleId)
+        .maybeSingle();
+      if (alive) setCatalogueGovernanceStatus(data?.governance_status ?? null);
+    })();
+    return () => { alive = false; };
+  }, [open, initial]);
+
+  const isLocked = !!catalogueGovernanceStatus && LOCKED_GOVERNANCE_STATUSES.includes(catalogueGovernanceStatus);
 
   const kind = (rule.rule_kind ?? 'LITERAL') as Kind;
   const def = (rule.rule_definition ?? {}) as Record<string, any>;
@@ -238,6 +288,14 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
   };
 
   const handleSave = async () => {
+    if (isLocked) {
+      toast({
+        title: 'Rule is locked',
+        description: `This rule's catalogue entry is ${catalogueGovernanceStatus} — approved rules already in real use cannot be edited. Retire it and create a new one instead.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!rule.rule_code || !rule.rule_name) { toast({ title: 'Code & Name required', variant: 'destructive' }); return; }
     if (kind === 'DATE_DIFFERENCE' && (!rule.start_fact_key || (!rule.end_fact_key && !rule.fallback_end_fact_key))) {
       toast({ title: 'Need start and end facts', variant: 'destructive' }); return;
@@ -299,6 +357,16 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
         </DialogHeader>
 
         <div className="space-y-4">
+          {isLocked && (
+            <Alert variant="destructive">
+              <Lock className="h-4 w-4" />
+              <AlertDescription>
+                This rule's catalogue entry is <strong>{catalogueGovernanceStatus}</strong> — already approved
+                and in real use. Editing is locked; changes here would silently apply to every claim evaluated
+                against it without a new approval. Retire it in Rule Catalogue and create a new one instead.
+              </AlertDescription>
+            </Alert>
+          )}
           {/* Identification */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label>Rule Code *</Label><Input value={rule.rule_code ?? ''} onChange={(e) => set({ rule_code: e.target.value.toUpperCase() })} maxLength={30} /></div>
@@ -404,7 +472,7 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
               <div className="space-y-3">
                 <div className="space-y-1"><Label className="text-xs">Fact *</Label><FactSelect value={rule.fact_key} onValueChange={(v) => set({ fact_key: v, group_code: defaultGroupForFact(v) })} /></div>
                 {factDef && (
-                  <p className="text-[11px] text-muted-foreground">{factDef.description} · <span className="font-mono">{factDef.source_table}.{factDef.source_column}</span> · type: <Badge variant="outline" className="text-[10px]">{factDef.data_type}</Badge></p>
+                  <p className="text-[11px] text-muted-foreground">{(factDef as any).description} · <span className="font-mono">{factDef.source_table}.{(factDef as any).source_column}</span> · type: <Badge variant="outline" className="text-[10px]">{factDef.data_type}</Badge></p>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -421,10 +489,10 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="true">true</SelectItem><SelectItem value="false">false</SelectItem></SelectContent>
                       </Select>
-                    ) : factDef?.data_type === 'enum' && factDef.allowed_values ? (
+                    ) : factDef?.data_type === 'enum' && (factDef as any).allowed_values ? (
                       <Select value={String(def.value ?? '')} onValueChange={(v) => setDef({ value: v })}>
                         <SelectTrigger><SelectValue placeholder="Pick…" /></SelectTrigger>
-                        <SelectContent>{factDef.allowed_values.map((v) => <SelectItem key={String(v)} value={String(v)}>{String(v)}</SelectItem>)}</SelectContent>
+                        <SelectContent>{((factDef as any).allowed_values as any[]).map((v) => <SelectItem key={String(v)} value={String(v)}>{String(v)}</SelectItem>)}</SelectContent>
                       </Select>
                     ) : (
                       <Input type={factDef?.data_type === 'number' ? 'number' : factDef?.data_type === 'date' ? 'date' : 'text'} value={def.value ?? ''} onChange={(e) => setDef({ value: factDef?.data_type === 'number' ? Number(e.target.value) : e.target.value })} />
@@ -482,6 +550,20 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
             </div>
           </div>
 
+          {/* Legal status is read-only here on purpose — this dialog is for
+              whoever builds the rule, not whoever legally approves it. Only
+              the Rule Catalogue's "Approve Legal" governance action (a
+              separate, role-gated step) may set these two fields — see
+              executeTransition() in ruleGovernanceService.ts. */}
+          <div className="flex items-center gap-3 rounded-md border bg-muted/30 p-2">
+            <span className="text-xs text-muted-foreground">Legal status:</span>
+            <LegalConfidenceBadge status={rule.confidence_status ?? 'DRAFT'} />
+            {rule.legislative_reference && (
+              <span className="text-xs text-muted-foreground truncate">{rule.legislative_reference}</span>
+            )}
+            <span className="text-xs text-muted-foreground ml-auto">Set via Rule Catalogue → Approve Legal</span>
+          </div>
+
           <div className="flex items-center gap-4 rounded-md border bg-muted/30 p-2">
             <div className="flex items-center gap-2"><Switch checked={rule.overrideable ?? false} onCheckedChange={(v) => set({ overrideable: v })} /><Label className="text-sm">Allow override</Label></div>
             {rule.overrideable && <Input className="flex-1" placeholder="Override policy code (e.g. SUPERVISOR_L2)" value={rule.override_policy_code ?? ''} onChange={(e) => set({ override_policy_code: e.target.value || null })} />}
@@ -503,7 +585,7 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={upsert.isPending}>{upsert.isPending ? 'Saving…' : 'Save rule'}</Button>
+          <Button onClick={handleSave} disabled={upsert.isPending || isLocked}>{upsert.isPending ? 'Saving…' : 'Save rule'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

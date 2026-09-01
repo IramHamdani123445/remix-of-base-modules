@@ -117,23 +117,21 @@ export default function AuditPlansNew() {
       breadcrumbs={[{ label: 'Internal Audit' }, { label: 'Annual Plans' }]}
       isLoading={isLoading}
       actions={
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button onClick={() => permissionContext.canManagePlans && setIsCreateOpen(true)} disabled={!permissionContext.canManagePlans || permissionContext.isLoading}>
-                  <Plus className="mr-2 h-4 w-4" />Create Annual Plan
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {!permissionContext.canManagePlans && !permissionContext.isLoading && (
-              <TooltipContent>
-                <p className="text-xs">Missing annual plan maker permission.</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        permissionContext.canManagePlans ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button onClick={() => setIsCreateOpen(true)} disabled={permissionContext.isLoading}>
+                    <Plus className="mr-2 h-4 w-4" />Create Annual Plan
+                  </Button>
+                </span>
+              </TooltipTrigger>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null
       }
+
     >
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard icon={ClipboardList} label="Total Plans" value={metrics.total} />

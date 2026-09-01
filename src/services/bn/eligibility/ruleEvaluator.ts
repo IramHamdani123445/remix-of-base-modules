@@ -45,7 +45,8 @@ function daysBetween(a: string | null | undefined, b: string | null | undefined)
   return Math.floor(ms / 86_400_000);
 }
 
-function convertDays(days: number, unit: BnEligibilityRule['unit']): number {
+/** Exported so `eligibilityEvaluator.ts` converts DATE_DIFFERENCE days using the same factors. */
+export function convertDays(days: number, unit: BnEligibilityRule['unit']): number {
   switch (unit) {
     case 'WEEKS': return days / 7;
     case 'MONTHS': return days / 30.4375;

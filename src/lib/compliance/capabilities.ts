@@ -22,10 +22,19 @@ export const COMPLIANCE_CAPABILITIES = {
   ENFORCEMENT_NOTICES: 'compliance.enforcement.notices',
   ENFORCEMENT_ARRANGEMENTS: 'compliance.enforcement.arrangements',
   ENFORCEMENT_LEGAL: 'compliance.enforcement.legal',
+  PARTIAL_PAYMENT_REQUEST: 'compliance.partial_payment.request',
+  PARTIAL_PAYMENT_APPROVE: 'compliance.partial_payment.approve',
   WORKBENCH_TEAM: 'compliance.workbench.team',
   WORKBENCH_ENTERPRISE: 'compliance.workbench.enterprise',
   REPORTS_OPERATIONAL: 'compliance.reports.operational',
   REPORTS_ANALYTICS: 'compliance.reports.analytics',
+  CONFIG_MANAGE: 'compliance.config.manage',
+  EXEMPTION_MANAGE: 'compliance.exemption.manage',
+  REGISTRATION_LEAD_MANAGE: 'compliance.registration_lead.manage',
+  EMPLOYER_STATUS_CHANGE: 'compliance.employer_status.change',
+  BENCHMARK_OVERRIDE: 'compliance.benchmark.override',
+  REVIEW_FLAG_REVIEW: 'compliance.review_flag.review',
+  LEGAL_RECOMMEND_APPROVE: 'compliance.legal.recommend_approve',
 } as const;
 
 export type ComplianceCapability =
@@ -40,6 +49,7 @@ export const ROLE_CAPABILITIES: Record<ComplianceOperationalRole, ComplianceCapa
     COMPLIANCE_CAPABILITIES.VIOLATIONS_MANAGE,
     COMPLIANCE_CAPABILITIES.CASES_MANAGE,
     COMPLIANCE_CAPABILITIES.ENFORCEMENT_NOTICES,
+    COMPLIANCE_CAPABILITIES.PARTIAL_PAYMENT_REQUEST,
     COMPLIANCE_CAPABILITIES.REPORTS_OPERATIONAL,
   ],
   senior: [
@@ -55,6 +65,8 @@ export const ROLE_CAPABILITIES: Record<ComplianceOperationalRole, ComplianceCapa
     COMPLIANCE_CAPABILITIES.ENFORCEMENT_NOTICES,
     COMPLIANCE_CAPABILITIES.ENFORCEMENT_ARRANGEMENTS,
     COMPLIANCE_CAPABILITIES.ENFORCEMENT_LEGAL,
+    COMPLIANCE_CAPABILITIES.PARTIAL_PAYMENT_REQUEST,
+    COMPLIANCE_CAPABILITIES.PARTIAL_PAYMENT_APPROVE,
     COMPLIANCE_CAPABILITIES.WORKBENCH_TEAM,
     COMPLIANCE_CAPABILITIES.REPORTS_OPERATIONAL,
   ],

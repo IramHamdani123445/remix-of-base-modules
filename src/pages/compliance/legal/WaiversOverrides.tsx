@@ -6,6 +6,7 @@ import { FileText, Plus, Eye, Clock, CheckCircle, XCircle, DollarSign, Loader2, 
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import ReviewWaiverDialog from './ReviewWaiverDialog';
+import NewWaiverRequestDialog from './NewWaiverRequestDialog';
 
 const statusIcon = (status: string) => {
   if (status === 'Approved') return <CheckCircle className="h-3.5 w-3.5 text-success" />;
@@ -21,6 +22,7 @@ const statusVariant = (status: string): 'default' | 'destructive' | 'secondary' 
 
 const WaiversOverrides = () => {
   const [reviewing, setReviewing] = useState<any | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
   const { data: waivers = [], isLoading } = useQuery({
     queryKey: ['ce_waivers'],
     queryFn: async () => {
@@ -42,7 +44,7 @@ const WaiversOverrides = () => {
           </div>
           <p className="text-muted-foreground">Manage waiver requests, penalty overrides, and exception approvals</p>
         </div>
-        <Button className="gap-2"><Plus className="h-4 w-4" />New Waiver Request</Button>
+        <Button className="gap-2" onClick={() => setNewOpen(true)}><Plus className="h-4 w-4" />New Waiver Request</Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -93,6 +95,7 @@ const WaiversOverrides = () => {
         waiver={reviewing}
         onClose={() => setReviewing(null)}
       />
+      <NewWaiverRequestDialog open={newOpen} onClose={() => setNewOpen(false)} />
     </div>
   );
 };

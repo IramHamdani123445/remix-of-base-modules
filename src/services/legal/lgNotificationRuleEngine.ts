@@ -3,8 +3,10 @@
  *
  * Every judicial mutation dispatches a single event code. This engine
  * resolves the rule row and fans out to configured channels:
- *   - in-app   → `in_app_notifications`
- *   - email    → deferred (no-op if provider not configured; never throws)
+ *   - inform a person → Omni-Comms Hub (governed producer), plus a legacy
+ *     `in_app_notifications` compatibility record until Legal in-app delivery
+ *     is certified live
+ *   - email    → owned by the Hub; this engine never contacts a provider
  *   - doc queue → resolves via template registry; no-op if unconfigured
  *   - task queue → creates a follow-up entry in `lg_case_task`
  *
@@ -13,6 +15,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { resolveTemplate, type JudicialTemplateCode } from "./lgTemplateRegistryService";
+import { emitJudicialEventNotice } from "@/platform/omni-comms/integrations/business/legalCommunicationProducer";
 
 const sb = supabase as any;
 
@@ -76,6 +79,34 @@ export function invalidateNotificationRuleCache(): void {
   ruleCacheAt = 0;
 }
 
+/**
+ * Governed leg: hand the "inform a person" part of the judicial event to the
+ * Omni-Comms Hub. The Hub decides template, branding, channel and whether the
+ * message may leave. This engine keeps ownership of rule evaluation, the
+ * document queue and case tasks.
+ */
+async function fanoutHub(rule: NotificationRule, ctx: DispatchContext) {
+  const recipients = ctx.recipient_user_ids ?? [];
+  if (recipients.length === 0) return;
+  try {
+    await emitJudicialEventNotice({
+      matterId: ctx.lg_case_id,
+      judicialEventCode: rule.event_code,
+      sourceRecordId: ctx.entity_id ?? null,
+      title: ctx.title ?? rule.event_label,
+      body: ctx.description ?? rule.event_label,
+      recipients: recipients.map((uid) => ({ userId: uid })),
+    });
+  } catch { /* fire-and-forget: never block the judicial mutation */ }
+}
+
+/**
+ * Compatibility record ONLY.
+ *
+ * The Hub emission above is evaluate-only until Legal is certified for live
+ * delivery, so this row keeps the existing in-app experience working. It is
+ * retired the moment Legal in-app delivery goes live in the Hub.
+ */
 async function fanoutInApp(rule: NotificationRule, ctx: DispatchContext) {
   const recipients = ctx.recipient_user_ids ?? [];
   if (recipients.length === 0) return;
@@ -128,12 +159,6 @@ async function fanoutTaskQueue(rule: NotificationRule, ctx: DispatchContext) {
   } catch { /* fire-and-forget */ }
 }
 
-async function fanoutEmail(_rule: NotificationRule, _ctx: DispatchContext) {
-  // Email provider is not required for EPIC-06C. When the platform email
-  // channel is wired later, dispatch here. Never throws.
-  return;
-}
-
 /**
  * Dispatch a judicial event through all configured channels.
  * Never throws — safe to await from any mutation path.
@@ -147,8 +172,8 @@ export async function dispatch(
     const rule = rules.get(eventCode);
     if (!rule) return;
     const tasks: Promise<unknown>[] = [];
+    if (rule.in_app || rule.email) tasks.push(fanoutHub(rule, ctx));
     if (rule.in_app) tasks.push(fanoutInApp(rule, ctx));
-    if (rule.email) tasks.push(fanoutEmail(rule, ctx));
     if (rule.doc_queue) tasks.push(fanoutDocQueue(rule, ctx));
     if (rule.task_queue) tasks.push(fanoutTaskQueue(rule, ctx));
     await Promise.all(tasks);

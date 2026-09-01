@@ -5,6 +5,7 @@ import { Briefcase, User, Shield, Calendar, Target, TrendingUp, AlertTriangle, C
 import { formatDateForDisplay } from '@/lib/format-config';
 import { LaunchReadinessPanel } from '@/components/audit/LaunchReadinessPanel';
 import { AuditNextActionsPanel, deriveNextActions } from '@/components/audit/workspace/AuditNextActionsPanel';
+import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
 import { AuditProgressPanel } from '@/components/audit/execution/AuditProgressPanel';
 
 function InfoRow({ label, value, highlight }: { label: string; value: any; highlight?: boolean }) {
@@ -54,6 +55,8 @@ export function AuditOverviewTab({
   getDeptName, getFunctionName, getAuditorName, getPlanTitle,
   workspaceCounts, onNavigateTab,
 }: AuditOverviewTabProps) {
+  const auditPermissions = useInternalAuditPermissions();
+
   const sourceLabel = audit?.engagement_type === 'Ad Hoc' ? 'Ad Hoc Audit' :
     audit?.engagement_type === 'Supplementary' ? 'Supplementary Plan' :
     audit?.annual_plan_id ? 'Annual Plan' : 'Ad Hoc Audit';
@@ -164,6 +167,9 @@ export function AuditOverviewTab({
             responses: auditResponses.length,
             actions: auditActions.length,
             overdueActions: overdueActionsCount,
+          }, {
+            canLaunch: auditPermissions.can('launch_department_audit'),
+            canClose: auditPermissions.can('close_department_audit'),
           })}
         />
         <Card>

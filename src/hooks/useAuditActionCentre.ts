@@ -19,7 +19,11 @@ export interface IaFilters {
   owner_profile_id?: string | null;
   finding_id?: string | null;
   severity?: string | null;
+  /** Combined High + Critical predicate applied server-side by ia_register_findings. */
+  high_critical?: boolean;
   status?: string | null;
+  /** Finding lifecycle status, distinct from the action status predicate. */
+  finding_status?: string | null;
   due_from?: string | null;
   due_to?: string | null;
   overdue?: boolean;
@@ -27,6 +31,7 @@ export interface IaFilters {
   open_only?: boolean;
   disputed?: boolean;
   response_outstanding?: boolean;
+
 }
 
 export interface IaCommandOutcome {

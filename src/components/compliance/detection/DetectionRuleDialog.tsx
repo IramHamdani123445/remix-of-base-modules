@@ -13,6 +13,13 @@ import { Loader2, PlusCircle, X, Database, Settings2, Filter, Zap, BarChart3, In
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { resolveMany, buildSnapshot, type ResolvedVariable } from '@/services/compliance/policyResolver';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  DETECTION_PARAM_SPEC,
+  validateRuleParameterDraft,
+  type CeParamSpec,
+} from '@/lib/compliance/detectionRuleParameterSpec';
+
 
 // ── Types ──
 
@@ -95,89 +102,43 @@ const TRIGGER_EVENTS: TriggerEventDef[] = [
   { value: 'benefit_fraud_indicator', label: 'Benefit Fraud Indicator', description: 'Suspicious benefit claim patterns detected', category: 'pattern' },
 ];
 
-// ── Dynamic Parameter Definitions per Trigger ──
+// ── Parameter definitions: derived from the canonical runtime contract ──
+//
+// The scanner (ce-violation-scan) resolves rule parameters through
+// DETECTION_PARAM_SPEC. This dialog renders exactly those fields, so an
+// administrator can never configure a key the engine ignores, and can never
+// leave a required threshold unset in the belief that "a default applies" —
+// there are no code defaults, only configuration.
 
-interface ParamFieldDef {
-  key: string;
-  label: string;
-  type: 'number' | 'text' | 'boolean';
-  placeholder?: string;
-  helpText?: string;
-  defaultValue?: any;
+type ParamFieldDef = CeParamSpec;
+
+/** Triggers listed in the picker but not yet implemented by the scanner. */
+const TRIGGERS_WITHOUT_RUNTIME = TRIGGER_EVENTS.map((t) => t.value).filter(
+  (t) => !DETECTION_PARAM_SPEC[t],
+);
+
+/** Read-only view of the statutory values owned by the active policy. */
+function useActiveCompliancePolicy(enabled: boolean) {
+  const [policy, setPolicy] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('ce_compliance_policies')
+        .select('policy_code, c3_submission_deadline_day, payment_due_date_day, c3_grace_period_days')
+        .eq('is_active', true)
+        .order('effective_from', { ascending: false })
+        .limit(1);
+      if (!cancelled) setPolicy((data?.[0] as any) ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+  return policy;
 }
 
-const TRIGGER_PARAM_DEFS: Record<string, ParamFieldDef[]> = {
-  c3_deadline_passed: [
-    { key: 'grace_period_days', label: 'Grace Period (Days)', type: 'number', placeholder: '14', helpText: 'Days after deadline before triggering', defaultValue: 14 },
-    { key: 'ignore_dormant', label: 'Ignore Dormant Employers', type: 'boolean', defaultValue: false },
-  ],
-  c3_missing_30_days: [
-    { key: 'additional_days_threshold', label: 'Additional Days Threshold', type: 'number', placeholder: '30', helpText: 'Days past deadline to consider missing', defaultValue: 30 },
-    { key: 'minimum_missing_periods', label: 'Minimum Missing Periods', type: 'number', placeholder: '1', helpText: 'Minimum consecutive missing periods', defaultValue: 1 },
-    { key: 'ignore_dormant', label: 'Ignore Dormant Employers', type: 'boolean', defaultValue: true },
-  ],
-  contribution_gap_detected: [
-    { key: 'gap_threshold_months', label: 'Gap Threshold (Months)', type: 'number', placeholder: '3', helpText: 'Minimum months of gap to flag', defaultValue: 3 },
-    { key: 'check_active_only', label: 'Active Employers Only', type: 'boolean', defaultValue: true },
-  ],
-  payment_not_received: [
-    { key: 'days_after_due', label: 'Days After Due Date', type: 'number', placeholder: '7', helpText: 'Days past due before triggering', defaultValue: 7 },
-    { key: 'minimum_amount', label: 'Minimum Amount ($)', type: 'number', placeholder: '100', helpText: 'Minimum owed to trigger' },
-    { key: 'ignore_if_plan', label: 'Ignore if Active Payment Plan', type: 'boolean', defaultValue: true },
-  ],
-  payment_partial: [
-    { key: 'minimum_shortfall_amount', label: 'Minimum Shortfall Amount ($)', type: 'number', placeholder: '50', helpText: 'Minimum dollar shortfall to trigger' },
-    { key: 'minimum_shortfall_pct', label: 'Minimum Shortfall %', type: 'number', placeholder: '10', helpText: 'Minimum percentage shortfall' },
-    { key: 'ignore_if_plan', label: 'Ignore if Active Payment Plan', type: 'boolean', defaultValue: false },
-  ],
-  installment_overdue: [
-    { key: 'grace_period_days', label: 'Grace Period (Days)', type: 'number', placeholder: '5', defaultValue: 5 },
-    { key: 'minimum_overdue_amount', label: 'Minimum Overdue Amount ($)', type: 'number', placeholder: '50' },
-  ],
-  levy_omission_check: [
-    { key: 'minimum_wage_threshold', label: 'Minimum Wage Threshold ($)', type: 'number', placeholder: '500', helpText: 'Minimum wages to expect levy' },
-    { key: 'check_active_only', label: 'Active Employers Only', type: 'boolean', defaultValue: true },
-  ],
-  severance_omission_check: [
-    { key: 'minimum_employee_count', label: 'Minimum Employee Count', type: 'number', placeholder: '1', helpText: 'Min employees to expect severance' },
-    { key: 'check_active_only', label: 'Active Employers Only', type: 'boolean', defaultValue: true },
-  ],
-  employee_underreporting: [
-    { key: 'variance_threshold_pct', label: 'Variance Threshold %', type: 'number', placeholder: '20', helpText: 'Percentage difference to flag' },
-    { key: 'minimum_employees', label: 'Minimum Employee Count', type: 'number', placeholder: '3' },
-  ],
-  wage_underreporting: [
-    { key: 'variance_threshold_pct', label: 'Variance Threshold %', type: 'number', placeholder: '25' },
-    { key: 'use_industry_benchmark', label: 'Compare to Industry Benchmark', type: 'boolean', defaultValue: true },
-  ],
-  registration_not_found: [
-    { key: 'lookback_months', label: 'Lookback Period (Months)', type: 'number', placeholder: '6', helpText: 'How far back to search for activity' },
-  ],
-  employer_cessation: [
-    { key: 'outstanding_balance_min', label: 'Min Outstanding Balance ($)', type: 'number', placeholder: '100' },
-    { key: 'include_pending_claims', label: 'Include Pending Claims', type: 'boolean', defaultValue: true },
-  ],
-  repeat_violation_check: [
-    { key: 'rolling_period_months', label: 'Rolling Period (Months)', type: 'number', placeholder: '12', defaultValue: 12 },
-    { key: 'minimum_violations', label: 'Minimum Violations', type: 'number', placeholder: '3', defaultValue: 3 },
-  ],
-  benefit_fraud_indicator: [
-    { key: 'anomaly_score_threshold', label: 'Anomaly Score Threshold', type: 'number', placeholder: '75', helpText: 'Minimum anomaly score (0-100)' },
-    { key: 'review_required', label: 'Require Manual Review', type: 'boolean', defaultValue: true },
-  ],
-  audit_discrepancy_found: [
-    { key: 'severity_threshold', label: 'Minimum Severity', type: 'text', placeholder: 'Medium' },
-  ],
-  late_registration: [
-    { key: 'days_after_start', label: 'Days After Employment Start', type: 'number', placeholder: '30', helpText: 'Days after employment begins' },
-  ],
-};
-
-// Fallback for unknown triggers
-const DEFAULT_PARAM_DEFS: ParamFieldDef[] = [
-  { key: 'threshold', label: 'Threshold', type: 'number', placeholder: '0' },
-  { key: 'enabled', label: 'Enabled', type: 'boolean', defaultValue: true },
-];
 
 // ── Quick Condition Templates ──
 
@@ -455,13 +416,17 @@ const DynamicParametersForm = ({
   value,
   onChange,
   conditionVars,
+  policy,
+  errors,
 }: {
   triggerEvent: string;
   value: Record<string, any>;
   onChange: (v: Record<string, any>) => void;
   conditionVars: ConditionVar[];
+  policy: Record<string, any> | null;
+  errors: Record<string, string>;
 }) => {
-  const paramDefs = TRIGGER_PARAM_DEFS[triggerEvent] || DEFAULT_PARAM_DEFS;
+  const paramDefs: ParamFieldDef[] = DETECTION_PARAM_SPEC[triggerEvent] ?? [];
 
   // Find C3-linked variables relevant to this trigger
   const c3Vars = conditionVars.filter(v => v.c3ConfigKey);
@@ -489,33 +454,89 @@ const DynamicParametersForm = ({
     );
   }
 
+  if (paramDefs.length === 0) {
+    return (
+      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+        <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+          No detection engine implementation
+        </p>
+        <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+          The violation scanner does not evaluate this trigger, so no thresholds are offered here — any values
+          stored would be ignored at runtime. Rules on this trigger are reported as “not implemented” on every scan.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {paramDefs.map(def => (
-        <div key={def.key} className="space-y-1">
-          {def.type === 'boolean' ? (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={value[def.key] ?? def.defaultValue ?? false}
-                onCheckedChange={c => updateParam(def.key, !!c)}
-              />
-              <Label className="font-normal text-sm">{def.label}</Label>
-            </div>
-          ) : (
-            <>
-              <Label className="text-sm">{def.label}</Label>
-              <Input
-                type={def.type}
-                value={value[def.key] ?? def.defaultValue ?? ''}
-                onChange={e => updateParam(def.key, def.type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
-                placeholder={def.placeholder}
-                className="h-9"
-              />
-            </>
-          )}
-          {def.helpText && <p className="text-[10px] text-muted-foreground">{def.helpText}</p>}
-        </div>
-      ))}
+      <p className="text-[11px] text-muted-foreground">
+        These are the exact parameters the violation scanner reads. Required values have no code default — if one is
+        missing the rule is skipped and reported as a configuration error on the scan run.
+      </p>
+      {paramDefs.map(def => {
+        const inherited = def.policyFallback ? policy?.[def.policyFallback] : undefined;
+        const error = errors[def.key];
+        return (
+          <div key={def.key} className="space-y-1">
+            {def.type === 'boolean' ? (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={value[def.key] === true}
+                  onCheckedChange={c => updateParam(def.key, !!c)}
+                />
+                <Label className="font-normal text-sm">
+                  {def.label}
+                  {def.required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+              </div>
+            ) : (
+              <>
+                <Label className="text-sm">
+                  {def.label}
+                  {def.required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+                {def.type === 'string_array' ? (
+                  <Input
+                    value={Array.isArray(value[def.key]) ? value[def.key].join(', ') : (value[def.key] ?? '')}
+                    onChange={e => {
+                      const parts = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                      updateParam(def.key, parts.length > 0 ? parts : '');
+                    }}
+                    placeholder="Comma-separated codes"
+                    className="h-9"
+                  />
+                ) : (
+                  <Input
+                    type="number"
+                    value={value[def.key] ?? ''}
+                    onChange={e => updateParam(def.key, e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder={
+                      inherited !== undefined && inherited !== null
+                        ? `Inherited from policy: ${inherited}`
+                        : def.suggested !== undefined
+                          ? String(def.suggested)
+                          : ''
+                    }
+                    min={def.min}
+                    max={def.max}
+                    className="h-9"
+                  />
+                )}
+              </>
+            )}
+            <p className="text-[10px] text-muted-foreground">{def.help}</p>
+            {inherited !== undefined && inherited !== null && (
+              <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                Owned by the active Compliance Policy ({def.policyFallback} = {String(inherited)}). Leave blank to inherit.
+              </p>
+            )}
+            {error && <p className="text-[10px] text-destructive">{error}</p>}
+          </div>
+        );
+      })}
+
+
 
       {/* C3 Config Awareness Section */}
       {c3Vars.length > 0 && (
@@ -755,14 +776,14 @@ export const EnhancedDetectionRuleDialog = ({
     const ev = TRIGGER_EVENTS.find(e => e.value === val);
     // Auto-set category from trigger
     if (ev) setTriggerCategory(ev.category);
-    // Initialize default params for this trigger
-    const defaultParams: Record<string, any> = {};
-    const defs = TRIGGER_PARAM_DEFS[val] || [];
-    defs.forEach(d => {
-      if (d.defaultValue !== undefined) defaultParams[d.key] = d.defaultValue;
+    // Seed the administrator's draft with the contract's suggested values.
+    // These are only editor suggestions — the engine applies no defaults.
+    const seeded: Record<string, any> = {};
+    (DETECTION_PARAM_SPEC[val] ?? []).forEach(d => {
+      if (d.suggested !== undefined) seeded[d.key] = d.suggested;
     });
-    // Merge existing params with defaults (existing take precedence for edits)
-    const mergedParams = isEdit ? { ...defaultParams, ...(rule?.trigger_event === val ? (rule?.parameters || {}) : {}) } : defaultParams;
+    // Merge existing params with suggestions (existing take precedence for edits)
+    const mergedParams = isEdit ? { ...seeded, ...(rule?.trigger_event === val ? (rule?.parameters || {}) : {}) } : seeded;
     setForm(p => ({
       ...p,
       trigger_event: val === '__pick__' ? '' : val,
@@ -771,7 +792,20 @@ export const EnhancedDetectionRuleDialog = ({
     }));
   };
 
+
+  const activePolicy = useActiveCompliancePolicy(open);
+
+  /** Live validation against the canonical runtime contract. */
+  const parameterErrors = useMemo(
+    () =>
+      form.trigger_event && DETECTION_PARAM_SPEC[form.trigger_event]
+        ? validateRuleParameterDraft(DETECTION_PARAM_SPEC[form.trigger_event], form.parameters, activePolicy)
+        : {},
+    [form.trigger_event, form.parameters, activePolicy],
+  );
+
   const handleSave = async () => {
+
     if (!form.name || !form.trigger_event) {
       toast.error('Please check the form for valid information!', {
         description: 'Name and Trigger Event are required.',
@@ -780,14 +814,29 @@ export const EnhancedDetectionRuleDialog = ({
       });
       return;
     }
-    // Clean parameters: remove empty values
+
+    // A rule cannot be saved with parameters the engine would reject at runtime.
+    const errorKeys = Object.keys(parameterErrors);
+    if (errorKeys.length > 0) {
+      toast.error('Rule parameters are incomplete or invalid', {
+        description: errorKeys.map(k => `${k}: ${parameterErrors[k]}`).join(' · '),
+        classNames: { toast: '!bg-destructive', title: '!text-white', description: '!text-white !opacity-100' },
+      });
+      return;
+    }
+
+    // Clean parameters: remove empty values and any key outside the contract
+    // (legacy keys would otherwise linger and mislead administrators).
+    const contractKeys = new Set((DETECTION_PARAM_SPEC[form.trigger_event] ?? []).map(d => d.key));
     const cleanParams: Record<string, any> = {};
     Object.entries(form.parameters).forEach(([k, v]) => {
       if (k === '_snapshot') return; // recomputed below
+      if (!contractKeys.has(k) && !k.endsWith('_override')) return;
       if (v !== '' && v !== undefined && v !== null) {
         cleanParams[k] = v;
       }
     });
+
 
     // Build / preserve the policy snapshot.
     // On EDIT: keep the existing snapshot frozen — never re-resolve from live config.
@@ -928,7 +977,10 @@ export const EnhancedDetectionRuleDialog = ({
                 value={form.parameters}
                 onChange={v => setForm(p => ({ ...p, parameters: v }))}
                 conditionVars={enrichedVars}
+                policy={activePolicy}
+                errors={parameterErrors}
               />
+
             </div>
           </div>
 

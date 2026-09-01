@@ -25,8 +25,21 @@ if (key && session) store.set(key, session);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).localStorage = localStoragePolyfill;
+const locationPolyfill = {
+  origin: 'http://localhost:8080',
+  href: 'http://localhost:8080/',
+  hostname: 'localhost',
+  protocol: 'http:',
+  pathname: '/',
+  search: '',
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).location = (globalThis as any).location ?? locationPolyfill;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).window = (globalThis as any).window ?? {
   localStorage: localStoragePolyfill,
-  location: { origin: 'http://localhost:8080', href: 'http://localhost:8080/' },
+  location: locationPolyfill,
+  addEventListener: () => {},
+  removeEventListener: () => {},
 };

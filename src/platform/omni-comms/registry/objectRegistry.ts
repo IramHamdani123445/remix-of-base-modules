@@ -199,6 +199,52 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
+    name: 'omni_comms_attachment',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose: 'Governed attachment registry: verified, versioned, content-addressed source documents.',
+    status: 'AVAILABLE',
+    introductionStory: 'Internal Audit Wave 4 — DEF-3 attachment contract',
+  },
+  {
+    name: 'omni_comms_attachment_bucket_policy',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose: 'Allowed storage buckets, content types and size bounds for governed attachments.',
+    status: 'AVAILABLE',
+    introductionStory: 'Internal Audit Wave 4 — DEF-3 attachment contract',
+  },
+  {
+    name: 'omni_comms_channel_attachment_policy',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose: 'Per-channel attachment capability: count, total size and blocking behaviour.',
+    status: 'AVAILABLE',
+    introductionStory: 'Internal Audit Wave 4 — DEF-3 attachment contract',
+  },
+  {
+    name: 'omni_comms_request_attachment',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose: 'Immutable pinning of attachment identity and checksum to a request.',
+    status: 'AVAILABLE',
+    introductionStory: 'Internal Audit Wave 4 — DEF-3 attachment contract',
+  },
+  {
+    name: 'omni_comms_message_attachment',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose: 'Resolved per-message attachment manifest used by the dispatch worker.',
+    status: 'AVAILABLE',
+    introductionStory: 'Internal Audit Wave 4 — DEF-3 attachment contract',
+  },
+
+  {
     name: 'omni_comms_recipient',
     category: 'runtime',
     epic: 6,
@@ -636,6 +682,27 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
       'Governed state and evidence record for one inbound Voice self-service call: calling line, resolved subject (person or employer), verification attempts and the exact wording spoken back. Written only by the signature-verified inbound Voice endpoint.',
     status: 'AVAILABLE',
     introductionStory: 'Voice — inbound dynamic self-service IVR',
+  },
+
+  {
+    name: 'omni_comms_channel_adapter_capability',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Authoritative capability record for one delivery adapter: the channel it serves, whether it needs external provider credentials, and whether it is certification-safe (an internal simulation path that contacts no provider). The dispatch claim reads it instead of hard-coding provider names.',
+    status: 'AVAILABLE',
+    introductionStory: 'Runtime Delivery Foundation — capability-based dispatch claim',
+  },
+  {
+    name: 'omni_comms_dispatch_activation',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Single governed activation record naming the exact release, environment, module scope and adapter class runtime dispatch is open for. Absent or unmatched, dispatch authorization fails closed and every job is held as certification pending.',
+    status: 'AVAILABLE',
+    introductionStory: 'Runtime Delivery Foundation — database dispatch authority',
   },
 
 ] as const;

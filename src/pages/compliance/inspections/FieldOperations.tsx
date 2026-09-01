@@ -9,9 +9,10 @@ import { MapPin, Clock, Camera, FileText, CheckCircle2, AlertCircle, Search, Fil
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { fetchFieldActivities } from "@/services/complianceDataService";
 import { supabase } from "@/integrations/supabase/client";
+import { SearchBar } from "@/components/common/SearchBar";
 
 export default function FieldOperations() {
   const { toast } = useToast();
@@ -24,10 +25,12 @@ export default function FieldOperations() {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [checkedInActivities, setCheckedInActivities] = useState<Set<string>>(new Set());
 
-  const { data: activities = [], isLoading } = useQuery({
+  const { data: activities = [], isPending, isFetching } = useQuery({
     queryKey: ['ce_field_activities', statusFilter, searchTerm],
     queryFn: () => fetchFieldActivities({ status: statusFilter, search: searchTerm || undefined }),
+    placeholderData: keepPreviousData,
   });
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -67,9 +70,10 @@ export default function FieldOperations() {
     }
   };
 
-  if (isLoading) {
+  if (isPending) {
     return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
+
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -87,10 +91,12 @@ export default function FieldOperations() {
       <Card>
         <CardHeader><CardTitle>Field Activities</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by employer or case number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" /></div></div>
+          <div className="flex gap-4 mb-6 items-center">
+            <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search by employer or case number..." />
+            {isFetching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             <Button variant="outline" className="gap-2"><Filter className="h-4 w-4" />Filters</Button>
           </div>
+
 
           {activities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">No field activities found</div>

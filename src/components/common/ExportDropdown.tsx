@@ -86,13 +86,16 @@ export const ExportDropdown: React.FC<ExportDropdownProps> = ({
     try {
       const escape = (v: any) => {
         if (v === null || v === undefined) return '';
-        const s = String(v);
-        return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+        // Collapse embedded newlines so one record always occupies one CSV line,
+        // keeping the exported row count identical to the on-screen row count.
+        const s = String(v).replace(/\r?\n/g, ' ').trim();
+        return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const csv = [
         columns.map(c => escape(c.header)).join(','),
         ...data.map(row => columns.map(c => escape(row[c.key])).join(',')),
       ].join('\n');
+
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       saveAs(blob, `${fileName}.csv`);
       toast({ title: 'Export Successful', description: `Exported ${data.length} records to CSV` });

@@ -1181,7 +1181,11 @@ export const fieldAuditService = {
       .from('ce_weekly_plans')
       .select('*')
       .in('status', ['SUBMITTED'])
-      .order('outcome_submitted_at', { ascending: false });
+      // outcome_submitted_at is only stamped by the report flow; plans that
+      // arrived via the plan workflow carry submitted_date, so order by the
+      // effective submission timestamp instead of dropping them to the bottom.
+      .order('outcome_submitted_at', { ascending: false, nullsFirst: false })
+      .order('submitted_date', { ascending: false, nullsFirst: false });
     if (error) throw error;
     return data ?? [];
   },
