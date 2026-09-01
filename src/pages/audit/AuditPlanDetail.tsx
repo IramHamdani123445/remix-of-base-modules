@@ -50,6 +50,8 @@ export default function AuditPlanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  // DEF-A-01 — controlled tabs bound to ?tab= (preserves other params).
+  const [activeTab, setActiveTab] = useUrlTab(PLAN_WORKSPACE_TABS);
 
   const { data: plans = [], isLoading: plansLoading } = useIAAnnualPlans();
   const { data: engagements = [], isLoading: engLoading } = useIAPlanEngagements(id);
