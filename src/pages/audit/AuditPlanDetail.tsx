@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PLAN_WORKSPACE_TABS, useUrlTab } from '@/lib/audit/workspaceTabs';
 import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertTriangle, ShieldCheck, Edit, Send, Undo2, BarChart3 } from 'lucide-react';
 import { configFromPlan, calculateCapacity, analyzeDistribution, getEngagementHours } from '@/lib/audit/capacityPlanner';
 import { useIAAnnualPlans, useIAAnnualPlanMutations, useIADepartments, useIAAuditors, useIADepartmentFunctions } from '@/hooks/useAuditData';
