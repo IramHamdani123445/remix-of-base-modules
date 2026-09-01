@@ -12,7 +12,7 @@
  * on their dedicated subpages.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ComplianceHelpButton } from '@/components/help/ComplianceHelpButton';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
@@ -136,7 +136,8 @@ export default function NoticeRegister() {
 
   const [searchDraft, setSearchDraft] = useState(filters.search);
   const [openGen, setOpenGen] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [detailId, setDetailId] = useState<string | null>(searchParams.get('notice'));
   const [advanced, setAdvanced] = useState(false);
 
   useEffect(() => { setSearchDraft(filters.search); }, [filters.search]);

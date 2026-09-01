@@ -88,9 +88,6 @@ export function NoticeDetailDialog({ noticeId, open, onOpenChange, actor }: Prop
     qc.invalidateQueries({ queryKey: ['ce_notices'] });
   };
 
-  const run = (fn: () => Promise<void>, success: string) =>
-    useMutationLike(fn, success, invalidate);
-
   const action = useMutation({
     mutationFn: async (a: { kind: string }) => {
       if (!noticeId) return;
@@ -372,14 +369,6 @@ export function NoticeDetailDialog({ noticeId, open, onOpenChange, actor }: Prop
       </DialogContent>
     </Dialog>
   );
-}
-
-// Helper kept local to avoid conditional hook usage in the component body.
-function useMutationLike(fn: () => Promise<void>, success: string, after: () => void) {
-  return async () => {
-    try { await fn(); toast.success(success); after(); }
-    catch (e: any) { toast.error(e?.message || 'Action failed'); }
-  };
 }
 
 export default NoticeDetailDialog;
