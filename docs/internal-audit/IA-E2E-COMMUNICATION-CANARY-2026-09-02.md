@@ -49,3 +49,22 @@ therefore no longer blocked by either the recipient gate or the revision pin.
 
 Gates E1, E2 and E3 are satisfied. The final 20-engagement E2E plan has **not**
 been started.
+
+---
+
+## 5. Gate E4.0 — closed
+
+The fresh post-cutover canary was executed and **passed**. It also exposed and
+corrected DEF-E2E-002 (deployment certification did not advance the privileged
+dispatch activation, so no newly rendered job could ever dispatch after a
+redeploy).
+
+Full trace, provider acceptance evidence and the correction detail:
+`docs/internal-audit/IA-FULL-E2E-COMMUNICATION-EVIDENCE-2026-09-02.md`.
+
+Summary: Annual Plan `2029-CANARY-C` approved through governed commands only →
+`INTERNAL_AUDIT.PLAN.APPROVED` emitted → ingested and rendered automatically →
+both email and in-app jobs authorised with a valid release snapshot → dispatched
+unattended within one scheduler cycle → email accepted by the provider (HTTP
+200) and in-app delivered. Recipient was an approved Internal Audit test mailbox;
+live delivery remains disabled.
