@@ -263,7 +263,7 @@ const LegalProceedingsPage = () => {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-          <KpiCard label="Active Proceedings" value={kpis.active_total ?? 0} />
+          <KpiCard label="Active Proceedings" value={kpis.active ?? 0} />
           <KpiCard
             label="Awaiting Legal Action"
             value={kpis.awaiting_legal ?? 0}
@@ -274,14 +274,14 @@ const LegalProceedingsPage = () => {
           />
           <KpiCard
             label="Hearings Next 7 Days"
-            value={kpis.hearing_soon ?? 0}
+            value={kpis.hearings_soon ?? 0}
             tone="warn"
             active={filters.hearing_window === 'NEXT_7'}
             onClick={() => reg.setFilter('hearing', filters.hearing_window === 'NEXT_7' ? '' : 'NEXT_7')}
           />
           <KpiCard
             label="Hearings Overdue"
-            value={kpis.hearing_overdue ?? 0}
+            value={kpis.hearings_overdue ?? 0}
             tone="danger"
             active={filters.hearing_window === 'OVERDUE'}
             onClick={() => reg.setFilter('hearing', filters.hearing_window === 'OVERDUE' ? '' : 'OVERDUE')}
@@ -295,11 +295,11 @@ const LegalProceedingsPage = () => {
           {canMoney ? (
             <KpiCard
               label="Outstanding Exposure"
-              value={money(kpis.outstanding_total)}
+              value={money(kpis.outstanding_exposure)}
               hint={`${money(kpis.recovered_total)} recovered`}
             />
           ) : (
-            <KpiCard label="Closed Matters" value={kpis.closed_total ?? 0} onClick={() => reg.setTab('CLOSED')} />
+            <KpiCard label="Closed Matters" value={kpis.closed ?? 0} onClick={() => reg.setTab('CLOSED')} />
           )}
         </div>
 
