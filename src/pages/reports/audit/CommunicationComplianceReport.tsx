@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { QueryByFilter } from "@/components/shared/QueryByFilter";
 import { ExportActions } from '@/components/reports/ExportActions';
@@ -46,12 +47,15 @@ const exportColumns: ExportColumn[] = [
 export default function CommunicationComplianceReport() {
   const [filters, setFilters] = useState<Record<string, any>>({});
 
-  const { data: stages = [], isLoading } = useQuery({
+  // DEF-A-02 — ia_audit_engagements has no `title` column; the canonical
+  // display field is `engagement_name`.
+  const { data: stages = [], isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ia_communication_compliance_report', filters],
+    retry: false,
     queryFn: async () => {
       let query = supabase
         .from('ia_communication_stages' as any)
-        .select('*, engagement:engagement_id(title, status)')
+        .select('*, engagement:engagement_id(engagement_name, status)')
         .order('created_at', { ascending: false });
 
       if (filters.status && filters.status !== 'all') {
@@ -66,8 +70,9 @@ export default function CommunicationComplianceReport() {
   const enriched = useMemo(() => stages.map((s: any) => ({
     ...s,
     stage_label: STAGE_LABELS[s.stage_code] || s.stage_code,
-    engagement_title: s.engagement?.title || s.engagement_id?.substring(0, 8),
+    engagement_title: s.engagement?.engagement_name || s.engagement_id?.substring(0, 8),
   })), [stages]);
+
 
   // Chart: stages completed per stage_code
   const chartData = useMemo(() => {
@@ -114,30 +119,55 @@ export default function CommunicationComplianceReport() {
             { label: "Communication Compliance" },
           ]}
         />
-        <ExportActions
-          reportTitle="Communication Compliance Report"
-          fileName="communication-compliance"
-          data={enriched}
-          columns={exportColumns}
-          additionalInfo={[
-            { label: 'Report Date', value: new Date().toLocaleDateString() },
-            { label: 'Total Records', value: String(stages.length) },
-            { label: 'Compliance Rate', value: `${complianceRate}%` },
-          ]}
-        />
+        {/* §10 — export must be blocked while the source query is in error. */}
+        {!isError && (
+          <ExportActions
+            reportTitle="Communication Compliance Report"
+            fileName="communication-compliance"
+            data={enriched}
+            columns={exportColumns}
+            additionalInfo={[
+              { label: 'Report Date', value: new Date().toLocaleDateString() },
+              { label: 'Total Records', value: String(stages.length) },
+              { label: 'Compliance Rate', value: `${complianceRate}%` },
+            ]}
+          />
+        )}
       </div>
 
       <div className="no-print">
         <QueryByFilter fields={filterFields} onFilter={setFilters} defaultExpanded />
       </div>
 
+      {/* DEF-A-02 / §10 — a failed query must never masquerade as an
+          authoritative 0 records / 0% compliance business result. */}
+      {isError ? (
+        <Card className="border-destructive/50" data-testid="comm-compliance-error">
+          <CardContent className="py-8 flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+            <p className="font-medium">Communication compliance data could not be loaded.</p>
+            <p className="text-sm text-muted-foreground max-w-lg">
+              Compliance metrics are unavailable because the underlying query failed. No
+              counts or percentages are shown, as they would not be authoritative.
+            </p>
+            <p className="text-xs text-muted-foreground font-mono max-w-lg break-words">
+              {(error as any)?.message || 'Unknown error'}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              {isFetching ? 'Retrying…' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard title="Total Communications" value={String(stages.length)} icon={Mail} variant="info" />
         <MetricCard title="Completed" value={String(totalSent)} icon={CheckCircle2} variant="success" />
         <MetricCard title="Pending" value={String(totalPending)} icon={Clock} variant="default" />
         <MetricCard title="Compliance Rate" value={`${complianceRate}%`} icon={ShieldAlert} variant={complianceRate >= 80 ? 'success' : 'warning'} />
       </div>
+      )}
 
+      {!isError && (
       <Card>
         <CardHeader><CardTitle>Stage Completion Overview</CardTitle></CardHeader>
         <CardContent>
@@ -155,7 +185,9 @@ export default function CommunicationComplianceReport() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+      )}
 
+      {!isError && (
       <Card>
         <CardHeader><CardTitle>Communication Log</CardTitle></CardHeader>
         <CardContent>
@@ -197,6 +229,7 @@ export default function CommunicationComplianceReport() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
