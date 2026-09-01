@@ -229,6 +229,7 @@ export default function CommunicationComplianceReport() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
