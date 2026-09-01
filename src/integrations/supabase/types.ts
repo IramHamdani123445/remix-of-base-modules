@@ -33250,6 +33250,13 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
             columns: ["installment_id"]
             isOneToOne: false
@@ -33282,6 +33289,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -33391,6 +33405,48 @@ export type Database = {
           scope_key?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      ce_arrangement_ref: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+          sort_order: number
+          ui_tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+          sort_order?: number
+          ui_tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+          sort_order?: number
+          ui_tone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -41592,6 +41648,13 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "fk_ce_installments_arrangement"
             columns: ["arrangement_id"]
             isOneToOne: false
@@ -41610,6 +41673,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -117048,6 +117118,13 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
             columns: ["installment_id"]
             isOneToOne: false
@@ -117080,6 +117157,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -117152,6 +117236,13 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "ce_payment_arrangements_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
@@ -117184,6 +117275,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
             referencedColumns: ["arrangement_id"]
           },
           {
@@ -117252,6 +117350,119 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_case_financials"
             referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
+      ce_v_arrangement_register_ext: {
+        Row: {
+          agreement_signed: boolean | null
+          agreement_start_date: string | null
+          approved_at: string | null
+          approved_by_user: string | null
+          arrangement_default_violation_id: string | null
+          arrangement_default_violation_number: string | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          breach_count: number | null
+          breach_date: string | null
+          breach_detected: boolean | null
+          breach_reason: string | null
+          case_id: string | null
+          case_number: string | null
+          created_at: string | null
+          days_to_next_due: number | null
+          employer_id: string | null
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          health_label: string | null
+          health_status: string | null
+          installment_amount: number | null
+          installments_paid: number | null
+          installments_partial: number | null
+          installments_total: number | null
+          last_breach_at: string | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          next_installment_amount: number | null
+          next_installment_number: number | null
+          number_of_installments: number | null
+          outstanding: number | null
+          overdue_count: number | null
+          paid_percent: number | null
+          past_due_amount: number | null
+          regno: string | null
+          rejection_reason: string | null
+          start_date: string | null
+          status: string | null
+          status_label: string | null
+          submitted_at: string | null
+          submitted_by_user: string | null
+          superseded_by_arrangement_id: string | null
+          superseded_from_arrangement_id: string | null
+          total_arranged: number | null
+          total_paid: number | null
+          unattributed_amount: number | null
+          unresolved_breach_count: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_by_arrangement_id_fkey"
+            columns: ["superseded_by_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "core_payment_arrangement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_by_arrangement_id_fkey"
+            columns: ["superseded_by_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "v_payment_arrangement_context"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_from_arrangement_id_fkey"
+            columns: ["superseded_from_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "core_payment_arrangement"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_payment_arrangement_superseded_from_arrangement_id_fkey"
+            columns: ["superseded_from_arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "v_payment_arrangement_context"
+            referencedColumns: ["arrangement_id"]
           },
           {
             foreignKeyName: "fk_ce_payment_arrangements_case"
@@ -124569,9 +124780,11 @@ export type Database = {
           status: string
         }[]
       }
+      ce_arrangement_facets_v1: { Args: never; Returns: Json }
       ce_arrangement_grace_days:
         | { Args: never; Returns: number }
         | { Args: { p_scope_key?: string }; Returns: number }
+      ce_arrangement_register_v1: { Args: { p_params?: Json }; Returns: Json }
       ce_arrangement_reject_v1: {
         Args: { p_arrangement_id: string; p_reason: string }
         Returns: {

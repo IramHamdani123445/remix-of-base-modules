@@ -17,7 +17,7 @@ const INSTALLMENT_STATUS: Record<
   { className: string; icon: typeof CheckCircle2; label: string }
 > = {
   PAID: { className: 'bg-success/10 text-success border-success/20', icon: CheckCircle2, label: 'Paid' },
-  PARTIAL: { className: 'bg-warning/10 text-warning-foreground border-warning/20', icon: CirclePause, label: 'Partial' },
+  PARTIAL: { className: 'bg-warning/10 text-warning border-warning/20', icon: CirclePause, label: 'Partial' },
   PENDING: { className: 'bg-muted text-muted-foreground border-border', icon: Clock, label: 'Pending' },
   OVERDUE: { className: 'bg-destructive/10 text-destructive border-destructive/30', icon: AlertTriangle, label: 'Overdue' },
   CANCELLED: { className: 'bg-muted text-muted-foreground border-border', icon: CircleSlash, label: 'Cancelled' },
@@ -37,7 +37,7 @@ export function InstallmentStatusBadge({ status }: { status: string | null | und
 
 const HEALTH: Record<string, { className: string; label: string; icon: typeof CheckCircle2 }> = {
   HEALTHY: { className: 'bg-success/10 text-success border-success/20', label: 'Healthy', icon: CheckCircle2 },
-  AT_RISK: { className: 'bg-warning/10 text-warning-foreground border-warning/20', label: 'At risk', icon: Clock },
+  AT_RISK: { className: 'bg-warning/10 text-warning border-warning/20', label: 'At risk', icon: Clock },
   BREACHED: { className: 'bg-destructive/10 text-destructive border-destructive/30', label: 'Breached', icon: AlertTriangle },
   INACTIVE: { className: 'bg-muted text-muted-foreground border-border', label: 'Inactive', icon: CirclePause },
 };
@@ -56,7 +56,7 @@ export function ArrangementHealthBadge({ health }: { health: string | null | und
 export const arrangementStatusClass = (status: string | null | undefined) => {
   const map: Record<string, string> = {
     DRAFT: 'bg-muted text-muted-foreground',
-    PENDING_APPROVAL: 'bg-warning/10 text-warning-foreground',
+    PENDING_APPROVAL: 'bg-warning/10 text-warning',
     ACTIVE: 'bg-success/10 text-success',
     COMPLETED: 'bg-primary/10 text-primary',
     BREACHED: 'bg-destructive/10 text-destructive',
