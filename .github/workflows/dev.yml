@@ -11,7 +11,7 @@ jobs:
     steps:
 
       # --------------------------------
-      # 1. Checkout source code
+      # 1. Checkout development branch
       # --------------------------------
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -34,54 +34,17 @@ jobs:
         run: npm ci
 
       # --------------------------------
-      # 4. Install Supabase CLI
-      # --------------------------------
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      # --------------------------------
-      # 5. Link Supabase project
-      # --------------------------------
-      - name: Link Supabase project
-        run: |
-          supabase link \
-            --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      # --------------------------------
-      # 6. Check Supabase migration status
-      # --------------------------------
-      - name: Check Supabase migration status
-        run: |
-          supabase migration list
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      # --------------------------------
-      # 7. Apply database migrations
-      # --------------------------------
-      - name: Deploy database migrations
-        run: |
-          supabase db push
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      # --------------------------------
-      # 8. Build React application
+      # 4. Build React application
       # --------------------------------
       - name: Build React application
         env:
           NODE_OPTIONS: --max-old-space-size=8192
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: |
-          npm run build
+        run: npm run build
 
       # --------------------------------
-      # 9. Deploy frontend to FTP
+      # 5. Deploy frontend to FTP
       # --------------------------------
       - name: Deploy frontend to FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
