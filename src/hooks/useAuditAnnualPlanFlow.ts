@@ -279,6 +279,8 @@ export function useSubmitAnnualPlanWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflow_instances'] });
       queryClient.invalidateQueries({ queryKey: ['ia_plan_approval_history'] });
       queryClient.invalidateQueries({ queryKey: ['ia_plan_engagements', params.planId] });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness', params.planId] });
+      queryClient.invalidateQueries({ queryKey: ['ia_annual_plan_readiness_map'] });
 
       return result;
     },
