@@ -186,7 +186,7 @@ export default function AuditPlansNew() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editEl.enabled ? setEditPlan(row) : undefined} title="Edit" disabled={!editEl.enabled}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editEl.enabled ? navigate(`/audit/audit-plans/${row.id}`) : undefined} title="Edit in plan workspace" disabled={!editEl.enabled}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           </span>
@@ -270,9 +270,10 @@ export default function AuditPlansNew() {
         <AnnualPlanForm onClose={() => setIsCreateOpen(false)} onCreate={(data) => create.mutateAsync(data)} onUpdate={(data) => update.mutateAsync(data)} />
       </StandardModal>
 
-      <StandardModal open={!!editPlan} onOpenChange={(open) => !open && setEditPlan(null)} title="Edit Annual Audit Plan" mode="edit" size="4xl">
+      <StandardModal open={!!editPlan} onOpenChange={(open) => !open && setEditPlan(null)} title="Edit Plan Details" mode="edit" size="4xl">
         {editPlan && <AnnualPlanForm plan={editPlan} onClose={() => setEditPlan(null)} onCreate={(data) => create.mutateAsync(data)} onUpdate={(data) => update.mutateAsync(data)} />}
       </StandardModal>
+
 
       <ConfirmDialog
         open={submitPlanId !== null}
