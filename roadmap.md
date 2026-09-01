@@ -41,3 +41,11 @@
 - [ ] Duplicate-referral prevention + context-sensitive primary action per state
 - [ ] Eligibility preview + server-side revalidation before initiation, audit trail, RBAC/maker-checker
 - [ ] Enterprise UI + E2E verification
+
+## Compliance — Legal Recommendation Queue Enterprise Workspace (Sep 1) — DONE
+- [x] Analyse legalEscalationService/generateRecommendations, approveLegalReferral/rejectLegalReferral, ce_legal_recommendations
+- [x] Server-side register RPC: search, filters, sort, paging, KPIs, rule explainability, linked referral state
+- [x] Review/Approve + structured Reject dialogs (no prompt()), maker-checker surfaced, identity-required (no SYSTEM fallback)
+- [x] Resolve duplicate "Create Referral" vs approval-minted referral; context-sensitive next action to Legal Pack
+- [x] Enterprise UI: KPIs, Requires Attention, table register, URL state, error/empty states, RBAC split
+
