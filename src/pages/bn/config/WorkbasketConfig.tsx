@@ -25,6 +25,8 @@ import {
 } from '@/services/bn/workbasketRoleService';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QueueAccessHealthPanel } from '@/components/bn/config/QueueAccessHealthPanel';
+
 
 function useEscalationPolicyOptions() {
   return useQuery({
