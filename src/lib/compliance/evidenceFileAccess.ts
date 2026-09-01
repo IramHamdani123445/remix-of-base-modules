@@ -15,9 +15,18 @@ import { supabase } from '@/integrations/supabase/client';
 export const EVIDENCE_BUCKET = 'ce-field-evidence';
 const SIGNED_URL_TTL_SECONDS = 300;
 
-export type EvidenceAccessResult =
-  | { ok: true; url: string }
-  | { ok: false; reason: 'NO_FILE' | 'MISSING' | 'DENIED' | 'ERROR'; message: string };
+export type EvidenceAccessFailure = {
+  ok: false;
+  reason: 'NO_FILE' | 'MISSING' | 'DENIED' | 'ERROR';
+  message: string;
+};
+
+export type EvidenceAccessResult = { ok: true; url: string } | EvidenceAccessFailure;
+
+/** Message for a failed access attempt (safe regardless of union narrowing). */
+export function evidenceAccessMessage(res: EvidenceAccessResult): string {
+  return res.ok ? '' : res.message;
+}
 
 export interface EvidenceFileRef {
   id: string;
