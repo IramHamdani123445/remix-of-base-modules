@@ -23,7 +23,6 @@ export default function AuditPlansNew() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({ status: 'all', fiscalYear: 'all', boardPack: 'all' });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editPlan, setEditPlan] = useState<any>(null);
   const [submitPlanId, setSubmitPlanId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [conflictResult, setConflictResult] = useState<any>(null);
@@ -268,10 +267,6 @@ export default function AuditPlansNew() {
 
       <StandardModal open={isCreateOpen} onOpenChange={setIsCreateOpen} title="Create Annual Audit Plan" mode="create" size="4xl">
         <AnnualPlanForm onClose={() => setIsCreateOpen(false)} onCreate={(data) => create.mutateAsync(data)} onUpdate={(data) => update.mutateAsync(data)} />
-      </StandardModal>
-
-      <StandardModal open={!!editPlan} onOpenChange={(open) => !open && setEditPlan(null)} title="Edit Plan Details" mode="edit" size="4xl">
-        {editPlan && <AnnualPlanForm plan={editPlan} onClose={() => setEditPlan(null)} onCreate={(data) => create.mutateAsync(data)} onUpdate={(data) => update.mutateAsync(data)} />}
       </StandardModal>
 
 
