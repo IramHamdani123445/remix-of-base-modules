@@ -100,7 +100,29 @@ export function AuditPreparationTab({ auditId, audit, engagementContext }: Audit
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      {/* Prior Audit History — auditor-private continuity workspace */}
+      <Collapsible open={openSections.priorHistory} onOpenChange={() => toggleSection('priorHistory')}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />Prior Audit History
+                </CardTitle>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openSections.priorHistory ? 'rotate-180' : ''}`} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <PriorAuditHistoryPanel engagementId={auditId} />
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
+
   );
 }
 
