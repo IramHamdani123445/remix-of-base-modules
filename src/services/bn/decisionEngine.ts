@@ -51,14 +51,16 @@ export async function getAvailableTransitions(
   const hasCalculation = (calcResults.data?.length || 0) > 0;
 
   // 4. Evaluate each rule
-  const isAdmin = userRoles.some(r => r.toLowerCase() === 'admin');
-
   return (rules || []).map((rule: BnClaimTransitionRule) => {
-    // Role check
-    const roleAllowed = isAdmin || rule.allowed_roles.some(r => userRoles.includes(r));
-    if (!roleAllowed) {
-      return { rule, blocked: true, blockedReason: 'Insufficient role permissions' };
+    // Role check — case-insensitive, legacy-alias tolerant, Admin bypass.
+    if (!userHoldsAllowedRole(userRoles, rule.allowed_roles)) {
+      return {
+        rule,
+        blocked: true,
+        blockedReason: `Restricted to: ${expandAllowedRoles(rule.allowed_roles).join(', ')}`,
+      };
     }
+
 
     // Product category filter
     if (rule.product_category && productCategory && rule.product_category !== productCategory) {
