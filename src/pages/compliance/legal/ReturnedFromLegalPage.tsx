@@ -307,17 +307,17 @@ function LegalReturnRegister() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableTableHead sortKey="referral" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort}>Referral</SortableTableHead>
-                  <SortableTableHead sortKey="employer" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort}>Employer</SortableTableHead>
+                  <SortableTableHead sortKey="referral" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort}>Referral</SortableTableHead>
+                  <SortableTableHead sortKey="employer" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort}>Employer</SortableTableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>Required action</TableHead>
-                  <SortableTableHead sortKey="rework_status" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort}>Rework</SortableTableHead>
-                  <SortableTableHead sortKey="owner" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort}>Owner</SortableTableHead>
-                  <SortableTableHead sortKey="returned_at" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort}>Returned</SortableTableHead>
-                  <SortableTableHead sortKey="age" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort}>Age</SortableTableHead>
-                  <SortableTableHead sortKey="due_date" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort}>Due</SortableTableHead>
+                  <SortableTableHead sortKey="rework_status" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort}>Rework</SortableTableHead>
+                  <SortableTableHead sortKey="owner" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort}>Owner</SortableTableHead>
+                  <SortableTableHead sortKey="returned_at" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort}>Returned</SortableTableHead>
+                  <SortableTableHead sortKey="age" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort}>Age</SortableTableHead>
+                  <SortableTableHead sortKey="due_date" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort}>Due</SortableTableHead>
                   <TableHead>Pack</TableHead>
-                  <SortableTableHead sortKey="amount" currentSort={filters.sort} currentDir={filters.dir} onSort={toggleSort} className="text-right">Amount</SortableTableHead>
+                  <SortableTableHead sortKey="amount" currentSortKey={filters.sort} direction={filters.dir} onSort={toggleSort} className="text-right">Amount</SortableTableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -410,10 +410,7 @@ function LegalReturnRegister() {
 
           <div className="p-3 border-t">
             <TablePagination
-              currentPage={filters.page}
-              totalPages={totalPages}
-              pageSize={filters.page_size}
-              totalItems={total}
+              pagination={{ page: filters.page, pageSize: filters.page_size, totalItems: total, totalPages }}
               onPageChange={(p) => setFilters({ page: p })}
               onPageSizeChange={(s) => setFilters({ page_size: s, page: 1 })}
               pageSizeOptions={[...RETURN_PAGE_SIZES]}
