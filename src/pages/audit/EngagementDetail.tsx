@@ -174,20 +174,22 @@ export default function EngagementDetail() {
   const getAuditorName = (aid: string) => auditors?.find((a: any) => a.id === aid)?.name || '—';
   const getPlanTitle = (pid: string) => plans?.find((p: any) => p.id === pid)?.title || '—';
 
-  const [activeTab, setActiveTab] = useState('overview');
-
   // UAT-DEF-02 — the audited department (management respondent) must never see the
   // auditor-private workspace (preparation, programme/RCM, activities, control tests,
   // evidence, working papers, follow-ups, quality review, closure).
   const { isManagementOnly, isLoading: personaLoading } = useInternalAuditPersona();
   const canSeeAuditorWorkspace = !personaLoading && !isManagementOnly;
 
-  const MANAGEMENT_TABS = ['overview', 'findings', 'responses', 'actions', 'timeline'];
-  React.useEffect(() => {
-    if (!canSeeAuditorWorkspace && !MANAGEMENT_TABS.includes(activeTab)) {
-      setActiveTab('overview');
-    }
-  }, [canSeeAuditorWorkspace, activeTab]);
+  const MANAGEMENT_TABS = ENGAGEMENT_MANAGEMENT_TABS as string[];
+
+  // DEF-A-01 — controlled tabs bound to ?tab=. While the persona is still
+  // resolving, only management-safe tabs are permitted so no private tab can
+  // flash for a management respondent following a crafted deep link.
+  const [activeTab, setActiveTab] = useUrlTab(ENGAGEMENT_WORKSPACE_TABS, {
+    allowed: canSeeAuditorWorkspace ? undefined : MANAGEMENT_TABS,
+    ready: !personaLoading,
+  });
+
 
 
   const engagementContext = useMemo(() => {
