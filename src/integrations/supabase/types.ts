@@ -30810,6 +30810,9 @@ export type Database = {
           max_capacity: number | null
           modified_at: string
           modified_by: string | null
+          notify_action_label: string | null
+          notify_body: string | null
+          notify_title: string | null
           priority_rules: Json | null
           product_category: string | null
           supervisor_role: string | null
@@ -30831,6 +30834,9 @@ export type Database = {
           max_capacity?: number | null
           modified_at?: string
           modified_by?: string | null
+          notify_action_label?: string | null
+          notify_body?: string | null
+          notify_title?: string | null
           priority_rules?: Json | null
           product_category?: string | null
           supervisor_role?: string | null
@@ -30852,6 +30858,9 @@ export type Database = {
           max_capacity?: number | null
           modified_at?: string
           modified_by?: string | null
+          notify_action_label?: string | null
+          notify_body?: string | null
+          notify_title?: string | null
           priority_rules?: Json | null
           product_category?: string | null
           supervisor_role?: string | null
@@ -126038,6 +126047,10 @@ export type Database = {
           p_status_at_change: string
           p_user_code: string
         }
+        Returns: string
+      }
+      bn_render_workbasket_notification: {
+        Args: { p_template: string; p_tokens: Json }
         Returns: string
       }
       bn_risk_assessment_actions_v1: {
