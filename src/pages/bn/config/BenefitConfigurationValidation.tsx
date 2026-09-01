@@ -38,6 +38,8 @@ import { CountryLegalValidationCard } from '@/components/bn/validation/CountryLe
 import { RuleGovernanceStatusCard } from '@/components/bn/governance/RuleGovernanceStatusCard';
 import { ClaimGovernanceReadinessCard } from '@/components/bn/governance/ClaimGovernanceReadinessCard';
 import { HandoffReadinessCard } from '@/components/bn/governance/HandoffReadinessCard';
+import { QueueAccessHealthPanel } from '@/components/bn/config/QueueAccessHealthPanel';
+
 
 const STATUS_VARIANT: Record<ValidationStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   PASS: 'default',
@@ -204,6 +206,10 @@ export default function BenefitConfigurationValidation() {
           </Button>
         </div>
       </div>
+
+      <QueueAccessHealthPanel compact />
+
+
 
       {allResults.length > 0 && (
         <Card>
