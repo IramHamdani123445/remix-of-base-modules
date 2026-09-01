@@ -25,7 +25,7 @@ export type EvidenceAccessResult = { ok: true; url: string } | EvidenceAccessFai
 
 /** Message for a failed access attempt (safe regardless of union narrowing). */
 export function evidenceAccessMessage(res: EvidenceAccessResult): string {
-  return res.ok ? '' : res.message;
+  return res.ok ? '' : (res as EvidenceAccessFailure).message;
 }
 
 export interface EvidenceFileRef {
