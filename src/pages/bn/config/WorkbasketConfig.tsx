@@ -117,6 +117,9 @@ export default function WorkbasketConfig() {
       manager_role: '',
       allow_auto_reassign: true,
       escalation_target_basket_id: '',
+      notify_title: '',
+      notify_body: '',
+      notify_action_label: '',
     });
     setEditItem({} as any);
   };
