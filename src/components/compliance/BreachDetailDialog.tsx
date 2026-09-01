@@ -147,6 +147,10 @@ export function BreachDetailDialog({ breachId, facets, onClose }: Props) {
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         {detail.isLoading || !breach ? (
           <div className="space-y-3 py-6">
+            <DialogHeader>
+              <DialogTitle>Breach detail</DialogTitle>
+              <DialogDescription>Loading breach record…</DialogDescription>
+            </DialogHeader>
             <Skeleton className="h-6 w-1/3" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-40 w-full" />
