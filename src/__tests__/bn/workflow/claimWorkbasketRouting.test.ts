@@ -132,3 +132,39 @@ describe('steps_config parsing', () => {
     expect(stepByName(bareArray, 'PAYMENT')).toBeNull();
   });
 });
+
+describe('templates authored in the workflow designer', () => {
+  // The exact shape of WF_NCP_Assistance_pension: routing vocabulary lives in
+  // step_code, `step` carries a label, and each step names its own basket.
+  const designerSteps = [
+    {
+      step: 'APPROVAL', step_code: 'DECISION', step_name: 'DECISION',
+      role: 'CLAIMS_SUPERVISOR', assigned_role: 'BN_MANAGER',
+      workbasket_id: '6b1bab36-9c26-4f38-9528-dcfd320c7378', sla_hours: 120,
+    },
+    {
+      step: 'PAYMENT_AUTH', step_code: 'AWARD_SETUP',
+      role: 'PAYMENTS_OFFICER', sla_hours: 24,
+    },
+  ];
+
+  it('finds a step by its step_code, not only by `step`', () => {
+    expect(stepByName(designerSteps, 'DECISION')?.step).toBe('APPROVAL');
+    expect(stepByName(designerSteps, 'AWARD_SETUP')?.step).toBe('PAYMENT_AUTH');
+    // The label still matches, so nothing that worked before stops working.
+    expect(stepByName(designerSteps, 'APPROVAL')?.step_code).toBe('DECISION');
+    expect(stepByName(designerSteps, 'NOT_A_STEP')).toBeNull();
+  });
+
+  it('treats a BN_* assigned_role as a basket role directly', () => {
+    expect(basketRoleForStepRole('BN_MANAGER')).toBe('BN_MANAGER');
+    // The designer's own role vocabulary is not in the legacy map, which is why
+    // routing used to fall through to the step-name default.
+    expect(basketRoleForStepRole('CLAIMS_SUPERVISOR')).toBeNull();
+    expect(STEP_NAME_TO_BASKET_ROLE.DECISION).toBe('BN_SUPERVISOR');
+  });
+
+  it('keeps the first step accessible whatever the spelling', () => {
+    expect(firstStep(designerSteps)?.step_code).toBe('DECISION');
+  });
+});
