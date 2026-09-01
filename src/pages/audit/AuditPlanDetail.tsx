@@ -208,6 +208,7 @@ export default function AuditPlanDetail() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
           <TabsTrigger value="engagements">Engagements ({stats.total})</TabsTrigger>
           <TabsTrigger value="coverage">Coverage & Risk</TabsTrigger>
           <TabsTrigger value="capacity">Capacity & Schedule</TabsTrigger>
@@ -218,9 +219,14 @@ export default function AuditPlanDetail() {
           <TabsTrigger value="closure">Closure</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="portfolio">
+          <PlanPortfolioPanel planId={id!} />
+        </TabsContent>
+
         <TabsContent value="closure">
           <PlanClosurePanel planId={id!} plan={plan} />
         </TabsContent>
+
 
         {/* Overview Tab */}
         <TabsContent value="overview">
