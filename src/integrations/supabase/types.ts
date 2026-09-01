@@ -117587,6 +117587,148 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_breach_register: {
+        Row: {
+          age_days: number | null
+          arrangement_health: string | null
+          arrangement_health_label: string | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          arrangement_outstanding: number | null
+          arrangement_past_due: number | null
+          arrangement_status: string | null
+          arrangement_status_label: string | null
+          assigned_at: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          breach_date: string | null
+          breach_id: string | null
+          breach_reference: string | null
+          breach_status: string | null
+          breach_status_label: string | null
+          breach_type: string | null
+          breach_type_label: string | null
+          case_id: string | null
+          case_number: string | null
+          case_status: string | null
+          consecutive_misses: number | null
+          created_at: string | null
+          description: string | null
+          detected_at: string | null
+          detection_method: string | null
+          detection_method_label: string | null
+          detection_rule: string | null
+          employer_id: string | null
+          employer_name: string | null
+          escalation_status: string | null
+          escalation_status_label: string | null
+          grace_days_at_breach: number | null
+          installment_amount: number | null
+          installment_due_date: string | null
+          installment_id: string | null
+          installment_number: number | null
+          installment_paid: number | null
+          installment_payment_reference: string | null
+          installment_status: string | null
+          last_action_at: string | null
+          last_notice_number: string | null
+          last_notice_sent_at: string | null
+          last_notice_status: string | null
+          legal_referral_id: string | null
+          legal_referral_number: string | null
+          legal_referral_status: string | null
+          max_missed_before_breach: number | null
+          payment_reference: string | null
+          regno: string | null
+          resolution: string | null
+          resolution_notes: string | null
+          resolution_reason: string | null
+          resolution_type: string | null
+          resolution_type_label: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          severity_label: string | null
+          shortfall: number | null
+          total_arranged: number | null
+          total_paid: number | null
+          updated_at: string | null
+          violation_id: string | null
+          violation_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_installment_operational"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register_ext"
+            referencedColumns: ["arrangement_id"]
+          },
+        ]
+      }
       ce_v_c3_aggregate_stats: {
         Row: {
           total_late: number | null
@@ -125021,6 +125163,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_breach_assign_v1: {
+        Args: { p_assignee: string; p_breach_id: string; p_notes?: string }
+        Returns: Json
+      }
       ce_breach_check_arrangements: {
         Args: { p_as_of_date?: string; p_checked_by?: string }
         Returns: {
@@ -125031,8 +125177,30 @@ export type Database = {
           total_overdue: number
         }[]
       }
+      ce_breach_detail_v1: { Args: { p_breach_id: string }; Returns: Json }
       ce_breach_detect_v1: {
         Args: { p_actor?: string; p_as_of_date?: string; p_dry_run?: boolean }
+        Returns: Json
+      }
+      ce_breach_facets_v1: { Args: never; Returns: Json }
+      ce_breach_link_referral_v1: {
+        Args: { p_breach_id: string; p_referral_id: string }
+        Returns: Json
+      }
+      ce_breach_register_v1: { Args: { p_params?: Json }; Returns: Json }
+      ce_breach_resolve_v1: {
+        Args: {
+          p_breach_id: string
+          p_notes?: string
+          p_payment_reference?: string
+          p_resolution_date?: string
+          p_resolution_reason: string
+          p_resolution_type: string
+        }
+        Returns: Json
+      }
+      ce_breach_run_detection_v1: {
+        Args: { p_as_of_date?: string }
         Returns: Json
       }
       ce_calculate_employer_arrears: {
