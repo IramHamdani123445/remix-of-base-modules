@@ -20,10 +20,11 @@ import {
   AUDIT_ACCEPT_ATTRIBUTE,
   AUDIT_ATTACHMENT_BUCKET,
   formatFileSize,
-  removeAuditObjects,
   uploadAuditAttachment,
   validateAuditFile,
 } from '@/lib/audit/auditAttachmentUpload';
+import { compensateWorkingPaperFailure, describeRollback } from '@/lib/audit/auditCompensatingRollback';
+
 
 /**
  * IA-POST-UAT-04 — Working Paper attachments.
