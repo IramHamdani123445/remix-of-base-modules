@@ -44,7 +44,7 @@ export function useIAPlanEngagements(planId?: string) {
         .from('ia_audit_engagements' as any)
         .select('*')
         .eq('annual_plan_id', planId)
-        .eq('is_active', true)
+        .or('is_active.is.null,is_active.eq.true')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
