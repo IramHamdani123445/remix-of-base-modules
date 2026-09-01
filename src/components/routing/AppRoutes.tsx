@@ -106,7 +106,7 @@ const InstallmentsDuePage = lazy(() => import('@/pages/compliance/arrangements/I
 const PaymentAllocationPage = lazy(() => import('@/pages/compliance/arrangements/PaymentAllocationPage'));
 const ArrangementBreachesPage = lazy(() => import('@/pages/compliance/arrangements/BreachesPage'));
 const FieldOperations = lazy(() => import('@/pages/compliance/inspections/FieldOperations'));
-const NoticesManagement = lazy(() => import('@/pages/compliance/legal/NoticesManagement'));
+const LegacyNoticesRedirect = lazy(() => import('@/pages/compliance/notices/LegacyNoticesRedirect'));
 const EmployerStatements = lazy(() => import('@/pages/compliance/employers/EmployerStatements'));
 const ComplianceSettings = lazy(() => import('@/pages/compliance/settings/ComplianceSettings'));
 const ComplianceScheduleSettings = lazy(() => import('@/pages/compliance/admin/ScheduleSettings'));
@@ -1558,7 +1558,7 @@ export const AppRoutes = () => {
       <Route path="/compliance/enforcement/legal-referral" element={<ComplianceFeatureGate flagKey="compliance.legal.handoff" title="Legal Referral"><LegalReferralWizard /></ComplianceFeatureGate>} />
       <Route path="/compliance/enforcement/legal-queue" element={<ComplianceLegalQueue />} />
       <Route path="/compliance/enforcement/proceedings" element={<ComplianceFeatureGate flagKey="compliance.legal.court_monitoring" title="Legal Proceedings & Court Monitoring"><ComplianceLegalProceedings /></ComplianceFeatureGate>} />
-      <Route path="/compliance/enforcement/notices" element={<NoticesManagement />} />
+      <Route path="/compliance/enforcement/notices" element={<LegacyNoticesRedirect />} />
       <Route path="/compliance/enforcement/arrangements" element={<PaymentArrangements />} />
       <Route path="/compliance/enforcement/arrangements/:arrangementId" element={<PaymentArrangements />} />
       <Route path="/compliance/enforcement/breaches" element={<ComplianceBreachMonitoring />} />
