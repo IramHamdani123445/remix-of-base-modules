@@ -123,10 +123,27 @@ export async function executeTransition(params: ExecuteTransitionParams): Promis
 
   if (ruleErr || !rule) throw new Error('Transition rule not found');
 
+  // 2b. Re-check the caller's roles at execution time. The button state is a
+  // convenience; this is the check that actually decides.
+  const { data: authData } = await supabase.auth.getUser();
+  const authUserId = authData?.user?.id;
+  if (!authUserId) throw new Error('You must be signed in to perform this action');
+  const { data: roleRows } = await db
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', authUserId);
+  const callerRoles = (roleRows || []).map((r: any) => String(r.role));
+  if (!userHoldsAllowedRole(callerRoles, rule.allowed_roles)) {
+    throw new Error(
+      `You do not hold a role permitted for "${rule.action_label}". Restricted to: ${expandAllowedRoles(rule.allowed_roles).join(', ')}`,
+    );
+  }
+
   // 3. Validate current status matches
   if (claim.status !== rule.from_status) {
     throw new Error(`Claim status "${claim.status}" does not match expected "${rule.from_status}"`);
   }
+
 
   // 4. Validate reason if required
   if (rule.requires_reason && !reasonCodeId) {
