@@ -25,12 +25,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DB_URL="${TARGET_DATABASE_URL:-}"
+DB_URL="${TARGET_DATABASE_URL:-${MIRROR_TARGET_DATABASE_URL:-}}"
 DRY_RUN="${DRY_RUN:-0}"
 SKIP_BASELINE="${SKIP_BASELINE:-0}"
+MAX_RETRIES="${MAX_RETRIES:-4}"
+RETRY_DELAY_SECONDS="${RETRY_DELAY_SECONDS:-3}"
 
 if [[ -z "$DB_URL" ]]; then
-  echo "::error::TARGET_DATABASE_URL must be set to the DESTINATION Supabase project" >&2
+  echo "::error::TARGET_DATABASE_URL or MIRROR_TARGET_DATABASE_URL must be set to the destination project" >&2
   exit 2
 fi
 
@@ -50,11 +52,33 @@ for f in "$BASELINE_SQL" "$MANIFEST"; do
   [[ -f "$f" ]] || { echo "::error::missing required file: $f" >&2; exit 2; }
 done
 
-run_sql() { psql "$DB_URL" -v ON_ERROR_STOP=1 -X -q -f "$1"; }
+retry() {
+  local description="$1"
+  shift
+  local attempt=1
+  local delay="$RETRY_DELAY_SECONDS"
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+    if (( attempt >= MAX_RETRIES )); then
+      printf '    !! %s failed after %d attempt(s)\n' "$description" "$attempt" >&2
+      return 1
+    fi
+    printf '    !! %s failed (attempt %d/%d); retrying in %ds\n' \
+      "$description" "$attempt" "$MAX_RETRIES" "$delay" >&2
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
+psql_sql() { psql "$DB_URL" -v ON_ERROR_STOP=1 -X -q "$@"; }
+run_sql() { psql_sql -f "$1"; }
 
 # --- 0. connectivity -------------------------------------------------------
 echo "==> checking connectivity to the target project"
-psql "$DB_URL" -X -q -c 'SELECT current_database(), current_user' >/dev/null
+retry "target connectivity check" psql_sql -c 'SELECT current_database(), current_user' >/dev/null
 
 # --- 1. baseline integrity -------------------------------------------------
 echo "==> verifying baseline integrity"
@@ -112,18 +136,48 @@ SQL
 # --- 6. forward-only migrations --------------------------------------------
 echo "==> applying ${#PENDING[@]} migration(s) after the cutoff"
 APPLIED=0
+TOTAL=${#PENDING[@]}
+IDX=0
+FAILURES_THIS_RUN=0
+FAILED_NAMES=()
+RUN_FAILURE_LOG="$LOG_DIR/failures-$(date -u +%Y%m%dT%H%M%SZ).log"
+touch "$RUN_FAILURE_LOG"
+
+# Read the ledger once. The old per-file lookup made every resume rescan issue
+# hundreds of network round trips before it reached the genuinely pending work.
+declare -A RECORDED=()
+while IFS= read -r version; do
+  [[ -n "$version" ]] && RECORDED["$version"]=1
+done < <(retry "migration ledger read" psql_sql -t -A \
+  -c 'SELECT version FROM supabase_migrations.schema_migrations' 2>/dev/null)
+
+progress() {
+  local n=$1 t=$2 label=$3
+  local pct=$(( t > 0 ? n * 100 / t : 0 ))
+  local filled=$(( pct * 40 / 100 ))
+  local bar
+  bar="$(printf '#%.0s' $(seq 1 $filled 2>/dev/null))$(printf '.%.0s' $(seq 1 $((40-filled)) 2>/dev/null))"
+  printf '    [%s] %3d%%  %d/%d  %s\n' "$bar" "$pct" "$n" "$t" "$label"
+}
 for path in "${PENDING[@]}"; do
   name="$(basename "$path")"
   version="${name%%_*}"
-  already="$(psql "$DB_URL" -X -q -t -A \
-    -c "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '$version'")"
-  [[ -z "$already" ]] || { echo "    -- $name (already recorded)"; continue; }
-  echo "    -> $name"
-  run_sql "$path" >>"$LOG_DIR/migrations.log" 2>&1
-  psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 \
-    -c "INSERT INTO supabase_migrations.schema_migrations(version) VALUES ('$version') ON CONFLICT DO NOTHING"
-  APPLIED=$((APPLIED + 1))
+  IDX=$((IDX + 1))
+  [[ -z "${RECORDED[$version]:-}" ]] || { progress "$IDX" "$TOTAL" "$name (already recorded)"; continue; }
+  progress "$IDX" "$TOTAL" "$name"
+  if retry "migration $name" run_sql "$path" >>"$LOG_DIR/migrations.log" 2>&1; then
+    retry "ledger write for $name" psql_sql \
+      -c "INSERT INTO supabase_migrations.schema_migrations(version) VALUES ('$version') ON CONFLICT DO NOTHING"
+    RECORDED["$version"]=1
+    APPLIED=$((APPLIED + 1))
+  else
+    echo "$name" >>"$RUN_FAILURE_LOG"
+    FAILED_NAMES+=("$name")
+    FAILURES_THIS_RUN=$((FAILURES_THIS_RUN + 1))
+    printf '    !! failed: %s (continuing)\n' "$name"
+  fi
 done
+
 
 # --- 7. parity report ------------------------------------------------------
 echo "==> structure in the target project"
@@ -135,4 +189,9 @@ psql "$DB_URL" -X -q -c "
     (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname='public' AND t.typtype='e') AS enums"
 
 echo "==> done (${APPLIED} migration(s) applied). Logs in $LOG_DIR"
+if (( FAILURES_THIS_RUN > 0 )); then
+  printf '::error::%d migration(s) still failed after retries:\n' "$FAILURES_THIS_RUN" >&2
+  printf '  - %s\n' "${FAILED_NAMES[@]}" >&2
+  exit 1
+fi
 echo "    Next: load exported data with scripts/mirror/load-export-csvs.sh"

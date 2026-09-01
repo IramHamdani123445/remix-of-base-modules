@@ -98,8 +98,9 @@ export async function logAuditTrail(entry: AuditTrailEntry): Promise<string | nu
 
     let userId = entry.userId;
     if (!userId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      userId = user?.id;
+      // Local session only — audit logging must never be able to sign the user out.
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id;
     }
 
     const { data, error } = await supabase.from('system_audit_trail').insert({

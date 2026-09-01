@@ -21,6 +21,10 @@ import {
   loadComplianceHistory,
   type ComplianceContext,
 } from "@/services/legal/legalReferralHistoryService";
+import {
+  evaluateEligibility,
+  type EligibilityResult,
+} from "@/services/legalHandoffService";
 import type { ReferralDocumentDraft } from "@/services/legal/coreLegalReferralDocumentService";
 import ReferralDocumentSelector from "@/components/legal/lg/ReferralDocumentSelector";
 import HistoryTimelinePanel from "@/components/legal/lg/HistoryTimelinePanel";
@@ -108,6 +112,11 @@ export default function ComplianceLegalReferralWizard() {
   // Step 6: Confirmation
   const [acceptedNonFinancial, setAcceptedNonFinancial] = useState(false);
   const [overrideMissingDocs, setOverrideMissingDocs] = useState("");
+
+  // Legal handoff rule evaluation (ce_legal_handoff_rules is the authority)
+  const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [handoffOverride, setHandoffOverride] = useState("");
 
   // --- initial load ------------------------------------------------------
   useEffect(() => {
@@ -212,10 +221,44 @@ export default function ComplianceLegalReferralWizard() {
     }
   }
 
+  // --- legal handoff rule evaluation (configuration-driven gate) ----------
+  async function loadEligibility() {
+    setEligibilityLoading(true);
+    try {
+      const ctx = history ?? (await loadComplianceHistory({ employerId, ceCaseId }));
+      if (!history) setHistory(ctx);
+      const referredTotal = candidates
+        .filter((c) => selectedItems[c.key])
+        .reduce((s, c) => s + (c.outstanding || 0), 0);
+      const result = await evaluateEligibility({
+        fund: candidates.find((c) => selectedItems[c.key])?.fund_code ?? null,
+        severity: ceCase?.severity ?? ceCase?.priority ?? null,
+        outstandingAmount: referredTotal,
+        noticesSent: ctx.notices_count,
+        daysSinceFinalNotice: ceCase?.last_notice_date
+          ? Math.floor(
+              (Date.now() - new Date(ceCase.last_notice_date).getTime()) / 86_400_000,
+            )
+          : 0,
+        repeatDefault: (ctx.breaches_count ?? 0) > 0 || (ctx.notices_count ?? 0) >= 3,
+        arrangementBreach: (ctx.breaches_count ?? 0) > 0,
+        evidenceTypes: documents.length ? ["CASE_SUMMARY"] : [],
+        daysSinceEmployerResponse: null,
+      });
+      setEligibility(result);
+    } catch (e: any) {
+      toast.error("Failed to evaluate legal handoff rules", { description: e?.message });
+      setEligibility(null);
+    } finally {
+      setEligibilityLoading(false);
+    }
+  }
+
   // Auto-load when entering steps
   useEffect(() => {
     if (step === 2 && employerId && candidates.length === 0) loadCandidateItems();
     if (step === 3 && history === null) loadHistory();
+    if (step === 5) loadEligibility();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -302,8 +345,38 @@ export default function ComplianceLegalReferralWizard() {
       toast.error("A Compliance case is required to submit. Pick one in Step 1.");
       return;
     }
+    if (eligibility && eligibility.integrationMode === "DISABLED") {
+      toast.error("Legal handoff is disabled by the configured handoff rule.");
+      return;
+    }
+    if (eligibility && !eligibility.eligible && !handoffOverride.trim()) {
+      toast.error("Legal handoff criteria not met", {
+        description: "Record a documented override reason to proceed.",
+      });
+      return;
+    }
     setSubmitting(true);
     try {
+      // Governed override: the database re-checks authority before any
+      // ineligible case can be forwarded to Legal (Step 5 governance).
+      if (eligibility && !eligibility.eligible && handoffOverride.trim()) {
+        const { error: ovrErr } = await (supabase.rpc as any)(
+          'ce_record_legal_handoff_override_v1',
+          {
+            p_reason: handoffOverride.trim(),
+            p_evaluation: eligibility as unknown as Record<string, unknown>,
+            p_referral_id: null,
+            p_case_id: ceCaseId,
+            p_employer_id: employerId,
+          },
+        );
+        if (ovrErr) {
+          toast.error('Legal handoff override refused', { description: ovrErr.message });
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const items = candidates
         .filter((c) => selectedItems[c.key])
         .map((c) => ({
@@ -332,7 +405,11 @@ export default function ComplianceLegalReferralWizard() {
       const r = await createComplianceLegalReferral({
         ce_case_id: ceCaseId,
         referral_reason: reasonText.trim() +
-          (overrideMissingDocs ? ` [no-docs override: ${overrideMissingDocs}]` : ""),
+          (overrideMissingDocs ? ` [no-docs override: ${overrideMissingDocs}]` : "") +
+          (eligibility?.matchedRule
+            ? ` [handoff rule: ${eligibility.matchedRule.code}${eligibility.eligible ? " — met" : " — NOT met"}]`
+            : "") +
+          (handoffOverride.trim() ? ` [handoff override: ${handoffOverride.trim()}]` : ""),
         referral_reason_code: reasonCode,
         priority_code: priority,
         payment_arrangement_id: paymentArrangementId,
@@ -341,10 +418,19 @@ export default function ComplianceLegalReferralWizard() {
         items,
         documents,
       });
-      toast.success(`Referral ${r.referral_no} created as DRAFT`, {
-        description: `${r.items_count} item(s), ${documents.length} document(s). Next: complete the legal pack and send for approval — the case is not escalated yet.`,
+      if (r.stage === "PENDING_APPROVAL") {
+        toast.success("Legal recommendation submitted for management approval", {
+          description:
+            "Referral to Legal requires management approval. The case will move to Legal Pack Preparation once approved.",
+        });
+        navigate(`/compliance/enforcement/recommendation-queue`);
+        return;
+      }
+      toast.success(`Referral ${r.referral_no} packet prepared`, {
+        description: `${r.items_count} item(s), ${documents.length} document(s). Next: complete the legal pack and handoff checklist — the case is not escalated yet.`,
       });
-      navigate(`/compliance/legal/pack-preparation?referral=${encodeURIComponent(r.referral_id)}`);
+      navigate(`/compliance/legal/pack-preparation?referral=${encodeURIComponent(r.referral_id!)}`);
+
 
     } catch (e: any) {
       toast.error("Referral failed", { description: e?.message });
@@ -732,6 +818,47 @@ export default function ComplianceLegalReferralWizard() {
             <CardTitle className="text-base">Step 6 — Review Referral Packet</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
+            {/* Configuration-driven legal handoff gate (ce_legal_handoff_rules) */}
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Legal handoff rule check</Label>
+                {eligibilityLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : eligibility ? (
+                  <Badge variant={eligibility.eligible ? "default" : "destructive"}>
+                    {eligibility.eligible ? "Criteria met" : "Criteria not met"}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Not evaluated</Badge>
+                )}
+              </div>
+              {eligibility?.matchedRule && (
+                <p className="text-xs text-muted-foreground">
+                  Matched rule: <span className="font-medium">{eligibility.matchedRule.code}</span> —{" "}
+                  {eligibility.matchedRule.name} (mode {eligibility.integrationMode})
+                </p>
+              )}
+              {eligibility && !eligibility.eligible && (
+                <>
+                  <ul className="list-disc pl-5 text-xs text-destructive space-y-0.5">
+                    {eligibility.missing.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                  <div>
+                    <Label className="text-xs">Documented override reason (required to proceed)</Label>
+                    <Textarea
+                      className="mt-1"
+                      rows={2}
+                      value={handoffOverride}
+                      onChange={(e) => setHandoffOverride(e.target.value)}
+                      placeholder="Explain why this referral proceeds despite unmet handoff criteria"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <Separator />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Field label="Employer" value={`${employerName ?? "?"} (${employerId})`} />
               <Field label="Compliance Case" value={ceCase?.case_number ?? ceCaseId ?? "—"} />

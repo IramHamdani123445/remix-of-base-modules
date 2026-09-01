@@ -9,7 +9,9 @@
  * `omni_comms.view_sensitive_content` and explicitly requests disclosure.
  */
 import type { OmniCommsRpcClient } from './eventCatalogueService';
+import type { OmniCommsAttentionSummary } from './holdClassification';
 import { callOmniCommsRpc } from './omniCommsRpcCall';
+
 import {
   OPS_PAGE_SIZE_DEFAULT,
   OPS_PAGE_SIZE_MAX,
@@ -82,6 +84,26 @@ export function getOpsSummary(
   });
 }
 
+/**
+ * Canonical hold breakdown. Separates holds an operator can act on from
+ * permanently held historical evidence, so the two are never reported as one
+ * undifferentiated "held" figure.
+ */
+export function getOpsAttentionSummary(
+  client: OmniCommsRpcClient,
+  input: { organizationId: string; departmentId?: string | null },
+): Promise<OmniCommsAttentionSummary> {
+  return callOmniCommsRpc<OmniCommsAttentionSummary>(
+    client,
+    'omni_comms_ops_attention_summary',
+    {
+      p_organization_id: input.organizationId,
+      p_department_id: input.departmentId ?? null,
+    },
+  );
+}
+
+
 export function listOpsRequests(
   client: OmniCommsRpcClient,
   input: OpsRequestFilters & {
@@ -116,6 +138,40 @@ export function getOpsRequestDetail(
     p_reveal_sensitive: input.revealSensitive ?? false,
   });
 }
+
+/**
+ * Per-job authorization projection.
+ *
+ * `stored_hold_reason` is the last claim blocker persisted on the job;
+ * `authorization_outcome` is the current authoritative dispatch-authorization
+ * result. They are deliberately exposed separately — the certified claim
+ * function is NOT reordered to make the UI read better.
+ */
+export interface OpsJobAuthorization {
+  job_id: string;
+  channel: string;
+  status: string;
+  is_runnable: boolean;
+  stored_hold_reason: string | null;
+  authorization_outcome: string | null;
+  authorization_evaluated_at: string | null;
+  authorization_evaluation_count: number | null;
+  classification: { bucket: string; actionable: boolean; label: string } | null;
+}
+
+export async function getOpsJobAuthorization(
+  client: OmniCommsRpcClient,
+  requestId: string,
+): Promise<OpsJobAuthorization[]> {
+  const res = await callOmniCommsRpc<{ jobs?: OpsJobAuthorization[] }>(
+    client,
+    'omni_comms_ops_job_authorization',
+    { p_request_id: requestId },
+  );
+  return Array.isArray(res?.jobs) ? res.jobs : [];
+}
+
+
 
 export function getOpsMessageContent(
   client: OmniCommsRpcClient,

@@ -81,3 +81,11 @@ For each user: log in → set new password → walk the steps below. Every "must
 3. Attempt to navigate to a non-Compliance admin route — must redirect to Unauthorized.
 4. Run: `SELECT role FROM user_roles WHERE user_id = (SELECT id FROM auth.users WHERE email = 'mipl.student+compliance.admin@gmail.com');` → must return `ComplianceAdmin` only (no `Admin` row).
 5. Confirm real global Admin users are unaffected: `SELECT COUNT(*) FROM user_roles WHERE role = 'Admin';` matches pre-correction count minus 1 (only the UAT user removed).
+
+## Execution record — 2026-08-30
+
+Automated persona UI certification executed against the running TEST app with real logins for all 9 accounts
+(password `CompUAT@2026`). Full evidence, defects (DEF-PER-01…04) and observations (OB-1…4):
+[`uat/Persona_UI_Certification_Matrix.md`](./uat/Persona_UI_Certification_Matrix.md).
+
+Outcome: 43/47 route expectations PASS, 0 unauthorised access, 4 documented observations.

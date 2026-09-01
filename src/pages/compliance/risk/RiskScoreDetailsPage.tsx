@@ -22,6 +22,8 @@ import {
 } from '@/services/riskProfileService';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
 import { Activity, AlertCircle, ShieldOff, Edit3 } from 'lucide-react';
+import OpenDecisionNotice from '@/components/compliance/governance/OpenDecisionNotice';
+import RiskExplainabilityPanel from '@/components/compliance/risk/RiskExplainabilityPanel';
 
 const PERMISSION = 'manage_compliance';
 const BANDS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -145,6 +147,8 @@ function Inner() {
         </p>
       </div>
 
+      <OpenDecisionNotice codes={['E-RISK-FACTOR-WEIGHTS']} />
+
       <Card>
         <CardContent className="py-4 flex gap-2 items-end">
           <div className="flex-1">
@@ -218,9 +222,11 @@ function Inner() {
             const hasDetail = !!history?.calculation_details;
             const reconciles = Math.abs(diff) < 0.01;
             return (
+              <div className="space-y-4">
+              <RiskExplainabilityPanel employerId={profile.employer_id} />
               <Card>
                 <CardHeader>
-                  <CardTitle>Factor Breakdown</CardTitle>
+                  <CardTitle>Audit-Priority Factor Catalogue</CardTitle>
                   <CardDescription>
                     {breakdown.length} configured factor(s)
                     {!reconciles && (
@@ -277,6 +283,7 @@ function Inner() {
                   </Table>
                 </CardContent>
               </Card>
+              </div>
             );
           })()}
 

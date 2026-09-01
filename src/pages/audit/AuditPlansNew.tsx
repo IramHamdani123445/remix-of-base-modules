@@ -23,7 +23,6 @@ export default function AuditPlansNew() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({ status: 'all', fiscalYear: 'all', boardPack: 'all' });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editPlan, setEditPlan] = useState<any>(null);
   const [submitPlanId, setSubmitPlanId] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [conflictResult, setConflictResult] = useState<any>(null);
@@ -117,23 +116,21 @@ export default function AuditPlansNew() {
       breadcrumbs={[{ label: 'Internal Audit' }, { label: 'Annual Plans' }]}
       isLoading={isLoading}
       actions={
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button onClick={() => permissionContext.canManagePlans && setIsCreateOpen(true)} disabled={!permissionContext.canManagePlans || permissionContext.isLoading}>
-                  <Plus className="mr-2 h-4 w-4" />Create Annual Plan
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {!permissionContext.canManagePlans && !permissionContext.isLoading && (
-              <TooltipContent>
-                <p className="text-xs">Missing annual plan maker permission.</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        permissionContext.canManagePlans ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button onClick={() => setIsCreateOpen(true)} disabled={permissionContext.isLoading}>
+                    <Plus className="mr-2 h-4 w-4" />Create Annual Plan
+                  </Button>
+                </span>
+              </TooltipTrigger>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null
       }
+
     >
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard icon={ClipboardList} label="Total Plans" value={metrics.total} />
@@ -188,7 +185,7 @@ export default function AuditPlansNew() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editEl.enabled ? setEditPlan(row) : undefined} title="Edit" disabled={!editEl.enabled}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editEl.enabled ? navigate(`/audit/audit-plans/${row.id}`) : undefined} title="Edit in plan workspace" disabled={!editEl.enabled}>
                               <Edit className="h-4 w-4" />
                             </Button>
                           </span>
@@ -272,9 +269,6 @@ export default function AuditPlansNew() {
         <AnnualPlanForm onClose={() => setIsCreateOpen(false)} onCreate={(data) => create.mutateAsync(data)} onUpdate={(data) => update.mutateAsync(data)} />
       </StandardModal>
 
-      <StandardModal open={!!editPlan} onOpenChange={(open) => !open && setEditPlan(null)} title="Edit Annual Audit Plan" mode="edit" size="4xl">
-        {editPlan && <AnnualPlanForm plan={editPlan} onClose={() => setEditPlan(null)} onCreate={(data) => create.mutateAsync(data)} onUpdate={(data) => update.mutateAsync(data)} />}
-      </StandardModal>
 
       <ConfirmDialog
         open={submitPlanId !== null}

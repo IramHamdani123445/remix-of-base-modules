@@ -84,12 +84,62 @@ export async function setWorkbasketRoles(
 }
 
 
-/** Returns workbaskets visible to a user via direct, bundle, or delegated roles. */
+/**
+ * Returns workbaskets visible to a user via direct, bundle, or delegated roles.
+ *
+ * The RPC only sees baskets that have `bn_workbasket_role` rows. Legacy baskets
+ * carry the role on `bn_workbasket.assigned_role` only, so they are merged in
+ * here rather than silently disappearing from the user's queue.
+ */
 export async function fetchWorkbasketsForUser(userId: string): Promise<WorkbasketForUser[]> {
   const { data, error } = await db.rpc('bn_workbaskets_for_user', { p_user_id: userId });
   if (error) throw error;
-  return (data || []) as WorkbasketForUser[];
+  const primary = (data || []) as WorkbasketForUser[];
+
+  const legacy = await fetchLegacyRoleBaskets(userId);
+  const seen = new Set(primary.map((b) => b.workbasket_id));
+  return [...primary, ...legacy.filter((b) => !seen.has(b.workbasket_id))];
 }
+
+/** Active baskets whose only role link is the legacy `assigned_role` column. */
+async function fetchLegacyRoleBaskets(userId: string): Promise<WorkbasketForUser[]> {
+  const { data: roleRows, error: roleErr } = await db
+    .from('v_bn_user_effective_roles')
+    .select('role_name')
+    .eq('user_id', userId);
+  if (roleErr) return [];
+  const roles = Array.from(
+    new Set(((roleRows || []) as { role_name: string }[]).map((r) => r.role_name)),
+  );
+  if (roles.length === 0) return [];
+
+  const { data: baskets, error: bErr } = await db
+    .from('bn_workbasket')
+    .select('id, basket_code, basket_name, assigned_role')
+    .eq('is_active', true)
+    .in('assigned_role', roles);
+  if (bErr || !baskets?.length) return [];
+
+  const ids = (baskets as { id: string }[]).map((b) => b.id);
+  const { data: linked } = await db
+    .from('bn_workbasket_role')
+    .select('workbasket_id')
+    .in('workbasket_id', ids);
+  const hasRoleRow = new Set(
+    ((linked || []) as { workbasket_id: string }[]).map((r) => r.workbasket_id),
+  );
+
+  return (baskets as { id: string; basket_code: string; basket_name: string; assigned_role: string }[])
+    .filter((b) => !hasRoleRow.has(b.id))
+    .map((b) => ({
+      workbasket_id: b.id,
+      basket_code: b.basket_code,
+      basket_name: b.basket_name,
+      role_name: b.assigned_role,
+      is_primary: false,
+    }));
+}
+
 
 /** Map of workbasket_id → role[] for many baskets at once. */
 export async function fetchRolesForWorkbaskets(

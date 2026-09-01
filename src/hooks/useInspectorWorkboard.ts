@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inspectorWorkboardService } from '@/services/inspectorWorkboardService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,41 +12,52 @@ export function useInspectorWorkboard() {
   const { userCode, userId } = useUserCode();
   const { toast } = useToast();
   const qc = useQueryClient();
-  // Scope workboard to the logged-in user's auth ID
-  const inspectorId = userId || undefined;
+  // Follow-up actions are stamped with either the auth user id or the staff
+  // user_code depending on which screen created them, so scope on both.
+  const identities = useMemo(
+    () => [userId, userCode].filter(Boolean) as string[],
+    [userId, userCode],
+  );
+  const inspectorId = identities.length ? identities : undefined;
+  const scopeKey = identities.join('|');
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['workboard'] });
   };
 
   const counts = useQuery({
-    queryKey: ['workboard', 'counts', inspectorId],
+    queryKey: ['workboard', 'counts', scopeKey],
     queryFn: () => inspectorWorkboardService.getCounts(inspectorId),
     staleTime: STALE,
+    enabled: identities.length > 0,
   });
 
   const overdue = useQuery({
-    queryKey: ['workboard', 'overdue', inspectorId],
+    queryKey: ['workboard', 'overdue', scopeKey],
     queryFn: () => inspectorWorkboardService.getOverdue(inspectorId, 20),
     staleTime: STALE,
+    enabled: identities.length > 0,
   });
 
   const dueToday = useQuery({
-    queryKey: ['workboard', 'due-today', inspectorId],
+    queryKey: ['workboard', 'due-today', scopeKey],
     queryFn: () => inspectorWorkboardService.getDueToday(inspectorId),
     staleTime: STALE,
+    enabled: identities.length > 0,
   });
 
   const thisWeek = useQuery({
-    queryKey: ['workboard', 'this-week', inspectorId],
+    queryKey: ['workboard', 'this-week', scopeKey],
     queryFn: () => inspectorWorkboardService.getThisWeek(inspectorId),
     staleTime: STALE,
+    enabled: identities.length > 0,
   });
 
   const upcoming = useQuery({
-    queryKey: ['workboard', 'upcoming', inspectorId],
+    queryKey: ['workboard', 'upcoming', scopeKey],
     queryFn: () => inspectorWorkboardService.getUpcoming(inspectorId, 20),
     staleTime: STALE,
+    enabled: identities.length > 0,
   });
 
   const startAction = useMutation({

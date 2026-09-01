@@ -30,9 +30,13 @@ import OpsTimeline from "./OpsTimeline";
 import MessageContentDialog from "./MessageContentDialog";
 import { useOmniCommsRpcClient } from "../../hooks/useOmniCommsRpcClient";
 import {
+  getOpsJobAuthorization,
   getOpsRequestDetail,
+  type OpsJobAuthorization,
   type OpsRequestDetail,
 } from "@/platform/omni-comms/application/operationsService";
+import { jobHoldStatus } from "@/platform/omni-comms/application/holdClassification";
+
 
 export interface RequestDetailPanelProps {
   requestId: string | null;
@@ -69,6 +73,9 @@ export const RequestDetailPanel: React.FC<RequestDetailPanelProps> = ({
 }) => {
   const client = useOmniCommsRpcClient();
   const [detail, setDetail] = useState<OpsRequestDetail | null>(null);
+  const [jobAuthorization, setJobAuthorization] = useState<
+    Record<string, OpsJobAuthorization>
+  >({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reveal, setReveal] = useState(false);
@@ -86,8 +93,16 @@ export const RequestDetailPanel: React.FC<RequestDetailPanelProps> = ({
           revealSensitive,
         });
         setDetail(res);
+        // Current authorization outcome is a SEPARATE truth from the stored
+        // claim blocker; it is read from an additive, read-only projection so
+        // the certified claim contract is untouched.
+        const authorization = await getOpsJobAuthorization(client, requestId);
+        setJobAuthorization(
+          Object.fromEntries(authorization.map((a) => [a.job_id, a])),
+        );
       } catch (e: unknown) {
         setDetail(null);
+        setJobAuthorization({});
         setError(e instanceof Error ? e.message : "Unable to load request");
       } finally {
         setLoading(false);
@@ -95,6 +110,7 @@ export const RequestDetailPanel: React.FC<RequestDetailPanelProps> = ({
     },
     [client, requestId, organizationId],
   );
+
 
   useEffect(() => {
     setReveal(false);
@@ -296,32 +312,67 @@ export const RequestDetailPanel: React.FC<RequestDetailPanelProps> = ({
                         <TableHead>Channel</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Runnable</TableHead>
-                        <TableHead>Hold reason</TableHead>
+                        <TableHead>Situation</TableHead>
                         <TableHead>Attempts</TableHead>
                         <TableHead>Lease</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {detail.dispatch_jobs.map((j) => (
-                        <TableRow key={j.id}>
-                          <TableCell className="text-xs">{j.channel}</TableCell>
-                          <TableCell className="text-xs">{j.status}</TableCell>
-                          <TableCell className="text-xs">
-                            {j.is_runnable ? (
-                              <Badge variant="destructive">Runnable</Badge>
-                            ) : (
-                              "No"
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs">{j.hold_reason ?? "—"}</TableCell>
-                          <TableCell className="text-xs">
-                            {j.attempt_count}/{j.max_attempts}
-                          </TableCell>
-                          <TableCell className="text-xs">{j.lease_state}</TableCell>
-                        </TableRow>
-                      ))}
+                      {detail.dispatch_jobs.map((j) => {
+                        const authorization = jobAuthorization[j.id] ?? null;
+                        const situation = jobHoldStatus({
+                          status: j.status,
+                          hold_reason: j.hold_reason,
+                          authorization_outcome:
+                            authorization?.authorization_outcome ?? undefined,
+                        });
+                        return (
+                          <TableRow key={j.id}>
+                            <TableCell className="text-xs">{j.channel}</TableCell>
+                            <TableCell className="text-xs">{j.status}</TableCell>
+                            <TableCell className="text-xs">
+                              {j.is_runnable ? (
+                                <Badge variant="destructive">Runnable</Badge>
+                              ) : (
+                                "No"
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span>{situation.label}</span>
+                                  {situation.actionable && (
+                                    <Badge variant="outline">Needs action</Badge>
+                                  )}
+                                </div>
+                                {situation.technicalReason && (
+                                  <div className="font-mono text-[10px] text-muted-foreground">
+                                    {situation.technicalReason}
+                                  </div>
+                                )}
+                                {authorization &&
+                                  authorization.stored_hold_reason &&
+                                  authorization.stored_hold_reason !==
+                                    situation.technicalReason && (
+                                    <div className="text-[10px] text-muted-foreground">
+                                      Last claim blocker:{" "}
+                                      <span className="font-mono">
+                                        {authorization.stored_hold_reason}
+                                      </span>
+                                    </div>
+                                  )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {j.attempt_count}/{j.max_attempts}
+                            </TableCell>
+                            <TableCell className="text-xs">{j.lease_state}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
+
                 )}
 
                 <div>

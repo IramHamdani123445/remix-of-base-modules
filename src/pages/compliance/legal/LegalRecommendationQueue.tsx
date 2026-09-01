@@ -1,449 +1,459 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { toast } from 'sonner';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  Scale,
-  Search,
-  AlertTriangle,
-  DollarSign,
-  FileText,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Send,
-  RefreshCw,
-  Loader2,
+  Scale, Search, AlertTriangle, RefreshCw, Loader2, Gavel, Building2, FileText,
+  ShieldAlert, ChevronLeft, ChevronRight, X, Eye,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { formatCurrency } from '@/utils/formatCurrency';
+import { formatDisplayDate } from '@/lib/dateFormat';
 import { legalEscalationService } from '@/services/legalEscalationService';
 import { useAuditFields } from '@/hooks/useAuditTrail';
-import { LegalRecommendation } from '@/types/legalEscalation';
+import RecommendationReviewDialog from '@/components/compliance/legal/RecommendationReviewDialog';
+import {
+  useLegalRecommendationRegister,
+  formatWaiting,
+  ATTENTION_REASON_LABELS,
+  RECOMMENDATION_TABS,
+  RECOMMENDATION_SORTS,
+  RECOMMENDATION_PAGE_SIZES,
+  RECOMMENDATION_AMOUNT_BANDS,
+  RECOMMENDATION_DATE_WINDOWS,
+  type RecommendationRow,
+} from '@/hooks/compliance/useLegalRecommendationRegister';
+
+/**
+ * Compliance → Legal Recommendation Queue.
+ *
+ * Enterprise review and approval workspace: management decides whether an
+ * employer should be escalated to Legal. Approval is executed by the governed
+ * RPC, which mints exactly one referral — so this screen never offers a
+ * separate "create referral" action; approved rows link straight to Legal Pack
+ * Preparation instead.
+ */
+
+const TONE: Record<string, string> = {
+  danger: 'bg-destructive/10 text-destructive border-destructive/30',
+  warning: 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400',
+  success: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400',
+  info: 'bg-primary/10 text-primary border-primary/30',
+  muted: 'bg-muted text-muted-foreground border-border',
+};
+
+function ToneBadge({ tone, children }: { tone?: string | null; children: React.ReactNode }) {
+  return <Badge variant="outline" className={TONE[tone || 'muted']}>{children}</Badge>;
+}
+
+function Kpi({ label, value, hint, tone }: { label: string; value: React.ReactNode; hint?: string; tone?: string }) {
+  return (
+    <Card className="p-3">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`text-2xl font-semibold ${tone === 'danger' ? 'text-destructive' : ''}`}>{value}</div>
+      {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
+    </Card>
+  );
+}
 
 const LegalRecommendationQueue = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { userCode } = useAuditFields();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
-  const [selectedZone, setSelectedZone] = useState('ALL');
-  const [selectedRiskBand, setSelectedRiskBand] = useState('ALL');
-  const [selectedRecommendation, setSelectedRecommendation] = useState<LegalRecommendation | null>(null);
-  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const { filters, setFilters, resetFilters, data, isLoading, isFetching, error, refetch } =
+    useLegalRecommendationRegister();
+  const [searchDraft, setSearchDraft] = useState(filters.search);
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: ['legal-recommendations'] });
-    queryClient.invalidateQueries({ queryKey: ['legal-rec-stats'] });
-  };
+  const kpis = data?.kpis;
+  const actor = data?.actor;
+  const facets = data?.facets;
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / filters.page_size));
 
-  // Queries
-  const { data: recommendations = [], isLoading } = useQuery({
-    queryKey: ['legal-recommendations', selectedStatus, selectedZone, selectedRiskBand],
-    queryFn: () => legalEscalationService.getLegalRecommendations({
-      status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
-      zone: selectedZone !== 'ALL' ? selectedZone : undefined,
-      riskBand: selectedRiskBand !== 'ALL' ? selectedRiskBand : undefined,
-    }),
-  });
-
-  const { data: stats } = useQuery({
-    queryKey: ['legal-rec-stats'],
-    queryFn: () => legalEscalationService.getQueueStats(),
-  });
-
-  // Mutations
   const generateMut = useMutation({
     mutationFn: () => legalEscalationService.generateRecommendations(userCode || 'SYSTEM'),
     onSuccess: (count) => {
-      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ['ce-legal-recommendations'] });
       if (count === 0) {
         toast.info('No new recommendations generated', {
-          description: 'No employers currently meet the configured legal-escalation thresholds.',
+          description: 'No employers currently meet the configured legal escalation thresholds.',
         });
       } else {
-        toast.success(`Generated ${count} new recommendation${count !== 1 ? 's' : ''} from compliance data`);
+        toast.success(`${count} recommendation${count !== 1 ? 's' : ''} generated from compliance data`);
       }
     },
-    // Issue #6 — Surface the real error from the RPC so admins can act on it
-    // (e.g. missing escalation policy, no qualifying cases, RPC permission).
-    onError: (err: any) => {
-      const msg = err?.message || err?.error?.message || 'Unknown error';
-      toast.error('Failed to generate recommendations', { description: msg });
-      // Non-blocking diagnostic log for support
-      // eslint-disable-next-line no-console
-      console.error('[LegalRecommendations] generate failed', err);
-    },
+    onError: (err: any) =>
+      toast.error('Failed to generate recommendations', { description: err?.message || 'Unknown error' }),
   });
 
-  const approveMut = useMutation({
-    mutationFn: (id: string) => legalEscalationService.updateRecommendationStatus(
-      id, 'APPROVED_FOR_REFERRAL', 'Approved by compliance officer', userCode || 'SYSTEM'
-    ),
-    onSuccess: () => { invalidateAll(); toast.success('Recommendation approved for legal referral'); },
-    onError: () => toast.error('Failed to approve recommendation'),
-  });
-
-  const rejectMut = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      legalEscalationService.updateRecommendationStatus(id, 'REJECTED', reason, userCode || 'SYSTEM'),
-    onSuccess: () => { invalidateAll(); toast.success('Recommendation rejected'); },
-    onError: () => toast.error('Failed to reject recommendation'),
-  });
-
-  const handleReject = (recommendationId: string) => {
-    const reason = prompt('Enter rejection reason:');
-    if (!reason) return;
-    rejectMut.mutate({ id: recommendationId, reason });
+  const applySort = (key: string) => {
+    if (filters.sort === key) setFilters({ dir: filters.dir === 'asc' ? 'desc' : 'asc' });
+    else setFilters({ sort: key, dir: 'desc' });
   };
 
-  const handleCreateReferral = (recommendation: LegalRecommendation) => {
-    navigate('/compliance/enforcement/legal-referral', { state: { recommendation } });
-  };
+  const activeFilterCount = [
+    filters.search, filters.status, filters.risk, filters.zone, filters.source,
+    filters.legal_state, filters.rule, filters.amount_band, filters.date_window,
+  ].filter(Boolean).length;
 
-  const filteredRecommendations = recommendations.filter(rec =>
-    rec.employerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rec.employerId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getRiskBadgeColor = (riskBand: string) => {
-    switch (riskBand.toUpperCase()) {
-      case 'CRITICAL': return 'bg-red-100 text-red-800 border-red-300';
-      case 'HIGH': return 'bg-orange-100 text-orange-800 border-orange-300';
-      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      default: return 'bg-green-100 text-green-800 border-green-300';
-    }
-  };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'PENDING_REVIEW': return 'bg-blue-100 text-blue-800';
-      case 'APPROVED_FOR_REFERRAL': return 'bg-green-100 text-green-800';
-      case 'REFERRAL_CREATED': return 'bg-purple-100 text-purple-800';
-      case 'REJECTED': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (isLoading) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading recommendations...</p>
-        </div>
+      <div className="p-6">
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>{(error as Error).message}</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Scale className="h-8 w-8" />
-            Legal Recommendation Queue
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Review employers meeting legal escalation thresholds and create legal referrals
-          </p>
-        </div>
-        <Button
-          onClick={() => generateMut.mutate()}
-          disabled={generateMut.isPending}
-        >
-          {generateMut.isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
-          Generate Recommendations
-        </Button>
-      </div>
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Employers</p>
-                <p className="text-2xl font-bold">{stats.totalEmployers}</p>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-orange-500" />
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Subcases</p>
-                <p className="text-2xl font-bold">{stats.totalSubcases}</p>
-              </div>
-              <FileText className="h-8 w-8 text-blue-500" />
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Amount at Risk</p>
-                <p className="text-2xl font-bold">EC${stats.totalAmountAtRisk.toLocaleString()}</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-green-500" />
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Pending Review</p>
-                <p className="text-2xl font-bold">{stats.pendingReview}</p>
-              </div>
-              <Scale className="h-8 w-8 text-purple-500" />
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search employer..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Statuses</SelectItem>
-              <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
-              <SelectItem value="APPROVED_FOR_REFERRAL">Approved for Referral</SelectItem>
-              <SelectItem value="REFERRAL_CREATED">Referral Created</SelectItem>
-              <SelectItem value="REJECTED">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={selectedZone} onValueChange={setSelectedZone}>
-            <SelectTrigger><SelectValue placeholder="All Zones" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Zones</SelectItem>
-              {(stats?.byZone || []).map(z => (
-                <SelectItem key={z.zoneName} value={z.zoneName}>{z.zoneName}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedRiskBand} onValueChange={setSelectedRiskBand}>
-            <SelectTrigger><SelectValue placeholder="All Risk Bands" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Risk Bands</SelectItem>
-              <SelectItem value="CRITICAL">Critical</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </Card>
-
-      {/* Recommendations List */}
+    <TooltipProvider>
       <div className="space-y-4">
-        {filteredRecommendations.map((rec) => (
-          <Card key={rec.id} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-semibold">{rec.employerName}</h3>
-                  <Badge className={getRiskBadgeColor(rec.riskBand)}>
-                    {rec.riskBand} Risk ({rec.riskScore})
-                  </Badge>
-                  <Badge className={getStatusBadgeColor(rec.status)}>
-                    {rec.status.replace(/_/g, ' ')}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {rec.employerZone} • Recommended {new Date(rec.recommendedDate).toLocaleDateString()}
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm"
-                  onClick={() => { setSelectedRecommendation(rec); setShowDetailsDialog(true); }}>
-                  <Eye className="h-4 w-4 mr-2" /> View Details
-                </Button>
-                {rec.status === 'PENDING_REVIEW' && (
-                  <>
-                    <Button variant="outline" size="sm"
-                      disabled={approveMut.isPending}
-                      onClick={() => approveMut.mutate(rec.id)}>
-                      <CheckCircle className="h-4 w-4 mr-2" /> Approve
-                    </Button>
-                    <Button variant="outline" size="sm"
-                      disabled={rejectMut.isPending}
-                      onClick={() => handleReject(rec.id)}>
-                      <XCircle className="h-4 w-4 mr-2" /> Reject
-                    </Button>
-                  </>
-                )}
-                {rec.status === 'APPROVED_FOR_REFERRAL' && (
-                  <Button size="sm" onClick={() => handleCreateReferral(rec)}>
-                    <Send className="h-4 w-4 mr-2" /> Create Referral
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Financial Summary */}
-            <div className="grid grid-cols-4 gap-4 p-4 bg-muted rounded-lg mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Principal</p>
-                <p className="text-lg font-semibold">EC${rec.totalPrincipal.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Penalties</p>
-                <p className="text-lg font-semibold">EC${rec.totalPenalties.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Interest</p>
-                <p className="text-lg font-semibold">EC${rec.totalInterest.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Grand Total</p>
-                <p className="text-xl font-bold text-primary">EC${rec.grandTotal.toLocaleString()}</p>
-              </div>
-            </div>
-
-            {/* Subcases Summary */}
-            <div className="mb-4">
-              <p className="text-sm font-medium mb-2">Qualifying Subcases ({rec.subcaseSummary.length})</p>
-              <div className="space-y-2">
-                {rec.subcaseSummary.map((subcase) => (
-                  <div key={subcase.subcaseId} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded">
-                    <span className="font-medium">{subcase.caseNumber}</span>
-                    <span className="text-muted-foreground">{subcase.caseType.replace(/_/g, ' ')}</span>
-                    <span>{subcase.periodFrom || '—'} to {subcase.periodTo || '—'}</span>
-                    <span className="font-medium">EC${subcase.totalAmount.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Triggered Rules */}
-            <div>
-              <p className="text-sm font-medium mb-2">Escalation Reasons ({rec.triggeredRules.length})</p>
-              <div className="flex flex-wrap gap-2">
-                {rec.triggeredRules.map((rule) => (
-                  <Badge key={rule.ruleId} variant="outline" className="text-xs">
-                    {rule.ruleName}: {rule.reason}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </Card>
-        ))}
-
-        {filteredRecommendations.length === 0 && (
-          <Card className="p-12 text-center">
-            <Scale className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              {recommendations.length === 0
-                ? 'No recommendations yet. Click "Generate Recommendations" to evaluate employers against escalation rules.'
-                : 'No recommendations found matching your filters'}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Scale className="h-6 w-6" /> Legal Escalation Review
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Management review of employers recommended for legal escalation. Approval creates the legal referral and hands it to pack preparation.
             </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} /> Refresh
+            </Button>
+            {actor?.can_generate && (
+              <Button onClick={() => generateMut.mutate()} disabled={generateMut.isPending}>
+                {generateMut.isPending
+                  ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  : <RefreshCw className="h-4 w-4 mr-2" />}
+                Detect new recommendations
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* KPI strip */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Kpi label="Pending review" value={kpis?.pending ?? '—'} hint={`${data?.thresholds?.review_sla_days ?? 3}-day review SLA`} />
+          <Kpi label="Review overdue" value={kpis?.overdue ?? '—'} tone={(kpis?.overdue ?? 0) > 0 ? 'danger' : undefined} />
+          <Kpi label="High / critical pending" value={kpis?.high_risk_pending ?? '—'} />
+          <Kpi label="Pending exposure" value={kpis ? formatCurrency(Number(kpis.pending_exposure || 0)) : '—'} hint={`${kpis?.employers ?? 0} employers`} />
+          <Kpi label="Approved / referred" value={`${kpis?.approved ?? 0} / ${kpis?.referred ?? 0}`} hint={`${kpis?.rejected ?? 0} rejected`} />
+          <Kpi label="Oldest pending" value={formatWaiting(kpis?.oldest_pending_hours)} hint={`${kpis?.qualifying_cases ?? 0} qualifying cases`} />
+        </div>
+
+        {/* Requires attention */}
+        {(data?.attention?.length ?? 0) > 0 && (
+          <Card className="p-3 border-amber-500/40">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-semibold">Requires attention</span>
+              <Badge variant="secondary">{data!.attention.length}</Badge>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+              {data!.attention.map((a, i) => (
+                <button
+                  key={`${a.recommendation_id}-${i}`}
+                  onClick={() => setOpenId(a.recommendation_id)}
+                  className="text-left rounded-md border p-2 hover:bg-accent transition-colors"
+                >
+                  <div className="text-sm font-medium truncate">{a.employer_name || 'Employer'}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {ATTENTION_REASON_LABELS[a.reason] || a.reason} · {formatCurrency(Number(a.amount || 0))}
+                  </div>
+                </button>
+              ))}
+            </div>
           </Card>
         )}
-      </div>
 
-      {/* Details Dialog */}
-      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Legal Recommendation Details</DialogTitle>
-          </DialogHeader>
+        {/* Tabs */}
+        <Tabs value={filters.tab} onValueChange={(v) => setFilters({ tab: v })}>
+          <TabsList className="flex-wrap h-auto">
+            {RECOMMENDATION_TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="gap-1">
+                {t.label}
+                <Badge variant="secondary" className="ml-1">{data?.tab_counts?.[t.value] ?? 0}</Badge>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-          {selectedRecommendation && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-2">{selectedRecommendation.employerName}</h3>
-                <div className="flex gap-2">
-                  <Badge className={getRiskBadgeColor(selectedRecommendation.riskBand)}>
-                    {selectedRecommendation.riskBand} Risk
-                  </Badge>
-                  <Badge>{selectedRecommendation.employerZone}</Badge>
-                  <Badge className={getStatusBadgeColor(selectedRecommendation.status)}>
-                    {selectedRecommendation.status.replace(/_/g, ' ')}
-                  </Badge>
-                </div>
-              </div>
+        {/* Toolbar */}
+        <Card className="p-3 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <form
+              className="relative flex-1 min-w-[220px]"
+              onSubmit={(e) => { e.preventDefault(); setFilters({ search: searchDraft }); }}
+            >
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Search employer, registration no., case, referral or rule…"
+                value={searchDraft}
+                onChange={(e) => setSearchDraft(e.target.value)}
+                onBlur={() => setFilters({ search: searchDraft })}
+              />
+            </form>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="p-4">
-                  <p className="text-sm text-muted-foreground">Risk Score</p>
-                  <p className="text-2xl font-bold">{selectedRecommendation.riskScore}</p>
-                </Card>
-                <Card className="p-4">
-                  <p className="text-sm text-muted-foreground">Grand Total</p>
-                  <p className="text-2xl font-bold">EC${selectedRecommendation.grandTotal.toLocaleString()}</p>
-                </Card>
-              </div>
+            <Select value={filters.status || 'ALL'} onValueChange={(v) => setFilters({ status: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[190px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                {(facets?.statuses ?? []).map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
 
-              {selectedRecommendation.reviewedBy && (
-                <Card className="p-4 bg-muted/50">
-                  <p className="text-sm text-muted-foreground">Reviewed by</p>
-                  <p className="font-medium">{selectedRecommendation.reviewedBy}</p>
-                  {selectedRecommendation.reviewedDate && (
-                    <p className="text-xs text-muted-foreground">
-                      on {new Date(selectedRecommendation.reviewedDate).toLocaleString()}
-                    </p>
-                  )}
-                  {selectedRecommendation.reviewNotes && (
-                    <p className="text-sm mt-1">{selectedRecommendation.reviewNotes}</p>
-                  )}
-                </Card>
-              )}
+            <Select value={filters.risk || 'ALL'} onValueChange={(v) => setFilters({ risk: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Risk" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All risk bands</SelectItem>
+                {(facets?.risks ?? []).map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
 
-              <div>
-                <h4 className="font-medium mb-2">Qualifying Subcases</h4>
-                <div className="space-y-2">
-                  {selectedRecommendation.subcaseSummary.map((subcase) => (
-                    <Card key={subcase.subcaseId} className="p-3">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><span className="text-muted-foreground">Case:</span> {subcase.caseNumber}</div>
-                        <div><span className="text-muted-foreground">Type:</span> {subcase.caseType.replace(/_/g, ' ')}</div>
-                        <div><span className="text-muted-foreground">Period:</span> {subcase.periodFrom || '—'} - {subcase.periodTo || '—'}</div>
-                        <div><span className="text-muted-foreground">Amount:</span> EC${subcase.totalAmount.toLocaleString()}</div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
+            <Select value={filters.zone || 'ALL'} onValueChange={(v) => setFilters({ zone: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Zone" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All zones</SelectItem>
+                {(facets?.zones ?? []).map((z) => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+              </SelectContent>
+            </Select>
 
-              <div>
-                <h4 className="font-medium mb-2">Escalation Rules Triggered</h4>
-                <div className="space-y-2">
-                  {selectedRecommendation.triggeredRules.map((rule) => (
-                    <Card key={rule.ruleId} className="p-3">
-                      <p className="font-medium text-sm">{rule.ruleName}</p>
-                      <p className="text-sm text-muted-foreground">{rule.reason}</p>
-                    </Card>
-                  ))}
-                </div>
-              </div>
+            <Select value={filters.source || 'ALL'} onValueChange={(v) => setFilters({ source: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[190px]"><SelectValue placeholder="Source" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All sources</SelectItem>
+                {(facets?.sources ?? []).map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.legal_state || 'ALL'} onValueChange={(v) => setFilters({ legal_state: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Referral progress" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Any referral progress</SelectItem>
+                {(facets?.legal_states ?? []).map((s) => <SelectItem key={s.code} value={s.code}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.rule || 'ALL'} onValueChange={(v) => setFilters({ rule: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Escalation rule" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All rules</SelectItem>
+                {(facets?.rules ?? []).map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.amount_band || 'ALL'} onValueChange={(v) => setFilters({ amount_band: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Exposure" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Any exposure</SelectItem>
+                {RECOMMENDATION_AMOUNT_BANDS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.date_window || 'ALL'} onValueChange={(v) => setFilters({ date_window: v === 'ALL' ? '' : v })}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Recommended" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Any date</SelectItem>
+                {RECOMMENDATION_DATE_WINDOWS.map((w) => <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {filters.amount_band === 'CUSTOM' && (
+              <>
+                <Input className="w-28" placeholder="Min" value={filters.amount_min} onChange={(e) => setFilters({ amount_min: e.target.value })} />
+                <Input className="w-28" placeholder="Max" value={filters.amount_max} onChange={(e) => setFilters({ amount_max: e.target.value })} />
+              </>
+            )}
+            {filters.date_window === 'CUSTOM' && (
+              <>
+                <Input type="date" className="w-40" value={filters.date_from} onChange={(e) => setFilters({ date_from: e.target.value })} />
+                <Input type="date" className="w-40" value={filters.date_to} onChange={(e) => setFilters({ date_to: e.target.value })} />
+              </>
+            )}
+
+            <Select value={filters.sort} onValueChange={(v) => setFilters({ sort: v })}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {RECOMMENDATION_SORTS.map((s) => <SelectItem key={s.value} value={s.value}>Sort: {s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" onClick={() => { resetFilters(); setSearchDraft(''); }}>
+                <X className="h-4 w-4 mr-1" /> Clear ({activeFilterCount})
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        {/* Register */}
+        <Card>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="cursor-pointer" onClick={() => applySort('employer')}>Employer</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => applySort('zone')}>Zone</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => applySort('risk')}>Risk</TableHead>
+                  <TableHead>Why escalate</TableHead>
+                  <TableHead className="text-right cursor-pointer" onClick={() => applySort('cases')}>Cases</TableHead>
+                  <TableHead className="text-right cursor-pointer" onClick={() => applySort('amount')}>Exposure</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => applySort('recommended')}>Recommended</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => applySort('waiting')}>Waiting</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => applySort('status')}>Status</TableHead>
+                  <TableHead>Referral progress</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading && Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}><TableCell colSpan={11}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                ))}
+
+                {!isLoading && rows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-10 text-muted-foreground">
+                      No recommendations match this view. Adjust the filters or run detection to pick up newly qualifying employers.
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {rows.map((r: RecommendationRow) => (
+                  <TableRow key={r.recommendation_id} className="hover:bg-accent/40">
+                    <TableCell>
+                      <button className="text-left" onClick={() => setOpenId(r.recommendation_id)}>
+                        <div className="font-medium">{r.employer_name || '—'}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {r.employer_id} · {r.source_label}
+                          {r.source_case_number ? ` · ${r.source_case_number}` : ''}
+                        </div>
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-sm">{r.zone}</TableCell>
+                    <TableCell>
+                      <ToneBadge tone={r.risk_tone}>{r.risk_label}</ToneBadge>
+                    </TableCell>
+                    <TableCell className="max-w-[240px]">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground line-clamp-2">
+                            {r.rule_summary || r.recommendation_reason || 'Threshold met'}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          {r.rule_summary || r.recommendation_reason || 'Threshold met'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell className="text-right">{r.qualifying_case_count}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(Number(r.grand_total || 0))}
+                      {r.high_value && <div className="text-[10px] text-amber-600">High exposure</div>}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDisplayDate(r.recommended_date || r.recommended_at)}
+                      <div className="text-xs text-muted-foreground">{r.recommended_by || 'System'}</div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatWaiting(r.waiting_hours)}
+                      {r.review_overdue && <div className="text-[10px] text-destructive">Overdue</div>}
+                      {!r.review_overdue && r.review_due_soon && <div className="text-[10px] text-amber-600">Due soon</div>}
+                    </TableCell>
+                    <TableCell><ToneBadge tone={r.status_tone}>{r.status_label}</ToneBadge></TableCell>
+                    <TableCell>
+                      {r.referral_id ? (
+                        <button
+                          className="text-left text-sm text-primary hover:underline"
+                          onClick={() => navigate(`/compliance/legal/pack-preparation?referral=${r.referral_id}`)}
+                        >
+                          {r.referral_number}
+                          <div className="text-xs text-muted-foreground">{r.legal_state_label}</div>
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {r.approved_no_referral ? 'Approved — no referral' : r.legal_state_label}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {r.is_pending ? (
+                        <Button size="sm" variant={actor?.can_decide && !r.is_own_recommendation ? 'default' : 'outline'}
+                          onClick={() => setOpenId(r.recommendation_id)}>
+                          {actor?.can_decide && !r.is_own_recommendation
+                            ? <><Gavel className="h-4 w-4 mr-1" /> Review</>
+                            : <><Eye className="h-4 w-4 mr-1" /> View</>}
+                        </Button>
+                      ) : r.referral_id ? (
+                        <Button size="sm" variant="outline"
+                          onClick={() => navigate(`/compliance/legal/pack-preparation?referral=${r.referral_id}`)}>
+                          <FileText className="h-4 w-4 mr-1" /> Prepare pack
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setOpenId(r.recommendation_id)}>
+                          <Eye className="h-4 w-4 mr-1" /> View
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 border-t">
+            <div className="text-sm text-muted-foreground">
+              {total === 0 ? 'No records' : `Showing ${(filters.page - 1) * filters.page_size + 1}–${Math.min(filters.page * filters.page_size, total)} of ${total}`}
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Select value={String(filters.page_size)} onValueChange={(v) => setFilters({ page_size: Number(v), page: 1 })}>
+                <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RECOMMENDATION_PAGE_SIZES.map((s) => <SelectItem key={s} value={String(s)}>{s} / page</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" disabled={filters.page <= 1}
+                onClick={() => setFilters({ page: filters.page - 1 })}><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="text-sm">{filters.page} / {pageCount}</span>
+              <Button variant="outline" size="icon" disabled={filters.page >= pageCount}
+                onClick={() => setFilters({ page: filters.page + 1 })}><ChevronRight className="h-4 w-4" /></Button>
+            </div>
+          </div>
+        </Card>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/compliance/legal/pack-preparation')}>
+            <FileText className="h-4 w-4 mr-1" /> Legal pack preparation
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/compliance/enforcement/legal-queue')}>
+            <Gavel className="h-4 w-4 mr-1" /> Legal review &amp; handover
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/compliance/legal/approved-escalations')}>
+            <Building2 className="h-4 w-4 mr-1" /> Approved escalations
+          </Button>
+        </div>
+
+        <RecommendationReviewDialog
+          recommendationId={openId}
+          open={Boolean(openId)}
+          onOpenChange={(v) => !v && setOpenId(null)}
+        />
+      </div>
+    </TooltipProvider>
   );
 };
 

@@ -213,6 +213,12 @@ jobs:
             "$OMNI_COMMS_CERT_RESULT_FILE" "$(git rev-parse HEAD)" \
             2>&1 | tee .certification-logs/structured-result.log
 
+      - name: Build revision guard (DEF-13 deployment identity truth)
+        run: |
+          set +x
+          set -o pipefail
+          bun run verify:omni-build-revision 2>&1 | tee .certification-logs/build-revision.log
+
       - name: Vitest — Omni-Comms suite
         run: |
           set +x

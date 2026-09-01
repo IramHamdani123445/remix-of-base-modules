@@ -9,6 +9,7 @@
 
 import type {
   OmniCommsChannel,
+  SendCommunicationAttachmentInput,
   SendCommunicationRecipientInput,
 } from '../../sendCommunication';
 
@@ -102,6 +103,13 @@ export interface BusinessProducerEmission {
    * unset and keep their v1 key.
    */
   idempotencyKeyOverride?: string | null;
+  /**
+   * Governed attachment references (DEF-3). A producer supplies ONLY ids that
+   * were already registered through the governed attachment registry — never
+   * bytes, paths, buckets or URLs. Channel policy decides whether each one is
+   * carried, dropped, or blocks the message.
+   */
+  attachments?: SendCommunicationAttachmentInput[];
 }
 
 export interface BusinessProducerResult {

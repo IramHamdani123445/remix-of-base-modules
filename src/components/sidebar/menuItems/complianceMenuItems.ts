@@ -41,6 +41,7 @@ import {
   ShieldAlert,
   DollarSign,
   Gavel,
+  ShieldQuestion,
 } from "lucide-react";
 import { applyComplianceRemoteRouting } from "@/lib/embed/satelliteRouting";
 import { isComplianceFeatureEnabled } from "@/lib/compliance/featureToggles";
@@ -110,6 +111,7 @@ const violations: SubItem = {
   subItems: filterEnabled<SubItem & { __feature?: string }>([
     { title: "All Violations", url: "/compliance/violations", icon: FolderOpen, requiresPermission: "manage_compliance" },
     { title: "Verification Queue", url: "/compliance/violations/verification-queue", icon: ClipboardCheck, requiresPermission: "manage_compliance", __feature: "violations.verificationQueue" },
+    { title: "Review Flags", url: "/compliance/violations/review-flags", icon: ShieldQuestion, requiresPermission: "manage_compliance" },
     { title: "Manual Violation Entry", url: "/compliance/violations/manual-entry", icon: AlertTriangle, requiresPermission: "manage_compliance" },
     { title: "Rule Detected Violations", url: "/compliance/violations/rule-detected", icon: Zap, requiresPermission: "manage_compliance", __feature: "violations.ruleDetected" },
     { title: "Duplicate Review", url: "/compliance/violations/duplicate-review", icon: Eye, requiresPermission: "manage_compliance", __feature: "violations.duplicateReview" },
@@ -255,6 +257,14 @@ const administration: SubItem = {
       ],
     },
     { title: "Violation Types", url: "/compliance/admin/settings/violation-types", icon: AlertTriangle, requiresPermission: "manage_compliance" },
+    { title: "Employer Status Register", url: "/compliance/admin/settings/employer-status-register", icon: Building2, requiresPermission: "manage_compliance" },
+    { title: "Open Client Decisions", url: "/compliance/admin/settings/open-decisions", icon: ShieldQuestion, requiresPermission: "manage_compliance" },
+    { title: "Review Flag Queue", url: "/compliance/admin/settings/review-flag-queue", icon: ShieldQuestion, requiresPermission: "manage_compliance" },
+    { title: "Self-Employed Compliance", url: "/compliance/admin/settings/self-employed-compliance", icon: Users, requiresPermission: "manage_compliance" },
+    { title: "Headcount Tiers", url: "/compliance/admin/settings/headcount-tiers", icon: Users, requiresPermission: "manage_compliance" },
+    { title: "Wage Benchmarks", url: "/compliance/admin/settings/wage-benchmarks", icon: TrendingUp, requiresPermission: "manage_compliance" },
+    { title: "Contribution Exemptions", url: "/compliance/admin/settings/contribution-exemptions", icon: Scale, requiresPermission: "manage_compliance" },
+    { title: "Unregistered Employer Leads", url: "/compliance/admin/settings/unregistered-employer-leads", icon: Building2, requiresPermission: "manage_compliance" },
     { title: "Rule Engine", url: "/compliance/admin/settings/rule-engine", icon: Cog, requiresPermission: "manage_compliance" },
     { title: "Calculation Rules", url: "/compliance/admin/calculation-rules", icon: Hash, requiresPermission: "manage_compliance", __feature: "admin.calculationRules" },
     { title: "Escalation Rules", url: "/compliance/admin/escalation-rules", icon: Scale, requiresPermission: "manage_compliance", __feature: "admin.escalationRules" },
@@ -265,6 +275,8 @@ const administration: SubItem = {
     { title: "Reference Numbering", url: "/compliance/admin/settings/number-templates", icon: Hash, requiresPermission: "manage_compliance" },
     { title: "Notice Templates", url: "/admin/notification-templates?tab=core&module=COMPLIANCE&type=NOTICE", icon: FileText, requiresPermission: "manage_compliance" },
     { title: "Communication Templates", url: "/admin/notification-templates?tab=core&module=COMPLIANCE", icon: Mail, requiresPermission: "manage_compliance" },
+    { title: "Communication Trigger Rules", url: "/compliance/admin/comm-trigger-rules", icon: Mail, requiresPermission: "manage_compliance" },
+
     { title: "Automation Jobs", url: "/compliance/admin/automation/jobs", icon: Zap, requiresPermission: "manage_compliance" },
     { title: "Schedule Settings", url: "/compliance/admin/schedule-settings", icon: Calendar, requiresPermission: "manage_compliance", __feature: "admin.scheduleSettings" },
     { title: "Payment Arrangement Rules", url: "/compliance/admin/payment-arrangement-rules", icon: HandshakeIcon, requiresPermission: "manage_compliance", __feature: "admin.paymentArrangementRules" },

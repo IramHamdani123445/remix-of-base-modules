@@ -187,7 +187,7 @@ export function exportRiskDetailPDF(
     title: 'Risk Detail Report',
     subtitle: risk.risk_title,
     additionalInfo: [
-      { label: 'Entity', value: risk.ia_audit_universe?.entity_name || '—' },
+      { label: 'Department', value: risk.ia_departments?.name || '—' },
       { label: 'Owner', value: risk.risk_owner || '—' },
       { label: 'Status', value: risk.status },
       { label: 'Generated', value: new Date().toLocaleDateString() },

@@ -58,6 +58,13 @@ const auditMenuItemsRaw = [
             requiresPermission: "configure_audit_system",
             description: "Manage department functions"
           },
+          {
+            title: "Access Matrix",
+            url: "/audit/access-matrix",
+            icon: Users,
+            requiresPermission: "configure_audit_system",
+            description: "Explain effective Internal Audit access and segregation of duties"
+          },
         ]
       },
       // ── Risk Management ──
@@ -66,11 +73,18 @@ const auditMenuItemsRaw = [
         isGroupLabel: true,
       },
       {
+        title: "Risk Register",
+        url: "/audit/risk-register",
+        icon: Database,
+        requiresPermission: "configure_audit_system",
+        description: "Standing risk universe and risk ownership"
+      },
+      {
         title: "Risk Assessment",
         url: "/audit/risk-assessment",
         icon: Target,
         requiresPermission: "configure_audit_system",
-        description: "Assess function-level risks"
+        description: "Periodic formal assessment of registered risks"
       },
       {
         title: "Entity Risk Summary",
@@ -136,6 +150,28 @@ const auditMenuItemsRaw = [
         requiresPermission: "generate_reports",
         description: "Create and manage audit reports"
       },
+      {
+        title: "Engagement Summary",
+        url: "/audit/reports/engagement-summary",
+        icon: BarChart3,
+        requiresPermission: "generate_reports",
+        description: "Engagement register with governed finding counts"
+      },
+      {
+        title: "Overdue Actions",
+        url: "/audit/reports/overdue-actions",
+        icon: Clock,
+        requiresPermission: "generate_reports",
+        description: "Overdue corrective actions and aging, from the Action Centre read model"
+      },
+      {
+        title: "Plan Slippage",
+        url: "/audit/reports/plan-slippage",
+        icon: Timer,
+        requiresPermission: "generate_reports",
+        description: "Planned versus actual engagement timelines"
+      },
+
       // ── Resources ──
       {
         title: "Resources",

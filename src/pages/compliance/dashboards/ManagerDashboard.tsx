@@ -111,22 +111,89 @@ const ManagerDashboard = () => {
     },
   });
 
-  const { data: caseStatusData = [], isLoading: ls } = useQuery({
-    queryKey: ['ce_dashboard_case_status'],
+  // Stable, semantic colour per canonical case status code (never order-dependent)
+  const CASE_STATUS_COLORS: Record<string, string> = {
+    CASE_OPEN: 'hsl(var(--primary))',
+    CASE_IN_PROGRESS: 'hsl(210, 70%, 55%)',
+    CASE_PENDING_REVIEW: 'hsl(38, 92%, 50%)',
+    CASE_ESCALATED: 'hsl(var(--destructive))',
+    CASE_RESOLVED: 'hsl(142, 71%, 45%)',
+    CASE_CLOSED: 'hsl(215, 16%, 47%)',
+    UNMAPPED: 'hsl(280, 45%, 55%)',
+  };
+
+  // Raw ce_cases.status values folded into each canonical master status
+  const CASE_STATUS_ALIASES: Record<string, string[]> = {
+    CASE_OPEN: ['OPEN', 'NEW', 'DETECTED'],
+    CASE_IN_PROGRESS: ['ACTIVE', 'IN_PROGRESS', 'INVESTIGATION', 'IN_ARRANGEMENT', 'CSTG_PAYMENT_ARRANGEMENT_ACTIVE'],
+    CASE_PENDING_REVIEW: ['PENDING_REVIEW', 'UNDER_REVIEW', 'AWAITING_RESPONSE', 'NOTICE_ISSUED'],
+    CASE_ESCALATED: ['ESCALATED', 'ESCALATED_LEGAL', 'RECOMMENDED_FOR_LEGAL', 'LEGAL_REVIEW', 'COURT_ACTION', 'ENFORCEMENT_IN_PROGRESS'],
+    CASE_RESOLVED: ['RESOLVED', 'COMPLETED'],
+    CASE_CLOSED: ['CLOSED', 'CANCELLED'],
+  };
+
+  const humanise = (raw: string) =>
+    raw.toLowerCase().split('_').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+  const { data: caseStatusResult, isLoading: ls, isError: caseStatusError } = useQuery({
+    queryKey: ['ce_dashboard_case_status_canonical'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('ce_cases').select('status').eq('is_deleted', false);
-      if (error) throw error;
-      const cases = (data || []) as unknown as { status: string }[];
-      const groups = [
-        { name: 'Open', statuses: ['OPEN'], color: 'hsl(var(--primary))' },
-        { name: 'Under Review', statuses: ['UNDER_REVIEW'], color: 'hsl(210, 70%, 55%)' },
-        { name: 'Notice Issued', statuses: ['NOTICE_ISSUED', 'AWAITING_RESPONSE'], color: 'hsl(38, 92%, 50%)' },
-        { name: 'Legal', statuses: ['LEGAL_REVIEW', 'COURT_ACTION', 'ENFORCEMENT_IN_PROGRESS'], color: 'hsl(var(--destructive))' },
-        { name: 'Resolved', statuses: ['RESOLVED', 'CLOSED'], color: 'hsl(142, 71%, 45%)' },
-      ];
-      return groups.map(g => ({ ...g, value: cases.filter(c => g.statuses.includes(c.status)).length })).filter(g => g.value > 0);
+      const [mastersRes, casesRes] = await Promise.all([
+        supabase
+          .from('ce_case_status_masters')
+          .select('status_code, status_name, sort_order')
+          .eq('category', 'case')
+          .eq('is_active', true)
+          .order('sort_order'),
+        supabase.from('ce_cases').select('status').eq('is_deleted', false),
+      ]);
+      if (mastersRes.error) throw mastersRes.error;
+      if (casesRes.error) throw casesRes.error;
+
+      const masters = (mastersRes.data || []) as unknown as { status_code: string; status_name: string; sort_order: number }[];
+      const cases = (casesRes.data || []) as unknown as { status: string }[];
+
+      const rawCounts = new Map<string, number>();
+      cases.forEach(c => {
+        const key = (c.status || 'UNKNOWN').toUpperCase();
+        rawCounts.set(key, (rawCounts.get(key) || 0) + 1);
+      });
+
+      const consumed = new Set<string>();
+      const slices = masters.map(m => {
+        const aliases = CASE_STATUS_ALIASES[m.status_code] || [m.status_code];
+        let count = 0;
+        aliases.forEach(a => {
+          if (rawCounts.has(a)) {
+            count += rawCounts.get(a) || 0;
+            consumed.add(a);
+          }
+        });
+        return {
+          code: m.status_code,
+          name: m.status_name,
+          value: count,
+          color: CASE_STATUS_COLORS[m.status_code] || CASE_STATUS_COLORS.UNMAPPED,
+        };
+      });
+
+      // Any real status not covered by the canonical config still has to be visible
+      Array.from(rawCounts.entries())
+        .filter(([raw]) => !consumed.has(raw))
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([raw, count]) => {
+          slices.push({ code: raw, name: humanise(raw), value: count, color: CASE_STATUS_COLORS.UNMAPPED });
+        });
+
+      const total = cases.length;
+      return { slices, total };
     },
   });
+
+  const caseStatusSlices = caseStatusResult?.slices ?? [];
+  const caseStatusTotal = caseStatusResult?.total ?? 0;
+  const caseStatusPct = (value: number) => (caseStatusTotal > 0 ? (value / caseStatusTotal) * 100 : 0);
+
 
   const isLoading = lv || lc || lr || ls;
 
@@ -299,18 +366,52 @@ const ManagerDashboard = () => {
         </Card>
 
         {/* Cases by Status */}
-        {caseStatusData.length > 0 ? (
+        {caseStatusSlices.length > 0 || caseStatusError ? (
           <Card>
             <CardHeader><CardTitle className="text-lg">Cases by Status</CardTitle></CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie data={caseStatusData} cx="50%" cy="50%" innerRadius={50} outerRadius={85} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
-                    {caseStatusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--popover-foreground))' }} />
-                </PieChart>
-              </ResponsiveContainer>
+              {caseStatusError ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Case status data is unavailable — the query failed. Retry shortly.
+                </p>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={caseStatusSlices.filter(s => s.value > 0)}
+                        cx="50%" cy="50%"
+                        innerRadius={50} outerRadius={85}
+                        dataKey="value"
+                        nameKey="name"
+                        paddingAngle={2}
+                      >
+                        {caseStatusSlices.filter(s => s.value > 0).map(entry => (
+                          <Cell key={entry.code} fill={entry.color} stroke="hsl(var(--background))" strokeWidth={2} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--popover-foreground))' }}
+                        formatter={(value: number, name: string) => [
+                          `${value} (${caseStatusPct(value).toFixed(1)}%)`,
+                          name,
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="mt-2 space-y-1">
+                    {caseStatusSlices.map(s => (
+                      <div key={s.code} className="flex items-center gap-2 text-[11px]">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ background: s.color }} />
+                        <span className="truncate text-muted-foreground">{s.name}</span>
+                        <span className="ml-auto font-medium tabular-nums">
+                          {s.value} ({caseStatusPct(s.value).toFixed(1)}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -333,7 +434,8 @@ const ManagerDashboard = () => {
         )}
       </div>
 
-      {caseStatusData.length === 0 && riskData.distribution.every(r => r.count === 0) && (
+      {caseStatusTotal === 0 && riskData.distribution.every(r => r.count === 0) && (
+
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">No compliance data yet. Cases, violations, and risk profiles will appear here once created.</p>

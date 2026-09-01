@@ -47,6 +47,8 @@ import { ArrangementCoveragePanel } from '@/components/compliance/ArrangementCov
 import { ArrangementInstallmentsPanel } from '@/components/compliance/arrangements/ArrangementInstallmentsPanel';
 import { ArrangementAllocationsPanel } from '@/components/compliance/arrangements/ArrangementAllocationsPanel';
 import { ArrangementOperationalStrip } from '@/components/compliance/arrangements/ArrangementOperationalStrip';
+import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
+
 import { useUserCode } from '@/hooks/useUserCode';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
@@ -380,7 +382,15 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
           </p>
           {linkedCase && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              Case: <span className="font-mono">{linkedCase.case_number}</span>
+              Case:{' '}
+              <Button
+                variant="link"
+                className="h-auto p-0 text-xs font-normal font-mono"
+                onClick={() => navigate(`/compliance/cases/${linkedCase.id}`)}
+                title="Open case detail"
+              >
+                {linkedCase.case_number}
+              </Button>
             </p>
           )}
         </div>
@@ -485,8 +495,21 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
               : <RefreshCw className="h-4 w-4 mr-1" />}
             Recalculate
           </Button>
+          {/* Legal referral is raised from the arrangement record itself so the
+              referral always carries the correct employer, case and default context. */}
+          {['ACTIVE', 'BREACHED', 'DEFAULTED'].includes(arr.status) && (
+            <ReferToLegalButton
+              module="compliance"
+              employerId={arr.employer_id ?? null}
+              ceCaseId={arr.case_id ?? null}
+              paymentArrangementId={arrangementId}
+              reasonCode="PAYMENT_ARRANGEMENT_DEFAULT"
+              label="Refer Default to Legal"
+            />
+          )}
         </div>
       </div>
+
 
       {/* ── Financial Summary Cards ─────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -596,7 +619,14 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-muted-foreground text-xs">Case #</p>
-                <p className="font-mono text-xs font-medium">{linkedCase.case_number}</p>
+                <Button
+                  variant="link"
+                  className="h-auto p-0 font-mono text-xs font-medium"
+                  onClick={() => navigate(`/compliance/cases/${linkedCase.id}`)}
+                  title="Open case detail"
+                >
+                  {linkedCase.case_number}
+                </Button>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Status</p>
@@ -840,7 +870,12 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
                     </TableHeader>
                     <TableBody>
                       {notices.map((n: any) => (
-                        <TableRow key={n.id}>
+                        <TableRow
+                          key={n.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => navigate('/compliance/enforcement/notices')}
+                          title="Open Notices register"
+                        >
                           <TableCell className="font-mono text-xs">{n.notice_number}</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{n.notice_type}</Badge></TableCell>
                           <TableCell className="text-xs truncate max-w-[200px]">{n.subject}</TableCell>

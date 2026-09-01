@@ -70,8 +70,8 @@ function InlineEvidenceForm({ auditId, activityId, onClose }: { auditId: string;
       const { error } = await supabase.storage.from('audit-attachments').upload(path, file);
       setUploading(false);
       if (error) { toast({ title: 'Upload failed', variant: 'destructive' }); return; }
-      const { data: urlData } = supabase.storage.from('audit-attachments').getPublicUrl(path);
-      fileUrl = urlData?.publicUrl || path;
+      // Private bucket: persist the object path, resolve a signed URL on read.
+      fileUrl = path;
       fileName = file.name; fileType = file.type; fileSize = file.size;
     }
     create.mutate({
@@ -441,7 +441,9 @@ export function AuditActivitiesTab({ auditId, departmentAuditId, auditors = [] }
       control_area: form.control_area || null, function_area: form.function_area || null,
       location: form.location || null, priority: form.priority || null,
       auditor_id: form.auditor_id || null, auditor_name: form.auditor_name || null,
-      engagement_id: auditId, department_audit_id: departmentAuditId || null,
+      // ADR-01: engagement_id is the canonical audit relationship. The legacy
+      // department_audit_id must not receive new operational writes (Wave 1).
+      engagement_id: auditId,
     };
     if (modal.mode === 'create') {
       create.mutate({ ...payload, ...getCreateFields() } as any, { onSuccess: () => setModal({ mode: null }) });

@@ -47,7 +47,7 @@ export default function ClaimWorklist() {
   ];
 
   return (
-    <PermissionWrapper moduleName="bn_claims">
+    <PermissionWrapper moduleName="bn_claim_worklist">
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>

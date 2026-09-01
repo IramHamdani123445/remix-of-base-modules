@@ -21,6 +21,7 @@ import { useIAEngagements } from '@/hooks/useAuditDataPhase2';
 import { useIADepartments, useIAFindings, useIAActionTracking } from '@/hooks/useAuditData';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { StatusBadge } from '@/components/common';
+import { useHasPermission } from '@/hooks/useNavigationMenu';
 import { AuditReportTemplateSelector, REPORT_TEMPLATES as TEMPLATES } from './AuditReportTemplateSelector';
 import type { ReportTemplate } from './AuditReportTemplateSelector';
 
@@ -45,6 +46,9 @@ const DASHBOARD_LINKS = [
 export function AuditReportCenter() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  // DEF-S1B-35: only report makers may see report authoring controls.
+  const canCreateReport = useHasPermission('audit_report_center', 'create');
+
   const { data: reports = [] } = useIAAuditReports();
   const { data: engagements = [] } = useIAEngagements();
   const { data: departments = [] } = useIADepartments();
@@ -224,9 +228,11 @@ export function AuditReportCenter() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={() => setShowTemplateSelector(true)} size="sm">
-              <Plus className="h-4 w-4 mr-2" /> New Report
-            </Button>
+            {canCreateReport && (
+              <Button onClick={() => setShowTemplateSelector(true)} size="sm">
+                <Plus className="h-4 w-4 mr-2" /> New Report
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => navigate(`/audit/report-builder?template=committee${engagementQuerySuffix}`)}>
               <Users className="h-4 w-4 mr-2" /> Board Pack
             </Button>
@@ -414,9 +420,11 @@ export function AuditReportCenter() {
                       ? 'Create a new report for this audit engagement to get started'
                       : 'Create a new report to get started'}
                   </p>
-                  <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowTemplateSelector(true)}>
-                    <Plus className="h-4 w-4 mr-2" /> New Report
-                  </Button>
+                  {canCreateReport && (
+                    <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowTemplateSelector(true)}>
+                      <Plus className="h-4 w-4 mr-2" /> New Report
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">

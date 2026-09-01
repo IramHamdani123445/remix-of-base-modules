@@ -64,3 +64,17 @@ export function useReleaseBnClaim() {
     },
   });
 }
+
+/**
+ * Active, uncompleted claim counts per workbasket (total + overdue),
+ * so the queue can show where the work actually is.
+ */
+export function useBasketClaimCounts(basketIds: string[]) {
+  const key = [...basketIds].sort().join(',');
+  return useQuery({
+    queryKey: ['bn', 'basket-claim-counts', key],
+    enabled: basketIds.length > 0,
+    staleTime: 30_000,
+    queryFn: () => workbasketService.fetchBasketClaimCounts(basketIds),
+  });
+}

@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.omni_comms_priv_debug_job_decision(uuid);

@@ -271,7 +271,10 @@ export default function PendingReview() {
                     <TableCell>
                       <div className="flex items-center gap-2 text-sm">
                         <Clock className="h-3 w-3 text-muted-foreground" />
-                        {plan.submittedAt ? new Date(plan.submittedAt).toLocaleDateString() : '-'}
+                        {/* Reviewers need the exact submission timestamp, not just the day. */}
+                        {plan.submittedAt
+                          ? new Date(plan.submittedAt).toLocaleString()
+                          : '-'}
                       </div>
                     </TableCell>
                     <TableCell>{plan.plannedVisits?.length ?? plan.totalPlannedVisits ?? 0}</TableCell>

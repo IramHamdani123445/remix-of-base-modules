@@ -159,3 +159,31 @@ export async function completeClaim(assignmentId: string): Promise<void> {
     performedBy: '',
   });
 }
+
+export interface BasketClaimCount {
+  total: number;
+  overdue: number;
+}
+
+/** Active, uncompleted assignment counts per workbasket. */
+export async function fetchBasketClaimCounts(
+  basketIds: string[],
+): Promise<Record<string, BasketClaimCount>> {
+  if (basketIds.length === 0) return {};
+  const { data, error } = await db
+    .from('bn_claim_queue_assignment')
+    .select('workbasket_id, due_at')
+    .in('workbasket_id', basketIds)
+    .eq('is_active', true)
+    .is('completed_at', null);
+  if (error) throw error;
+
+  const now = Date.now();
+  const out: Record<string, BasketClaimCount> = {};
+  for (const row of (data || []) as { workbasket_id: string; due_at: string | null }[]) {
+    const bucket = (out[row.workbasket_id] ||= { total: 0, overdue: 0 });
+    bucket.total += 1;
+    if (row.due_at && new Date(row.due_at).getTime() < now) bucket.overdue += 1;
+  }
+  return out;
+}

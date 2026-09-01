@@ -1,75 +1,90 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export interface ViolationReportRow {
-  id: string;
-  violation_number: string | null;
-  employer_id: string | null;
-  employer_name: string | null;
-  territory: string | null;
-  status: string | null;
-  priority: string | null;
-  severity: string | null;
-  fund_type: string | null;
-  total_amount: number | null;
-  principal_amount: number | null;
-  penalty_amount: number | null;
-  interest_amount: number | null;
-  discovered_date: string | null;
-  resolved_at: string | null;
-  created_at: string | null;
-  violation_type_id: string | null;
-  violation_type_code: string | null;
-  violation_type_name: string | null;
-  zone_id: string | null;
-  zone_name: string | null;
-  assigned_to_name: string | null;
+/**
+ * Server-side aggregated violation reporting.
+ *
+ * NOTE: ce_violations holds hundreds of thousands of rows. Reports MUST aggregate
+ * in the database — never download raw rows into the browser.
+ */
+
+export type ViolationReportDimension = 'status' | 'type' | 'zone';
+
+export interface ViolationReportFilters {
+  from?: string | null;
+  to?: string | null;
+  status?: string | null;
+  type?: string | null;
+  fund?: string | null;
+  zone?: string | null;
+  severity?: string | null;
 }
 
-const SELECT =
-  '*, ce_violation_types(code, name), ce_zones(zone_name)';
+export interface ViolationReportGroupRow {
+  bucket: string;
+  violation_count: number;
+  employer_count: number;
+  total_amount: number;
+  resolved_count: number;
+  unresolved_count: number;
+  avg_resolution_days: number | null;
+  median_resolution_days: number | null;
+  min_resolution_days: number | null;
+  max_resolution_days: number | null;
+}
 
-/**
- * Fetch violations for reporting. Pulls up to 5000 rows in chunks to avoid the
- * 1k Supabase default limit. Honest empty array when no rows.
- */
-export async function fetchViolationReportRows(): Promise<ViolationReportRow[]> {
-  const pageSize = 1000;
-  const rows: ViolationReportRow[] = [];
-  for (let from = 0; from < 5000; from += pageSize) {
-    const to = from + pageSize - 1;
-    const { data, error } = await (supabase as any)
-      .from('ce_violations')
-      .select(SELECT)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .range(from, to);
-    if (error) throw error;
-    const chunk = (data || []).map((r: any) => ({
-      id: r.id,
-      violation_number: r.violation_number,
-      employer_id: r.employer_id,
-      employer_name: r.employer_name,
-      territory: r.territory,
-      status: r.status,
-      priority: r.priority,
-      severity: r.severity,
-      fund_type: r.fund_type,
-      total_amount: r.total_amount != null ? Number(r.total_amount) : null,
-      principal_amount: r.principal_amount != null ? Number(r.principal_amount) : null,
-      penalty_amount: r.penalty_amount != null ? Number(r.penalty_amount) : null,
-      interest_amount: r.interest_amount != null ? Number(r.interest_amount) : null,
-      discovered_date: r.discovered_date,
-      resolved_at: r.resolved_at,
-      created_at: r.created_at,
-      violation_type_id: r.violation_type_id,
-      violation_type_code: r.ce_violation_types?.code ?? null,
-      violation_type_name: r.ce_violation_types?.name ?? r.ce_violation_types?.code ?? null,
-      zone_id: r.zone_id,
-      zone_name: r.ce_zones?.zone_name ?? null,
-      assigned_to_name: r.assigned_to_name,
-    }));
-    rows.push(...chunk);
-    if (!data || data.length < pageSize) break;
-  }
-  return rows;
+export interface ViolationReportFilterOptions {
+  statuses: string[];
+  types: string[];
+  zones: string[];
+  funds: string[];
+  severities: string[];
+}
+
+function clean(value?: string | null): string | null {
+  if (!value || value === 'all') return null;
+  return value;
+}
+
+export async function fetchViolationReportGroups(
+  dimension: ViolationReportDimension,
+  filters: ViolationReportFilters = {},
+): Promise<ViolationReportGroupRow[]> {
+  const { data, error } = await (supabase as any).rpc('ce_violation_report_group_v1', {
+    p_dimension: dimension,
+    p_from: clean(filters.from),
+    p_to: clean(filters.to),
+    p_status: clean(filters.status),
+    p_type: clean(filters.type),
+    p_fund: clean(filters.fund),
+    p_zone: clean(filters.zone),
+    p_severity: clean(filters.severity),
+  });
+  if (error) throw error;
+  return ((data || []) as any[]).map((r) => ({
+    bucket: r.bucket ?? 'Unknown',
+    violation_count: Number(r.violation_count ?? 0),
+    employer_count: Number(r.employer_count ?? 0),
+    total_amount: Number(r.total_amount ?? 0),
+    resolved_count: Number(r.resolved_count ?? 0),
+    unresolved_count: Number(r.unresolved_count ?? 0),
+    avg_resolution_days: r.avg_resolution_days != null ? Number(r.avg_resolution_days) : null,
+    median_resolution_days: r.median_resolution_days != null ? Number(r.median_resolution_days) : null,
+    min_resolution_days: r.min_resolution_days != null ? Number(r.min_resolution_days) : null,
+    max_resolution_days: r.max_resolution_days != null ? Number(r.max_resolution_days) : null,
+  }));
+}
+
+export async function fetchViolationReportFilterOptions(): Promise<ViolationReportFilterOptions> {
+  const { data, error } = await (supabase as any).rpc('ce_violation_report_filter_options_v1');
+  if (error) throw error;
+  const raw = (data || {}) as Record<string, unknown>;
+  const list = (key: string): string[] =>
+    Array.isArray(raw[key]) ? (raw[key] as unknown[]).filter(Boolean).map(String).sort() : [];
+  return {
+    statuses: list('statuses'),
+    types: list('types'),
+    zones: list('zones'),
+    funds: list('funds'),
+    severities: list('severities'),
+  };
 }

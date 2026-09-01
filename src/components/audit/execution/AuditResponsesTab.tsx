@@ -1,3 +1,4 @@
+import { openAuditFile } from '@/lib/audit/auditFileAccess';
 import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,13 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, MessageSquare, FileText, Loader2 } from 'lucide-react';
 import { StatusBadge, DataTable } from '@/components/common';
 import type { DataTableColumn } from '@/components/common';
-import { useIAManagementResponseMutations } from '@/hooks/useAuditData';
 import { AuditEmptyState } from '@/components/audit/workspace/AuditEmptyState';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { notifyManagementResponseSubmitted } from '@/services/auditNotificationService';
+import {
+  useRecordManagementResponse,
+  useReviewManagementResponse,
+  type ManagementPosition,
+} from '@/hooks/useAuditLifecycleCommands';
+
+const POSITIONS: ManagementPosition[] = ['Accepted', 'Partially Accepted', 'Rejected'];
+
 
 const ALLOWED_FILE_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/png', 'image/jpeg'];
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -28,12 +36,21 @@ interface AuditResponsesTabProps {
 }
 
 export function AuditResponsesTab({ auditId, auditFindings, auditResponses, departmentId, leadAuditorId }: AuditResponsesTabProps) {
-  const { create, update } = useIAManagementResponseMutations();
+  const recordResponse = useRecordManagementResponse();
+  const reviewResponse = useReviewManagementResponse();
   const { userCode } = useUserCode();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ finding_id: '', response_text: '', action_plan: '', target_date: '' });
+  const [form, setForm] = useState({
+    finding_id: '',
+    management_position: 'Accepted' as ManagementPosition,
+    response_text: '',
+    action_plan: '',
+    responsible_person: '',
+    target_date: '',
+    rejection_rationale: '',
+  });
   const [uploading, setUploading] = useState(false);
 
   const findingsWithoutResponse = auditFindings.filter(f => !auditResponses.find((r: any) => r.finding_id === f.id));
@@ -43,7 +60,12 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
       toast({ title: 'Validation', description: 'Finding and response text are required', variant: 'destructive' });
       return;
     }
-    let attachmentPath: string | null = null;
+    if (form.management_position === 'Rejected' && !form.rejection_rationale.trim()) {
+      toast({ title: 'Validation', description: 'A rejection rationale is required when the finding is rejected', variant: 'destructive' });
+      return;
+    }
+    // Supporting documents are stored in the audit bucket; the response record
+    // itself is written only by the governed command.
     const fileInput = fileInputRef.current;
     if (fileInput?.files?.[0]) {
       const file = fileInput.files[0];
@@ -56,27 +78,33 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
       const { error } = await supabase.storage.from('audit-attachments').upload(path, file);
       setUploading(false);
       if (error) { toast({ title: 'Upload Failed', variant: 'destructive' }); return; }
-      attachmentPath = path;
     }
-    create.mutate({
-      finding_id: form.finding_id, engagement_id: auditId,
-      response_text: form.response_text, action_plan: form.action_plan || null,
-      target_date: form.target_date || null, status: 'Submitted',
-      submitted_by: userCode || null, submitted_date: new Date().toISOString(),
-      supporting_docs: attachmentPath ? [attachmentPath] : null, created_by: userCode || null,
-    } as any, {
-      onSuccess: () => {
-        setShowForm(false);
-        setForm({ finding_id: '', response_text: '', action_plan: '', target_date: '' });
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        notifyManagementResponseSubmitted(form.finding_id, leadAuditorId);
+    recordResponse.mutate(
+      {
+        findingId: form.finding_id,
+        position: form.management_position,
+        responseText: form.response_text,
+        actionPlan: form.action_plan || null,
+        responsiblePerson: form.responsible_person || userCode || null,
+        targetDate: form.target_date || null,
+        rejectionRationale: form.rejection_rationale || null,
       },
-    });
+      {
+        onSuccess: () => {
+          const findingId = form.finding_id;
+          setShowForm(false);
+          setForm({ finding_id: '', management_position: 'Accepted', response_text: '', action_plan: '', responsible_person: '', target_date: '', rejection_rationale: '' });
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          notifyManagementResponseSubmitted(findingId, leadAuditorId);
+        },
+      },
+    );
   };
 
-  const handleUpdateStatus = (responseId: string, newStatus: string) => {
-    update.mutate({ id: responseId, status: newStatus, updated_by: userCode || null } as any);
+  const handleReview = (responseId: string, outcome: 'Accepted' | 'Escalated' | 'Revision Requested') => {
+    reviewResponse.mutate({ responseId, outcome });
   };
+
 
   const columns: DataTableColumn<any>[] = [
     { key: 'finding', header: 'Finding', render: (r) => {
@@ -88,15 +116,17 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
         </div>
       );
     }},
+    { key: 'management_position', header: 'Position', render: (r) => <StatusBadge status={r.management_position || 'Not stated'} /> },
     { key: 'response_text', header: 'Response', render: (r) => <span className="text-xs max-w-[200px] truncate block">{r.response_text || '—'}</span> },
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status || 'Pending'} /> },
+    { key: 'review_outcome', header: 'IA Review', render: (r) => <span className="text-xs">{r.review_outcome || '—'}</span> },
     { key: 'submitted_by', header: 'By', render: (r) => <span className="text-xs">{r.submitted_by || '—'}</span> },
     { key: 'submitted_date', header: 'Date', render: (r) => r.submitted_date ? formatDateForDisplay(r.submitted_date) : '—' },
+
     { key: 'attachment', header: 'Docs', render: (r) => {
       const docs = r.supporting_docs as string[] | null;
       if (!docs?.length) return <span className="text-muted-foreground text-xs">—</span>;
-      const { data } = supabase.storage.from('audit-attachments').getPublicUrl(docs[0]);
-      return <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => window.open(data?.publicUrl, '_blank')}><FileText className="h-3 w-3 mr-1" />View</Button>;
+      return <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { void openAuditFile('audit-attachments', docs[0]); }}><FileText className="h-3 w-3 mr-1" />View</Button>;
     }},
   ];
 
@@ -122,23 +152,34 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
                 </SelectContent>
               </Select>
             </div>
+            <div><Label>Management Position *</Label>
+              <Select value={form.management_position} onValueChange={(v) => setForm(f => ({ ...f, management_position: v as ManagementPosition }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{POSITIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div><Label>Management Response *</Label><Textarea value={form.response_text} onChange={e => setForm(f => ({ ...f, response_text: e.target.value }))} rows={3} /></div>
             <div><Label>Action Plan</Label><Textarea value={form.action_plan} onChange={e => setForm(f => ({ ...f, action_plan: e.target.value }))} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-3">
+            {form.management_position === 'Rejected' && (
+              <div><Label>Rejection Rationale *</Label><Textarea value={form.rejection_rationale} onChange={e => setForm(f => ({ ...f, rejection_rationale: e.target.value }))} rows={2} /></div>
+            )}
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>Responsible Person</Label><Input value={form.responsible_person} onChange={e => setForm(f => ({ ...f, responsible_person: e.target.value }))} /></div>
               <div><Label>Target Date</Label><Input type="date" value={form.target_date} onChange={e => setForm(f => ({ ...f, target_date: e.target.value }))} /></div>
               <div><Label>Supporting Document</Label>
                 <Input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" className="text-xs" />
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSubmitResponse} disabled={create.isPending || uploading}>
-                {uploading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Uploading...</> : 'Submit Response'}
+              <Button onClick={handleSubmitResponse} disabled={recordResponse.isPending || uploading}>
+                {uploading || recordResponse.isPending ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Submitting...</> : 'Submit Response'}
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
             </div>
           </CardContent>
         </Card>
       )}
+
 
       {auditResponses.length === 0 && !showForm ? (
         <AuditEmptyState icon={MessageSquare} title="No management responses yet" description="Responses will appear here once submitted by auditees" />
@@ -147,14 +188,16 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
           <DataTable columns={columns} data={auditResponses} emptyMessage="No management responses submitted yet."
             renderActions={(row) => (
               <div className="flex gap-1">
-                {row.status === 'Submitted' && (
+                {!row.review_outcome && (
                   <>
-                    <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(row.id, 'Accepted')}>Accept</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(row.id, 'Rejected')}>Reject</Button>
+                    <Button size="sm" variant="outline" disabled={reviewResponse.isPending} onClick={() => handleReview(row.id, 'Accepted')}>Accept</Button>
+                    <Button size="sm" variant="outline" disabled={reviewResponse.isPending} onClick={() => handleReview(row.id, 'Revision Requested')}>Request revision</Button>
+                    <Button size="sm" variant="outline" disabled={reviewResponse.isPending} onClick={() => handleReview(row.id, 'Escalated')}>Escalate</Button>
                   </>
                 )}
               </div>
             )}
+
           />
         </CardContent></Card>
       )}

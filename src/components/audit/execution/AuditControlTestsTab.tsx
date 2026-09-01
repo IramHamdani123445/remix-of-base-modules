@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, Eye, Edit, Shield, X } from 'lucide-react';
+import { Plus, Loader2, Eye, Edit, Shield, X, Gavel } from 'lucide-react';
 import { StatusBadge, DataTable } from '@/components/common';
 import type { DataTableColumn } from '@/components/common';
 import { useEngagementControlTests } from '@/hooks/useEngagementData';
@@ -15,8 +15,11 @@ import { useUserCode } from '@/hooks/useUserCode';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useConcludeControlTest } from '@/hooks/useAuditLifecycleCommands';
 
 const TEST_RESULTS = ['Effective', 'Partially Effective', 'Ineffective', 'Not Tested'];
+const CONCLUSION_RESULTS = ['Effective', 'Partially Effective', 'Ineffective'];
+
 
 const emptyForm = {
   rcm_control_id: '', sample_size: '', exceptions_found: '', result: 'Not Tested',
@@ -35,6 +38,10 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
   const [formMode, setFormMode] = useState<'create' | 'edit' | 'view' | null>(null);
   const [editRecord, setEditRecord] = useState<any>(null);
   const [form, setForm] = useState(emptyForm);
+  const concludeCommand = useConcludeControlTest();
+  const [concludeRecord, setConcludeRecord] = useState<any>(null);
+  const [concludeForm, setConcludeForm] = useState({ result: 'Effective', conclusion: '', no_finding_rationale: '' });
+
 
   const createMutation = useMutation({
     mutationFn: async (t: any) => { const { data, error } = await supabase.from('ia_control_tests' as any).insert(t).select().single(); if (error) throw error; return data; },
@@ -62,20 +69,42 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
   const openView = (r: any) => { openEdit(r); setFormMode('view'); };
 
   const handleSave = () => {
+    // `result`/`conclusion` are lifecycle outcomes owned by the governed
+    // `ia_conclude_control_test` command — never written directly from the UI.
     const payload = {
       engagement_id: auditId, rcm_control_id: form.rcm_control_id || null,
       sample_size: form.sample_size ? parseInt(form.sample_size) : null,
       exceptions_found: form.exceptions_found ? parseInt(form.exceptions_found) : null,
-      result: form.result, remarks: form.remarks || null,
+      remarks: form.remarks || null,
       test_date: form.test_date || null, tested_by: form.tested_by || null,
       reviewer_id: form.reviewed_by || null,
     };
     if (formMode === 'create') {
-      createMutation.mutate({ ...payload, created_by: userCode || null });
+      createMutation.mutate({ ...payload, result: 'Not Tested', status: 'Draft', created_by: userCode || null });
     } else if (formMode === 'edit' && editRecord) {
       updateMutation.mutate({ id: editRecord.id, ...payload, updated_by: userCode || null });
     }
   };
+
+  const openConclude = (r: any) => {
+    setConcludeRecord(r);
+    setConcludeForm({ result: 'Effective', conclusion: '', no_finding_rationale: '' });
+  };
+
+  const submitConclusion = () => {
+    if (!concludeRecord) return;
+    concludeCommand.mutate(
+      {
+        testId: concludeRecord.id,
+        result: concludeForm.result,
+        conclusion: concludeForm.conclusion,
+        noFindingRationale: concludeForm.no_finding_rationale || null,
+      },
+      { onSuccess: () => setConcludeRecord(null) },
+    );
+  };
+
+  const isConcluded = (r: any) => !!r.concluded_at || r.status === 'Concluded';
 
   const resultColor = (result: string) => {
     if (result === 'Effective') return 'text-primary';
@@ -89,8 +118,10 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
     { key: 'sample_size', header: 'Sample Size', render: (r) => <span className="text-sm">{r.sample_size ?? '—'}</span> },
     { key: 'exceptions_found', header: 'Exceptions', render: (r) => <span className={`text-sm font-medium ${(r.exceptions_found || 0) > 0 ? 'text-destructive' : ''}`}>{r.exceptions_found ?? '—'}</span> },
     { key: 'result', header: 'Result', render: (r) => <span className={`text-sm font-medium ${resultColor(r.result || '')}`}>{r.result || '—'}</span> },
+    { key: 'status', header: 'Stage', render: (r) => <StatusBadge status={isConcluded(r) ? 'Concluded' : (r.status || 'Draft')} /> },
     { key: 'tested_by', header: 'Tested By', render: (r) => <span className="text-xs">{r.tested_by || '—'}</span> },
     { key: 'test_date', header: 'Date', render: (r) => r.test_date ? formatDateForDisplay(r.test_date) : '—' },
+
   ];
 
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
@@ -115,11 +146,10 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Control Reference</Label><Input value={form.rcm_control_id} onChange={e => setForm(f => ({ ...f, rcm_control_id: e.target.value }))} disabled={formMode === 'view'} placeholder="Control ID from RCM" /></div>
               <div><Label>Test Result</Label>
-                <Select value={form.result} onValueChange={v => setForm(f => ({ ...f, result: v }))} disabled={formMode === 'view'}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{TEST_RESULTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
+                <Input value={editRecord?.result || 'Not Tested'} disabled readOnly />
+                <p className="mt-1 text-[11px] text-muted-foreground">Set by the governed “Conclude test” command.</p>
               </div>
+
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Sample Size</Label><Input type="number" value={form.sample_size} onChange={e => setForm(f => ({ ...f, sample_size: e.target.value }))} disabled={formMode === 'view'} /></div>
@@ -141,6 +171,34 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
         </Card>
       )}
 
+      {/* Governed conclusion */}
+      {concludeRecord && (
+        <Card className="border-primary/40">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Conclude control test</p>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setConcludeRecord(null)}><X className="h-4 w-4" /></Button>
+            </div>
+            <div><Label>Result *</Label>
+              <Select value={concludeForm.result} onValueChange={v => setConcludeForm(f => ({ ...f, result: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{CONCLUSION_RESULTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Conclusion *</Label><Textarea rows={3} value={concludeForm.conclusion} onChange={e => setConcludeForm(f => ({ ...f, conclusion: e.target.value }))} placeholder="Basis for the conclusion reached on this control" /></div>
+            {concludeForm.result !== 'Effective' && (
+              <div><Label>Rationale if no finding is raised</Label><Textarea rows={2} value={concludeForm.no_finding_rationale} onChange={e => setConcludeForm(f => ({ ...f, no_finding_rationale: e.target.value }))} /></div>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={submitConclusion} disabled={concludeCommand.isPending || !concludeForm.conclusion.trim()}>
+                {concludeCommand.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Conclude
+              </Button>
+              <Button variant="outline" onClick={() => setConcludeRecord(null)}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {tests.length === 0 && !formMode ? (
         <AuditEmptyState icon={Shield} title="No control tests recorded"
           description="Control tests evaluate the design and operating effectiveness of internal controls within the audit scope."
@@ -152,11 +210,15 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openView(row); }}><Eye className="h-3.5 w-3.5" /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(row); }}><Edit className="h-3.5 w-3.5" /></Button>
+                {!isConcluded(row) && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Conclude test" onClick={(e) => { e.stopPropagation(); openConclude(row); }}><Gavel className="h-3.5 w-3.5" /></Button>
+                )}
               </div>
             )}
           />
         </CardContent></Card>
       )}
+
     </div>
   );
 }

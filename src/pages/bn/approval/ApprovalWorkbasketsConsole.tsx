@@ -39,6 +39,13 @@ interface Workbasket {
   is_active: boolean;
 }
 
+interface ClaimCalculation {
+  calc_date: string | null;
+  monthly_rate: number | null;
+  weekly_rate: number | null;
+  lump_sum: number | null;
+}
+
 interface Assignment {
   id: string;
   claim_id: string;
@@ -51,9 +58,20 @@ interface Assignment {
     id: string;
     claim_number?: string | null;
     status?: string | null;
-    total_amount?: number | null;
     bn_product?: { benefit_code?: string; benefit_name?: string; category?: string } | null;
+    bn_claim_calculation?: ClaimCalculation[] | null;
   } | null;
+}
+
+/** Latest calculation amount for a claim: monthly → weekly → lump sum. */
+function claimAmount(a: Assignment): number | null {
+  const calcs = a.bn_claim?.bn_claim_calculation ?? [];
+  if (!calcs.length) return null;
+  const latest = [...calcs].sort(
+    (x, y) => new Date(y.calc_date ?? 0).getTime() - new Date(x.calc_date ?? 0).getTime(),
+  )[0];
+  const v = latest.monthly_rate ?? latest.weekly_rate ?? latest.lump_sum;
+  return v == null ? null : Number(v);
 }
 
 function priorityLabel(p: number): { label: string; tone: 'default' | 'secondary' | 'destructive' } {
@@ -86,8 +104,9 @@ async function fetchAssignments(): Promise<Assignment[]> {
     .select(
       `id, claim_id, workbasket_id, priority, assigned_at, due_at, assigned_to,
        bn_claim:claim_id (
-         id, claim_number, status, total_amount,
-         bn_product:product_id ( benefit_code, benefit_name, category )
+         id, claim_number, status,
+         bn_product:product_id ( benefit_code, benefit_name, category ),
+         bn_claim_calculation ( calc_date, monthly_rate, weekly_rate, lump_sum )
        )`
     )
     .eq('is_active', true)
@@ -99,6 +118,19 @@ async function fetchAssignments(): Promise<Assignment[]> {
   return (data ?? []) as Assignment[];
 }
 
+async function fetchAssigneeNames(ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const { data, error } = await (supabase as any)
+    .from('profiles')
+    .select('id, full_name, email')
+    .in('id', ids);
+  if (error) return {};
+  const map: Record<string, string> = {};
+  for (const p of data ?? []) map[p.id] = p.full_name || p.email || p.id;
+  return map;
+}
+
+
 export default function ApprovalWorkbasketsConsole() {
   const [workbasketId, setWorkbasketId] = useState<string>('ALL');
   const [role, setRole] = useState<string>('ALL');
@@ -107,17 +139,30 @@ export default function ApprovalWorkbasketsConsole() {
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [minAmount, setMinAmount] = useState('');
 
-  const { data: workbaskets = [], isLoading: wbLoading } = useQuery({
+  const { data: workbaskets = [], isLoading: wbLoading, error: wbError } = useQuery({
     queryKey: ['bn', 'workbaskets-active'],
     queryFn: fetchWorkbaskets,
     staleTime: 60_000,
   });
 
-  const { data: assignments = [], isLoading: asgLoading } = useQuery({
+  const { data: assignments = [], isLoading: asgLoading, error: asgError } = useQuery({
     queryKey: ['bn', 'approval-workbasket-assignments'],
     queryFn: fetchAssignments,
     refetchInterval: 30_000,
   });
+
+  const assigneeIds = useMemo(
+    () => Array.from(new Set(assignments.map((a) => a.assigned_to).filter(Boolean) as string[])).sort(),
+    [assignments],
+  );
+  const { data: assigneeNames = {} } = useQuery({
+    queryKey: ['bn', 'approval-workbasket-assignees', assigneeIds],
+    queryFn: () => fetchAssigneeNames(assigneeIds),
+    enabled: assigneeIds.length > 0,
+    staleTime: 300_000,
+  });
+
+  const loadError = (asgError ?? wbError) as { message?: string } | null;
 
   const roleOptions = useMemo(
     () => Array.from(new Set(workbaskets.map((w) => w.assigned_role).filter(Boolean))).sort(),
@@ -152,12 +197,15 @@ export default function ApprovalWorkbasketsConsole() {
       if (overdueOnly && !sla.overdue) continue;
       const cat = a.bn_claim?.bn_product?.category ?? null;
       if (category !== 'ALL' && cat !== category) continue;
-      const amt = Number(a.bn_claim?.total_amount ?? 0);
-      if (minAmt > 0 && amt < minAmt) continue;
+      if (minAmt > 0) {
+        const amt = claimAmount(a);
+        if (amt == null || amt < minAmt) continue;
+      }
       map.get(a.workbasket_id)!.push(a);
     }
     return map;
   }, [filteredWorkbaskets, assignments, workbasketId, pMax, overdueOnly, category, minAmt]);
+
 
   const totalPending = useMemo(
     () => Array.from(grouped.values()).reduce((n, list) => n + list.length, 0),
@@ -248,11 +296,23 @@ export default function ApprovalWorkbasketsConsole() {
         </CardContent>
       </Card>
 
+      {loadError && (
+        <Card className="border-destructive">
+          <CardContent className="flex items-start gap-2 py-4 text-sm text-destructive">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Could not load pending approvals: {loadError.message ?? 'unknown error'}
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
       {(wbLoading || asgLoading) && (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading queues…
         </div>
       )}
+
 
       {!wbLoading && !asgLoading && filteredWorkbaskets.map((wb) => {
         const items = grouped.get(wb.id) ?? [];
@@ -316,11 +376,12 @@ export default function ApprovalWorkbasketsConsole() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {c?.total_amount != null ? Number(c.total_amount).toLocaleString() : '—'}
+                            {claimAmount(a) != null ? claimAmount(a)!.toLocaleString() : '—'}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {a.assigned_to ?? 'Unassigned'}
+                            {a.assigned_to ? (assigneeNames[a.assigned_to] ?? a.assigned_to) : 'Unassigned'}
                           </TableCell>
+
                           <TableCell>
                             <Button asChild variant="ghost" size="icon">
                               <Link to={`/bn/claims/${a.claim_id}`} title="Open claim">

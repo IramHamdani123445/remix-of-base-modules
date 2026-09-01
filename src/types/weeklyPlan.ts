@@ -348,6 +348,12 @@ export interface PlanCandidateV3 extends PlanCandidateV2 {
     | 'CAMPAIGN_INTEL';
   /** Phase 3 — estimated visit effort in hours */
   estimated_effort: number;
+  /**
+   * Data-quality findings recorded by the service-boundary normaliser when the
+   * candidate engine returned missing or unconfigured values. Present only when
+   * the record needs correction.
+   */
+  data_issues?: { field: string; code: string; message: string }[];
 }
 
 export type PlannerBucketKey = PlanCandidateV3['bucket'];

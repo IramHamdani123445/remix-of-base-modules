@@ -30,7 +30,7 @@
  */
 import { type EligibilityOperator } from './fieldRegistry';
 import { resolveField, type FieldResolutionContext } from './fieldResolver';
-import { evaluateOperator } from './operatorEvaluator';
+import { canonicalOperator, evaluateOperator } from './operatorEvaluator';
 import { resolveFact } from './eligibilityFactResolver';
 import {
   renderRuleMessage,
@@ -143,10 +143,37 @@ function extractExpected(
   }
 
   // Range form: { min, max }, { range_from, range_to } or { value_from, value_to }
-  const lo = def.min ?? def.range_from ?? def.min_value ?? def.value_from;
-  const hi = def.max ?? def.range_to ?? def.max_value ?? def.value_to;
-  if (lo != null && hi != null) {
+  //
+  // BUG-55 — this read `lo != null && hi != null`, and the Rule Catalogue writes
+  // `value_to: ''` for every rule that is not a range. An empty string is not
+  // null, so a rule declaring `>=` 62 was rewritten as BETWEEN ['62', ''],
+  // which then failed for want of a second bound and left the claim
+  // UNEVALUATED. Four active rules were affected, including both Assistance
+  // Pension rules — each correct as authored, each unevaluable.
+  //
+  // Two things are fixed. A blank bound is treated as absent, and the operator
+  // the author declared is respected: a range is only inferred when the rule
+  // asks for one, or when it declares no operator at all. The engine does not
+  // overrule the author.
+  const present = (v: unknown) =>
+    v !== null && v !== undefined && String(v).trim() !== '';
+  const lo = [def.min, def.range_from, def.min_value, def.value_from].find(present);
+  const hi = [def.max, def.range_to, def.max_value, def.value_to].find(present);
+  const declaredCanonical = canonicalOperator(
+    typeof declaredOp === 'string' ? declaredOp : null,
+  );
+  const rangeAsked = declaredCanonical === 'BETWEEN' || declaredOp == null || declaredOp === '';
+  if (present(lo) && present(hi) && rangeAsked) {
     return { value: [lo, hi], operator: 'BETWEEN', rangeFrom: lo, rangeTo: hi };
+  }
+  // A range was asked for but only one bound given: say so rather than
+  // comparing against a bound that is not there.
+  if (declaredCanonical === 'BETWEEN' && !(present(lo) && present(hi))) {
+    return { value: undefined, operator: 'BETWEEN', rangeFrom: lo, rangeTo: hi };
+  }
+  // One bound plus a declared comparison operator is a comparison, not a range.
+  if (present(lo) && declaredCanonical && declaredCanonical !== 'BETWEEN') {
+    return { value: lo, operator: normaliseOperator(declaredOp, '==') };
   }
 
   const direct = def.value ?? def.required_value ?? def.expected_value;

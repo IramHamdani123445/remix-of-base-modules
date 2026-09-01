@@ -12,6 +12,7 @@
 //     registry instead of hard-coding channel `if` branches.
 
 import { OMNI_COMMS_SECRET_REF_PATTERN } from "./resendAdapter.ts";
+
 import { OMNI_COMMS_TWILIO_SECRET_REF_PATTERN } from "./twilioSmsAdapter.ts";
 import { OMNI_COMMS_FCM_SECRET_REF_PATTERN } from "./fcmPushAdapter.ts";
 import { OMNI_COMMS_WEBHOOK_SECRET_REF_PATTERN } from "./outboundWebhookAdapter.ts";
@@ -163,3 +164,145 @@ export function secretReferenceAcceptable(
 export function deliverableChannels(): readonly string[] {
   return OMNI_COMMS_ADAPTERS.filter((a) => a.deliveryImplemented).map((a) => a.channel);
 }
+
+/* ------------------------------------------------------------------ *
+ * BEGIN GENERATED BUILD REVISION
+ * Content hash of every Omni-Comms runtime, dispatcher and shared source.
+ * ------------------------------------------------------------------ */
+export const OMNI_COMMS_BUILD_REVISION = "03fcd61c75a933ebf3e750d52d925c34b1efea81";
+export const OMNI_COMMS_BUILD_SOURCE_FILE_COUNT = 46;
+/* END GENERATED BUILD REVISION */
+
+// DEF-13 — deployment identity truth for the Omni-Comms runtime and dispatcher.
+//
+// The committed build artifact above is the DEFAULT deployment truth: a
+// content hash of every runtime, dispatcher and shared adapter source file,
+// so a deployed function can always state exactly which build is running.
+//
+// A deployment-automation stamp (`OMNI_COMMS_DEPLOYED_REVISION`) is consulted
+// only when it is a well-formed 40-hex value, and a stamp that disagrees with
+// the artifact is reported as `revisionStale` so certification fails closed —
+// an override may never hide a build mismatch. The historic
+// `OMNI_COMMS_EDGE_REVISION` variable is never consulted: a long-lived legacy
+// stamp could survive a code change and silently mask a build mismatch.
+
+export const OMNI_COMMS_REVISION_PATTERN = /^[0-9a-f]{40}$/;
+
+export type DeployedRevisionSource = "environment" | "build_artifact" | "none";
+
+export interface DeployedRevisionReport {
+  /** The revision this deployment reports, or null when nothing is verifiable. */
+  revision: string | null;
+  /** Where the reported revision came from. */
+  revisionSource: DeployedRevisionSource;
+  /** True only when `revision` is a well-formed 40-hex value. */
+  revisionVerified: boolean;
+  /** The content-hash identity of the shipped sources, always present. */
+  buildRevision: string | null;
+  /** The raw deployment-automation stamp, when it is well formed. */
+  environmentRevision: string | null;
+  /** True when the stamp disagrees with the content hash actually shipped. */
+  revisionStale: boolean;
+}
+
+/** Pure rule — exercised directly by the repository DEF-13 test suite. */
+export function resolveRevisionReport(
+  envValue: string | undefined,
+  buildValue: string | undefined,
+): DeployedRevisionReport {
+  const env = (envValue ?? "").trim().toLowerCase();
+  const build = (buildValue ?? "").trim().toLowerCase();
+
+  const environmentRevision = OMNI_COMMS_REVISION_PATTERN.test(env) ? env : null;
+  const buildRevision = OMNI_COMMS_REVISION_PATTERN.test(build) ? build : null;
+
+  const revision = environmentRevision ?? buildRevision;
+  const revisionSource: DeployedRevisionSource = environmentRevision
+    ? "environment"
+    : buildRevision
+      ? "build_artifact"
+      : "none";
+
+  return {
+    revision,
+    revisionSource,
+    revisionVerified: revision !== null,
+    buildRevision,
+    environmentRevision,
+    revisionStale: environmentRevision !== null && buildRevision !== null &&
+      environmentRevision !== buildRevision,
+  };
+}
+
+export function resolveDeployedRevision(
+  envValue: string | undefined = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? undefined,
+): DeployedRevisionReport {
+  return resolveRevisionReport(envValue, OMNI_COMMS_BUILD_REVISION);
+}
+
+
+
+// DEF-14 — certification simulation adapters.
+//
+// A simulation adapter is an INTERNAL delivery path. It contacts no external
+// provider, resolves no credential, and transmits nothing outside the
+// platform. It exists so a controlled pilot can be certified end to end
+// without live sending credentials, and it is only ever selected when the
+// database claim resolved a provider whose capability row is marked
+// `certification_safe` and `requires_external_credentials = false`.
+
+export const SIMULATION_ADAPTERS: ReadonlySet<string> = new Set([
+  "simulation_email",
+  "simulation_sms",
+  "simulation_inapp",
+]);
+
+export function isSimulationAdapter(adapterCode: unknown): boolean {
+  return typeof adapterCode === "string" && SIMULATION_ADAPTERS.has(adapterCode);
+}
+
+export interface SimulatedOutcome {
+  status: "accepted";
+  resultCode: "simulated_accepted";
+  providerMessageId: string;
+  providerStatusCode: number | null;
+  providerResponse: Record<string, unknown>;
+  errorCode: null;
+  errorDetail: null;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Record a deterministic accepted outcome WITHOUT contacting any provider.
+ *
+ * The simulated provider message id is derived from the deterministic
+ * idempotency key, so a safe retry of the same message reproduces exactly the
+ * same identifier instead of inventing a second delivery identity.
+ */
+export async function simulateDelivery(input: {
+  adapterCode: string;
+  channel: string;
+  idempotencyKey: string;
+}): Promise<SimulatedOutcome> {
+  const fingerprint = await sha256Hex(`${input.adapterCode}:${input.idempotencyKey}`);
+  return {
+    status: "accepted",
+    resultCode: "simulated_accepted",
+    providerMessageId: `sim_${fingerprint.slice(0, 24)}`,
+    providerStatusCode: null,
+    providerResponse: {
+      channel: input.channel,
+      adapter: input.adapterCode,
+      simulated: true,
+      provider_contacted: false,
+    },
+    errorCode: null,
+    errorDetail: null,
+  };
+}
+

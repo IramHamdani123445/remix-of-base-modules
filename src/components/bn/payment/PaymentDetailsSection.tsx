@@ -14,7 +14,7 @@
  * this component pulls the right policy, uses master-data selectors for
  * bank/branch/method, and persists via paymentProfileService.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -90,6 +90,8 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
   });
   const [reason, setReason] = useState('');
   const [rawAccount, setRawAccount] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
 
   useEffect(() => {
     let alive = true;
@@ -131,31 +133,97 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
     [policy.allowed_payment_methods],
   );
 
+  function clearError(key: string) {
+    setErrors((p) => {
+      if (!p[key]) return p;
+      const next = { ...p };
+      delete next[key];
+      return next;
+    });
+  }
+
   function update<K extends keyof BnPaymentProfileDraft>(k: K, v: BnPaymentProfileDraft[K]) {
     setDraft((d) => ({ ...d, [k]: v }));
   }
+
   function updateAddr(k: keyof NonNullable<BnPaymentProfileDraft['postal_address_snapshot']>, v: string) {
     setDraft((d) => ({ ...d, postal_address_snapshot: { ...(d.postal_address_snapshot ?? {}), [k]: v } }));
   }
 
+  // Guards against a stale response overwriting a newer method switch.
+  const methodSwitchToken = useRef(0);
+
+  /**
+   * Bank/account fields on screen belong to whichever profile is currently
+   * loaded — never to the method the officer just picked. Re-fetch (or
+   * clear) them on every method change so a switch to a different method
+   * can't silently keep a prior method's account number attached.
+   */
+  async function handleMethodChange(newMethod: BnPaymentMethod) {
+    const token = ++methodSwitchToken.current;
+    setDraft((d) => ({
+      ...d,
+      payment_method: newMethod,
+      bank_name: null,
+      bank_code: null,
+      branch_name: null,
+      branch_code: null,
+      account_number_masked: null,
+      account_holder_name: null,
+      account_holder_relationship: null,
+      account_type: null,
+    }));
+    setRawAccount('');
+    setErrors({});
+
+    const prof = await getActiveProfile(personSsn, {
+      payeeId, method: newMethod, currency: draft.payment_currency ?? 'XCD',
+    });
+    if (token !== methodSwitchToken.current) return; // a newer switch already landed
+    setActive(prof);
+    if (prof) {
+      setDraft((d) => ({
+        ...d,
+        bank_name: prof.bank_name ?? null,
+        bank_code: prof.bank_code ?? null,
+        branch_name: prof.branch_name ?? null,
+        branch_code: prof.branch_code ?? null,
+        account_number_masked: prof.account_number_masked ?? null,
+        account_holder_name: prof.account_holder_name ?? null,
+        account_holder_relationship: prof.account_holder_relationship ?? null,
+        account_type: prof.account_type ?? null,
+      }));
+    }
+  }
+
   async function handleSubmit() {
+    const fieldErrors: Record<string, string> = {};
     if (draft.payment_method === 'EFT') {
-      if (!draft.bank_code || !draft.branch_code || (!rawAccount && !draft.account_number_masked) || !draft.account_holder_name) {
-        toast.error('Please select bank, branch and complete account number and holder name');
-        return;
+      if (!draft.bank_code) fieldErrors.bank = 'Bank is required';
+      if (!draft.branch_code) fieldErrors.branch = 'Branch is required';
+      if (!rawAccount.trim() && !draft.account_number_masked) {
+        fieldErrors.account_number = 'Account number is required';
+      } else if (rawAccount.trim() && !/^[0-9]{4,20}$/.test(rawAccount.trim())) {
+        fieldErrors.account_number = 'Account number must be 4–20 digits';
       }
+      if (!draft.account_holder_name?.trim()) fieldErrors.account_holder_name = 'Account holder name is required';
     }
     if (draft.payment_method === 'CHEQUE' && policy.cheque_address_required) {
       const a = draft.postal_address_snapshot;
-      if (!a?.line1 || !a?.city) {
-        toast.error('Postal address (line 1 and city) is required for cheque payments');
-        return;
-      }
+      if (!a?.line1) fieldErrors.line1 = 'Postal address line 1 is required for cheque payments';
+      if (!a?.city) fieldErrors.city = 'City is required for cheque payments';
     }
-    if (policy.require_proof_for_change && !reason) {
-      toast.error('Please provide a reason for this change');
+    if (policy.require_proof_for_change && !reason.trim()) {
+      fieldErrors.reason = 'Please provide a reason for this change';
+    }
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      toast.error('Please check the payment details for valid information!', {
+        description: Object.values(fieldErrors).join(' • '),
+      });
       return;
     }
+
 
     const masked = rawAccount ? maskAccount(rawAccount) : draft.account_number_masked ?? null;
 
@@ -195,6 +263,7 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
       }).catch((e) => console.warn('[PaymentDetails] audit failed', e));
 
       setRawAccount('');
+      setErrors({});
       onSaved?.(result);
       const [prof, pend] = await Promise.all([
         getActiveProfile(personSsn, { payeeId, currency: 'XCD' }),
@@ -268,7 +337,7 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                 <Label>Payment method</Label>
                 <PaymentMethodSelector
                   value={draft.payment_method}
-                  onChange={(m) => update('payment_method', m)}
+                  onChange={handleMethodChange}
                   allowedMethods={allowedMethods}
                 />
               </div>
@@ -284,7 +353,7 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
             {draft.payment_method === 'EFT' && (
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <Label>Bank</Label>
+                  <Label>Bank <span className="text-destructive">*</span></Label>
                   <BankSelector
                     value={draft.bank_code ?? ''}
                     countryCode={countryCode}
@@ -297,11 +366,14 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                         branch_code: null,
                         branch_name: null,
                       }));
+                      clearError('bank');
                     }}
+                    className={errors.bank ? 'border-destructive' : undefined}
                   />
+                  {errors.bank && <p className="text-xs text-destructive mt-1">{errors.bank}</p>}
                 </div>
                 <div>
-                  <Label>Branch</Label>
+                  <Label>Branch <span className="text-destructive">*</span></Label>
                   <BranchSelector
                     bankCode={draft.bank_code ?? null}
                     value={draft.branch_code ?? ''}
@@ -311,17 +383,37 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                         branch_code: br?.branch_code ?? null,
                         branch_name: br?.branch_name ?? null,
                       }));
+                      clearError('branch');
                     }}
+                    className={errors.branch ? 'border-destructive' : undefined}
                   />
+                  {errors.branch && <p className="text-xs text-destructive mt-1">{errors.branch}</p>}
                 </div>
                 <div>
-                  <Label>Account number</Label>
+                  <Label>Account number <span className="text-destructive">*</span></Label>
                   <Input
+                    inputMode="numeric"
+                    maxLength={20}
+                    aria-invalid={!!errors.account_number}
                     placeholder={draft.account_number_masked ?? '••••1234'}
                     value={rawAccount}
-                    onChange={(e) => setRawAccount(e.target.value)}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 20);
+                      setRawAccount(digits);
+                      clearError('account_number');
+                    }}
+                    onBlur={() => {
+                      if (!rawAccount.trim() && !draft.account_number_masked) {
+                        setErrors((p) => ({ ...p, account_number: 'Account number is required' }));
+                      } else if (rawAccount.trim() && rawAccount.trim().length < 4) {
+                        setErrors((p) => ({ ...p, account_number: 'Account number must be 4–20 digits' }));
+                      }
+                    }}
+                    className={errors.account_number ? 'border-destructive focus-visible:ring-destructive' : undefined}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Stored masked; raw digits never displayed back.</p>
+                  {errors.account_number
+                    ? <p className="text-xs text-destructive mt-1">{errors.account_number}</p>
+                    : <p className="text-xs text-muted-foreground mt-1">Stored masked; raw digits never displayed back.</p>}
                 </div>
                 <div>
                   <Label>Account type</Label>
@@ -338,9 +430,16 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                   </Select>
                 </div>
                 <div>
-                  <Label>Account holder name</Label>
-                  <Input value={draft.account_holder_name ?? ''} onChange={(e) => update('account_holder_name', e.target.value)} />
+                  <Label>Account holder name <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={draft.account_holder_name ?? ''}
+                    aria-invalid={!!errors.account_holder_name}
+                    onChange={(e) => { update('account_holder_name', e.target.value); clearError('account_holder_name'); }}
+                    className={errors.account_holder_name ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                  />
+                  {errors.account_holder_name && <p className="text-xs text-destructive mt-1">{errors.account_holder_name}</p>}
                 </div>
+
                 {(policy.allow_third_party_payee || policy.allow_guardian_payee) && (
                   <div>
                     <Label>Holder relationship</Label>

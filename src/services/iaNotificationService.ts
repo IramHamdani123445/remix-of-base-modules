@@ -1,10 +1,15 @@
 /**
- * Internal Audit notification service.
+ * Internal Audit notification service — Wave 4 runtime cutover.
  *
- * OM-9.7.7: migrated off direct `notification_templates` reads onto the
- * canonical `dispatchInAppNotification()` wrapper.
+ * This module NO LONGER dispatches anything itself. Every call is translated
+ * into a catalogued Internal Audit communication obligation and handed to the
+ * single canonical Omni-Comms entrypoint, which decides channel, template,
+ * branding, sender, queueing, retry and evidence.
+ *
+ * The exported surface is unchanged so existing business call sites keep
+ * working; only the execution path moved.
  */
-import { dispatchInAppNotification } from '@/lib/comm/notificationDispatchResolver';
+import { emitInternalAuditCommunication } from '@/platform/omni-comms/integrations/business/internal-audit/internalAuditCommunicationProducer';
 
 type IANotificationEvent =
   | 'ia_plan_submitted'
@@ -17,6 +22,19 @@ type IANotificationEvent =
   | 'ia_action_overdue'
   | 'ia_closure_pending';
 
+/** Legacy trigger name → catalogued Omni-Comms event code. */
+const EVENT_MAP: Record<IANotificationEvent, string> = {
+  ia_plan_submitted: 'INTERNAL_AUDIT.PLAN.SUBMITTED',
+  ia_plan_approved: 'INTERNAL_AUDIT.PLAN.APPROVED',
+  ia_plan_rejected: 'INTERNAL_AUDIT.PLAN.REJECTED',
+  ia_plan_revision_required: 'INTERNAL_AUDIT.PLAN.REVISION_REQUESTED',
+  ia_team_conflict: 'INTERNAL_AUDIT.PLAN.TEAM_CONFLICT',
+  ia_engagement_started: 'INTERNAL_AUDIT.ENGAGEMENT.LAUNCHED',
+  ia_report_issued: 'INTERNAL_AUDIT.REPORT.ISSUED',
+  ia_action_overdue: 'INTERNAL_AUDIT.ACTION.OVERDUE',
+  ia_closure_pending: 'INTERNAL_AUDIT.ENGAGEMENT.FIELDWORK_COMPLETED',
+};
+
 interface NotifyParams {
   event: IANotificationEvent;
   recipientIds?: string[];
@@ -25,39 +43,52 @@ interface NotifyParams {
   entityType?: string;
 }
 
+function referenceOf(variables: Record<string, string>, entityId?: string): string {
+  return (
+    variables.reference ||
+    variables.planTitle ||
+    variables.title ||
+    variables.engagementRef ||
+    entityId ||
+    'Internal Audit'
+  );
+}
+
 /**
- * Look up the template through the canonical resolver and create in-app
- * notifications for each recipient. Writes to `system_notifications` and
- * logs to `system_business_events`.
+ * Raise the obligation once per recipient. Never throws: a communication
+ * failure must never break the audit transaction that raised it.
  */
 export async function sendIANotification({
   event,
   recipientIds = [],
   variables,
   entityId,
-  entityType,
 }: NotifyParams) {
-  try {
-    const result = await dispatchInAppNotification({
-      triggerEvent: event,
-      moduleCode: 'INTERNAL_AUDIT',
-      channel: 'IN_APP',
-      recipientIds,
-      variables,
-      entityId: entityId ?? null,
-      entityType: entityType ?? 'audit_plan',
-      notificationType: 'internal_audit',
-      module: 'internal_audit',
+  const eventCode = EVENT_MAP[event];
+  if (!eventCode) {
+    console.warn(`[IA Notify] Uncatalogued event ignored: ${event}`);
+    return;
+  }
+
+  const targets = recipientIds.length > 0 ? recipientIds : [null];
+
+  for (const recipientUserId of targets) {
+    const result = await emitInternalAuditCommunication({
+      eventCode,
+      entityId: entityId ?? 'unknown',
+      occurrence: recipientUserId ?? 'default',
+      recipientName: variables.recipientName || 'Recipient',
+      reference: referenceOf(variables, entityId),
+      recipientUserId,
+      values: variables,
     });
-    if (result.source === 'NONE') {
-      console.warn(`[IA Notify] No active template for event: ${event}`);
+    if (result.outcome === 'blocked' || result.outcome === 'unavailable') {
+      console.warn(`[IA Notify] ${eventCode} not accepted:`, result.blockers);
     }
-  } catch (error) {
-    console.error('[IA Notify] Failed:', error);
   }
 }
 
-/** Convenience helpers */
+/** Convenience helpers — signatures unchanged. */
 export const notifyPlanSubmitted = (planId: string, vars: Record<string, string>) =>
   sendIANotification({ event: 'ia_plan_submitted', variables: vars, entityId: planId, entityType: 'audit_plan' });
 
