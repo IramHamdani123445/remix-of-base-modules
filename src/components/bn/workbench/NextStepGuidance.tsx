@@ -223,7 +223,7 @@ export const NextStepGuidance: React.FC<Props> = ({
       <AlertDescription className="flex items-center justify-between gap-3 flex-wrap">
         <span>{step.body}</span>
         {('actionLabel' in step) && step.actionLabel && step.onAction && (
-          <BnBusyButton loading={pending}
+          <BnBusyButton loading={('pending' in step) ? !!step.pending : false}
             size="sm"
             onClick={step.onAction}
             // Disabled while the user code is unavailable, so the action cannot

@@ -297,7 +297,7 @@ export function ReinstatementPanel({
               />
               <div className="flex flex-wrap justify-end gap-2">
                 {pending && isProposer && (
-                  <BnBusyButton loading={busy}
+                  <BnBusyButton loading={busy === 'withdraw'}
                     size="sm"
                     variant="outline"
                     disabled={!actionsEnabled || busy === 'withdraw'}
@@ -319,7 +319,7 @@ export function ReinstatementPanel({
                 )}
                 {pending && canApprove && !isProposer && (
                   <>
-                    <BnBusyButton loading={busy}
+                    <BnBusyButton loading={busy === 'reject'}
                       size="sm"
                       variant="destructive"
                       disabled={!actionsEnabled || !decisionNote.trim() || busy === 'reject'}

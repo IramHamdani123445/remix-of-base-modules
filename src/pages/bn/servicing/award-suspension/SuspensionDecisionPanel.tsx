@@ -231,7 +231,7 @@ export function SuspensionDecisionPanel({
 
         {showApproval && (
           <>
-            <BnBusyButton loading={busy}
+            <BnBusyButton loading={busy !== null}
               variant="outline"
               size="sm"
               data-testid="reject-button"
