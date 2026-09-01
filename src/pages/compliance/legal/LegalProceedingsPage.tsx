@@ -74,15 +74,16 @@ const TABS = [
   { key: 'ALL', label: 'All' },
 ];
 
+/** Sort keys must match the whitelist inside ce_legal_proceeding_register_v1. */
 const SORTS: { key: string; label: string; className?: string }[] = [
   { key: 'attention', label: 'Priority' },
-  { key: 'proceeding_no', label: 'Proceeding / Case No.' },
+  { key: 'court', label: 'Proceeding / Court' },
   { key: 'employer', label: 'Employer' },
   { key: 'stage', label: 'Stage' },
-  { key: 'filed_date', label: 'Filed' },
-  { key: 'next_hearing', label: 'Next Hearing' },
-  { key: 'outstanding', label: 'Outstanding', className: 'text-right' },
-  { key: 'last_update', label: 'Last Update' },
+  { key: 'filed', label: 'Filed' },
+  { key: 'hearing', label: 'Next Hearing' },
+  { key: 'exposure', label: 'Outstanding', className: 'text-right' },
+  { key: 'updated', label: 'Last Update' },
 ];
 
 const stageVariant = (group?: string | null): 'destructive' | 'default' | 'secondary' | 'outline' => {
