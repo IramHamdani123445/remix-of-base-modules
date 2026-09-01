@@ -62,10 +62,65 @@ describe('IA-POST-UAT-04 — audit attachment policy', () => {
     expect(sanitizeAuditFileName('my report (final).pdf')).toBe('my_report_final_.pdf');
   });
 
-  it('produces collision-safe engagement-scoped object paths', () => {
-    const a = buildAuditObjectPath('working-papers', 'eng-1', 'wp-1', 'same.pdf');
-    const b = buildAuditObjectPath('working-papers', 'eng-1', 'wp-1', 'same.pdf');
+  it('produces collision-safe canonical object paths', () => {
+    const a = buildAuditObjectPath(ENG, 'working-papers', PAPER, 'same.pdf');
+    const b = buildAuditObjectPath(ENG, 'working-papers', PAPER, 'same.pdf');
     expect(a).not.toEqual(b);
-    expect(a.startsWith('working-papers/eng-1/wp-1/')).toBe(true);
   });
+});
+
+// IA-POST-UAT-04 CORRECTIVE — the generated path MUST satisfy the certified
+// storage policy parser (ia_storage_engagement / ia_storage_class), otherwise
+// the storage INSERT policy rejects the upload.
+const ENG = '3f1c1a2e-6b7d-4c8a-9f10-2a4b6c8d0e12';
+const PAPER = '9d2b7c44-1a35-4f6e-8b90-5c7d1e3f2a48';
+
+describe('IA-POST-UAT-04 corrective — canonical storage path contract', () => {
+  const path = buildAuditObjectPath(ENG, 'working-papers', PAPER, 'Q3 Payroll Test (final).pdf');
+  const segs = path.split('/');
+
+  it('segment 1 is the internal-audit root', () => {
+    expect(AUDIT_STORAGE_ROOT).toBe('internal-audit');
+    expect(segs[0]).toBe('internal-audit');
+  });
+
+  it('segment 2 is the engagement UUID', () => {
+    expect(segs[1]).toBe(ENG);
+    expect(segs[1]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  });
+
+  it('segment 3 is the working-papers object class', () => {
+    expect(segs[2]).toBe('working-papers');
+  });
+
+  it('segment 4 is the working-paper UUID and segment 5 the safe file name', () => {
+    expect(segs[3]).toBe(PAPER);
+    expect(segs[4]).toMatch(/^\d+-[a-z0-9]{6}_Q3_Payroll_Test_final_.pdf$/);
+    expect(segs).toHaveLength(5);
+  });
+
+  it('is accepted by the ia_storage_engagement / ia_storage_class semantics', () => {
+    expect(storageEngagementOf(path)).toBe(ENG);
+    expect(storageClassOf(path)).toBe('working-papers');
+  });
+
+  it('rejects the legacy non-conforming path shape', () => {
+    const legacy = `working-papers/${ENG}/${PAPER}/file.pdf`;
+    // ia_storage_engagement returns NULL -> storage INSERT policy denies.
+    expect(storageEngagementOf(legacy)).toBeNull();
+  });
+
+  it('refuses arbitrary roots, non-UUID engagements and unknown classes', () => {
+    expect(() => buildAuditObjectPath('eng-1', 'working-papers', PAPER, 'f.pdf')).toThrow();
+    // @ts-expect-error class is allow-listed at the type level too
+    expect(() => buildAuditObjectPath(ENG, 'anything', PAPER, 'f.pdf')).toThrow();
+    expect(() => buildAuditObjectPath(ENG, 'working-papers', '../escape', 'f.pdf')).toThrow();
+  });
+
+  it('never lets a respondent-writable class be confused with working-papers', () => {
+    // Mirrors ia_respondent_writable_class(): working-papers is NOT in the list.
+    const respondentWritable = ['responses', 'actions', 'documents', 'queries'];
+    expect(respondentWritable).not.toContain(storageClassOf(path));
+  });
+
 });
