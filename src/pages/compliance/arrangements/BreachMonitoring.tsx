@@ -190,11 +190,11 @@ export default function BreachMonitoring() {
       const { data: res, error: err } = await sb.rpc('ce_breach_run_detection_v1', {});
       if (err) throw new Error(err.message);
       if (res?.error) throw new Error(res.message || res.error);
-      return res as { detected?: number; cured?: number; defaulted?: number };
+      return res as { breaches_created?: number; breaches_cured?: number; arrangements_defaulted?: number };
     },
     onSuccess: (res) => {
       toast.success(
-        `Detection complete — ${res?.detected ?? 0} new breach(es), ${res?.cured ?? 0} cured, ${res?.defaulted ?? 0} defaulted`,
+        `Detection complete — ${res?.breaches_created ?? 0} new breach(es), ${res?.breaches_cured ?? 0} cured, ${res?.arrangements_defaulted ?? 0} arrangement(s) defaulted`,
       );
       qc.invalidateQueries({ queryKey: ['ce-breach-register'] });
     },
