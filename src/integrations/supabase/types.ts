@@ -131145,6 +131145,10 @@ export type Database = {
         Returns: Json
       }
       ia_can_configure_office_holders: { Args: never; Returns: boolean }
+      ia_can_edit_plan_portfolio: {
+        Args: { _creating: boolean }
+        Returns: boolean
+      }
       ia_can_issue_report: { Args: { p_report_id: string }; Returns: Json }
       ia_can_read_all: { Args: never; Returns: boolean }
       ia_can_start_engagement: {
@@ -131557,6 +131561,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_plan_working_copy_statuses: { Args: never; Returns: string[] }
       ia_postpone_engagement: {
         Args: { p_engagement_id: string; p_reason: string }
         Returns: Json
@@ -131741,6 +131746,10 @@ export type Database = {
           p_reason?: string
           p_target_status: string
         }
+        Returns: Json
+      }
+      ia_update_annual_plan_working_copy: {
+        Args: { p_changes: Json; p_plan_id: string }
         Returns: Json
       }
       ia_validate_audit_team_user_mapping: {

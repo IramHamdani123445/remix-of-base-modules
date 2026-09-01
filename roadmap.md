@@ -16,7 +16,11 @@
 - [x] Governed engagement upsert extended to all planning fields; governed removal command with change log
 - [x] Server-authoritative readiness in plan register and plan workspace
 - [x] Plan header edit no longer resets lifecycle status; active-flag handling aligned with server
+- [x] Final corrective checkpoint: status contract, server authorization, actor identity, workspace-only editing, governed plan header updates (`docs/audit/INTERNAL-AUDIT-ANNUAL-PLAN-FINAL-CORRECTIVE-CHECKPOINT.md`)
 - [ ] Annual plan portfolio workspace enhancements (portfolio KPIs, coverage rollups)
+- [ ] Prior Audit History convergence (not started — deliberately deferred)
+- [ ] Access / permission matrix review (not started — deliberately deferred)
+
 - [ ] Prior audit history visibility on engagement/auditable area
 - [ ] Enterprise access management matrix (IA roles vs capabilities)
 
