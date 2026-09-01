@@ -17,6 +17,8 @@ import { DocumentRequestsTab } from '@/components/audit/DocumentRequestsTab';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Download } from 'lucide-react';
 import { StandardModal } from '@/components/common';
+import { History } from 'lucide-react';
+import { PriorAuditHistoryPanel } from '@/components/audit/execution/PriorAuditHistoryPanel';
 
 interface AuditPreparationTabProps {
   auditId: string;
@@ -29,6 +31,7 @@ export function AuditPreparationTab({ auditId, audit, engagementContext }: Audit
     checklist: true,
     communications: false,
     documents: false,
+    priorHistory: true,
   });
 
   const toggleSection = (key: string) => {
