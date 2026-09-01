@@ -101,6 +101,15 @@ export default function ClaimQueue() {
 
   const basketIds = useMemo(() => baskets.map((b) => b.id), [baskets]);
   const { data: counts = {} } = useBasketClaimCounts(basketIds);
+  const { data: arrivals = {} } = useBasketArrivalAlerts(basketIds);
+  const clearArrivals = useClearBasketArrivalAlerts();
+
+  // Opening a basket clears its "new arrival" alerts for this user.
+  const openBasket = (basketId: string) => {
+    setSelectedBasket(basketId);
+    if ((arrivals[basketId] ?? 0) > 0) clearArrivals.mutate(basketId);
+  };
+
 
   // Auto-select: primary basket first, then the first basket holding work.
   useEffect(() => {
