@@ -169,19 +169,19 @@ Deno.serve(async (req) => {
         grace_policy_code: gracePolicyCode,
       };
     } else {
-      // Live execution
-      const { data, error } = await supabase.rpc(
-        "ce_evaluate_arrangement_breaches",
-        {
-          p_as_of_date: asOfDate,
-          p_grace_days: graceDays,
-          p_actor: actor,
-        }
-      );
+      // Live execution — canonical installment-level, idempotent detection.
+      // ce_breach_detect_v1 owns grace-period resolution, occurrence keys,
+      // payment-driven cures and arrangement default transitions.
+      const { data, error } = await supabase.rpc("ce_breach_detect_v1", {
+        p_actor: actor,
+        p_as_of_date: asOfDate,
+        p_dry_run: false,
+      });
 
       if (error) throw error;
       result = data as Record<string, unknown>;
     }
+
 
     // ── Finalize run record ──────────────────────────────
     const affectedCount = isDryRun
