@@ -57,6 +57,7 @@ export default function AuditAccessMatrix() {
       pass: rows.filter((r) => r.final_status === 'PASS').length,
       missing: rows.filter((r) => r.final_status === 'MISSING').length,
       mismatched: rows.filter((r) => r.final_status === 'MISMATCHED').length,
+      overBroad: rows.filter((r) => r.final_status === 'OVER-BROAD').length,
       unused: rows.filter((r) => r.final_status === 'UNUSED').length,
     };
   }, [reconciliation]);
