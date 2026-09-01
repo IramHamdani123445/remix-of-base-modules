@@ -20,3 +20,24 @@
 - [ ] Transactionally safe submit-to-Legal (RPC), double-submission prevention
 - [ ] URL state preservation, error state, RBAC separation (view/approve/submit)
 - [ ] E2E lifecycle verification + completion report
+
+## Compliance — Approved Escalations Enterprise Register (Sep 1)
+- [x] Ref data, register view + governed RPCs (register/detail) with financial masking
+- [x] `useApprovedEscalationRegister` hook (URL state, facets, KPIs, attention)
+- [x] `EscalationDetailDialog` + rewritten `ApprovedEscalationsPage`
+- [ ] Playwright end-to-end verification
+
+## Compliance — Returned From Legal Rework Queue (Sep 1, requested)
+- [ ] Analyse `legalHandoffService.listReturns/resolveReturn`, `ce_legal_returns`, referral status coupling
+- [ ] Server-side register RPC: referral/employer/case/legal refs, reason, required action, owner, rework age/SLA, pack readiness
+- [ ] Governed "Complete Rework" (pack-readiness gated, identity-required, no SYSTEM fallback) + resubmission via canonical approval path
+- [ ] Rework owner/tasks, repeat-return history, pack version retention, case legal-status coherence
+- [ ] Enterprise UI: KPIs, Requires Attention, filters/sort/pagination, detail workspace, error/empty states, RBAC split
+
+## Compliance — Legal Referral Launcher Eligibility Workspace (Sep 1, requested)
+- [ ] Establish canonical referral paths (Recommend Legal vs Wizard vs Quick Forward) and whether Launcher is retained/consolidated
+- [ ] Canonical eligibility service/RPC (shared with Case Detail, Wizard, Recommendation Queue)
+- [ ] Candidate register RPC replacing `.limit(50)`: search, filters, sorting, paging, counts, exposure, violation/enforcement context
+- [ ] Duplicate-referral prevention + context-sensitive primary action per state
+- [ ] Eligibility preview + server-side revalidation before initiation, audit trail, RBAC/maker-checker
+- [ ] Enterprise UI + E2E verification
