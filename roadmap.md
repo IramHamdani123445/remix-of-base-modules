@@ -35,13 +35,13 @@
 - [x] Enterprise UI: KPIs, Requires Attention, filters/sort/pagination, detail workspace, error/empty states, RBAC split
 
 
-## Compliance — Legal Referral Launcher Eligibility Workspace (Sep 1, requested)
-- [ ] Establish canonical referral paths (Recommend Legal vs Wizard vs Quick Forward) and whether Launcher is retained/consolidated
-- [ ] Canonical eligibility service/RPC (shared with Case Detail, Wizard, Recommendation Queue)
-- [ ] Candidate register RPC replacing `.limit(50)`: search, filters, sorting, paging, counts, exposure, violation/enforcement context
-- [ ] Duplicate-referral prevention + context-sensitive primary action per state
-- [ ] Eligibility preview + server-side revalidation before initiation, audit trail, RBAC/maker-checker
-- [ ] Enterprise UI + E2E verification
+## Compliance — Legal Referral Launcher Eligibility Workspace (Sep 1) — DONE
+- [x] Establish canonical referral paths (Recommend Legal vs Wizard vs Quick Forward) and whether Launcher is retained/consolidated
+- [x] Canonical eligibility service/RPC (shared with Case Detail, Wizard, Recommendation Queue)
+- [x] Candidate register RPC replacing `.limit(50)`: search, filters, sorting, paging, counts, exposure, violation/enforcement context
+- [x] Duplicate-referral prevention + context-sensitive primary action per state
+- [x] Eligibility preview + server-side revalidation before initiation, audit trail, RBAC/maker-checker
+- [x] Enterprise UI + E2E verification
 
 ## Compliance — Legal Recommendation Queue Enterprise Workspace (Sep 1) — DONE
 - [x] Analyse legalEscalationService/generateRecommendations, approveLegalReferral/rejectLegalReferral, ce_legal_recommendations
