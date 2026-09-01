@@ -151,6 +151,13 @@ export function WaiverDetailDialog({ waiverId, onClose }: Props) {
   return (
     <Dialog open={!!waiverId} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
+        {!waiver && (
+          <DialogHeader className="sr-only">
+            <DialogTitle>Waiver request</DialogTitle>
+            <DialogDescription>Waiver request details</DialogDescription>
+          </DialogHeader>
+        )}
+
         {isLoading && (
           <div className="space-y-3">
             <Skeleton className="h-6 w-64" />
