@@ -118,29 +118,54 @@ export default function CommunicationComplianceReport() {
             { label: "Communication Compliance" },
           ]}
         />
-        <ExportActions
-          reportTitle="Communication Compliance Report"
-          fileName="communication-compliance"
-          data={enriched}
-          columns={exportColumns}
-          additionalInfo={[
-            { label: 'Report Date', value: new Date().toLocaleDateString() },
-            { label: 'Total Records', value: String(stages.length) },
-            { label: 'Compliance Rate', value: `${complianceRate}%` },
-          ]}
-        />
+        {/* §10 — export must be blocked while the source query is in error. */}
+        {!isError && (
+          <ExportActions
+            reportTitle="Communication Compliance Report"
+            fileName="communication-compliance"
+            data={enriched}
+            columns={exportColumns}
+            additionalInfo={[
+              { label: 'Report Date', value: new Date().toLocaleDateString() },
+              { label: 'Total Records', value: String(stages.length) },
+              { label: 'Compliance Rate', value: `${complianceRate}%` },
+            ]}
+          />
+        )}
       </div>
 
       <div className="no-print">
         <QueryByFilter fields={filterFields} onFilter={setFilters} defaultExpanded />
       </div>
 
+      {/* DEF-A-02 / §10 — a failed query must never masquerade as an
+          authoritative 0 records / 0% compliance business result. */}
+      {isError ? (
+        <Card className="border-destructive/50" data-testid="comm-compliance-error">
+          <CardContent className="py-8 flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+            <p className="font-medium">Communication compliance data could not be loaded.</p>
+            <p className="text-sm text-muted-foreground max-w-lg">
+              Compliance metrics are unavailable because the underlying query failed. No
+              counts or percentages are shown, as they would not be authoritative.
+            </p>
+            <p className="text-xs text-muted-foreground font-mono max-w-lg break-words">
+              {(error as any)?.message || 'Unknown error'}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              {isFetching ? 'Retrying…' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard title="Total Communications" value={String(stages.length)} icon={Mail} variant="info" />
         <MetricCard title="Completed" value={String(totalSent)} icon={CheckCircle2} variant="success" />
         <MetricCard title="Pending" value={String(totalPending)} icon={Clock} variant="default" />
         <MetricCard title="Compliance Rate" value={`${complianceRate}%`} icon={ShieldAlert} variant={complianceRate >= 80 ? 'success' : 'warning'} />
       </div>
+      )}
+
 
       <Card>
         <CardHeader><CardTitle>Stage Completion Overview</CardTitle></CardHeader>
