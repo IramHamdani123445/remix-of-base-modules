@@ -21,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ShieldAlert } from 'lucide-react';
-import { BnBusyButton } from '@/components/bn/shared';
 import {
   formatMinor,
   type BnUpratingExecutionReadiness,

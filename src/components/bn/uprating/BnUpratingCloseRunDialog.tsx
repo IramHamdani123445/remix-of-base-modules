@@ -25,7 +25,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Lock, ShieldAlert } from 'lucide-react';
 import type { BnUpratingCloseReadiness } from '@/types/bn/uprating/upratingRun';
-import { BnBusyButton } from '@/components/bn/shared';
 
 export interface BnUpratingCloseRunDialogProps {
   readonly open: boolean;

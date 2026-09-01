@@ -35,7 +35,6 @@ import {
 } from '@/services/bn/rateTableDimensionSources';
 import { useReferenceValues } from '@/hooks/bn/useReferenceData';
 import { BN_REF_GROUPS } from '@/services/bn/referenceDataService';
-import { BnBusyButton } from '@/components/bn/shared';
 
 // Fallback values (used only if the reference-data tables are unreachable).
 const TABLE_TYPES_FALLBACK = [

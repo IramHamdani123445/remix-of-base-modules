@@ -26,7 +26,6 @@ import {
 } from '@/services/bn/awardServicingService';
 import { medicalReviewLegacyScheduleCommands } from '@/services/bn/medicalReviewLegacyScheduleCommands';
 import { describeMedicalReviewFailure, MedicalReviewError } from '@/features/bn/medical-reviews/model/errors';
-import { BnBusyButton } from '@/components/bn/shared';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   SCHEDULED: { label: 'Scheduled', color: 'bg-blue-500/10 text-blue-700 border-blue-300' },

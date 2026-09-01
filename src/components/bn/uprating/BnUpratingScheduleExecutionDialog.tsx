@@ -20,7 +20,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import type { BnUpratingScheduleReadiness } from '@/types/bn/uprating/upratingRun';
-import { BnBusyButton } from '@/components/bn/shared';
 
 export interface ScheduleExecutionFormValues {
   readonly planned_execution_at: string;

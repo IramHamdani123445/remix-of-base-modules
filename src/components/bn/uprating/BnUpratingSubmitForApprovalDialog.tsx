@@ -19,7 +19,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { formatMinor, type BnUpratingApprovalReadiness } from '@/types/bn/uprating/upratingRun';
-import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   readonly open: boolean;

@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Scale } from 'lucide-react';
-import { BnBusyButton } from '@/components/bn/shared';
 import {
   formatMinor,
   type BnUpratingPostExecutionReadiness,

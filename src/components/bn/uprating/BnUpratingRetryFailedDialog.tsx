@@ -20,7 +20,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, ShieldAlert } from 'lucide-react';
-import { BnBusyButton } from '@/components/bn/shared';
 import type {
   BnUpratingExecutionReadiness,
   BnUpratingRunExecutionView,

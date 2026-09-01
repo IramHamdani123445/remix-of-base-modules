@@ -17,7 +17,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, AlertTriangle, CheckCircle2, Clock, FileText, Filter, ArrowRight, Heart, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { BnBusyButton } from '@/components/bn/shared';
 import {
   advanceSurvivorAward,
   fetchAwards,

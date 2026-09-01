@@ -12,7 +12,6 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { BnBusyButton } from '@/components/bn/shared';
 import {
   recordReceipt, verifyCertificate, rejectCertificate, requestResubmission,
   waiveObligation, deferObligation, escalateToSuspension, proposeReinstatement,

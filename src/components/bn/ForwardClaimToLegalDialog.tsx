@@ -23,7 +23,6 @@ import { useNavigate } from "react-router-dom";
 import { forwardBenefitsClaimToLegal } from "@/services/legal/benefitsForwardingService";
 import { useUserCode } from "@/hooks/useUserCode";
 import { useQueryClient } from "@tanstack/react-query";
-import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;

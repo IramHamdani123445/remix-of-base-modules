@@ -23,7 +23,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { formatMinor, type BnUpratingRollbackReadiness } from '@/types/bn/uprating/upratingRun';
-import { BnBusyButton } from '@/components/bn/shared';
 
 export interface BnUpratingRollbackDialogProps {
   readonly open: boolean;

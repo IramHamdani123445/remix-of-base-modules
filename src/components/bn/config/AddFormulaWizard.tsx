@@ -36,7 +36,6 @@ import { parseFormula } from '@/lib/bn/formulaParser';
 import { useVariableResolver } from '@/hooks/bn/useVariableResolver';
 import CountryFieldSelector from '@/components/bn/selectors/CountryFieldSelector';
 import LegalReferenceSelector from '@/components/bn/selectors/LegalReferenceSelector';
-import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;

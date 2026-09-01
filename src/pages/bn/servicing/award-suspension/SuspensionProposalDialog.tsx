@@ -31,7 +31,6 @@ import {
   type SuspensionProposalResult,
 } from '@/services/bn/awardSuspensionCommandService';
 import { formatDate, formatMoney } from './suspensionViewModels';
-import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;

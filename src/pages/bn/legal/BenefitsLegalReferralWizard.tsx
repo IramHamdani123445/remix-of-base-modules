@@ -26,7 +26,6 @@ import type { ReferralDocumentDraft } from "@/services/legal/coreLegalReferralDo
 import ReferralDocumentSelector from "@/components/legal/lg/ReferralDocumentSelector";
 import HistoryTimelinePanel from "@/components/legal/lg/HistoryTimelinePanel";
 import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
-import { BnBusyButton } from '@/components/bn/shared';
 
 const sb = supabase as any;
 
