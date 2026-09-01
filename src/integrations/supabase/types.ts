@@ -36865,6 +36865,13 @@ export type Database = {
             referencedRelation: "ce_notices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_case_notices_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_notice_register"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ce_case_recommendation_history: {
@@ -43163,7 +43170,65 @@ export type Database = {
             referencedRelation: "ce_notices"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_notice_delivery_log_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_notice_register"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      ce_notice_number_seq: {
+        Row: {
+          last_value: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          last_value?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      ce_notice_ref: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          domain: string
+          group_code: string | null
+          is_active: boolean
+          label: string
+          numeric_value: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order?: number
+          domain: string
+          group_code?: string | null
+          is_active?: boolean
+          label: string
+          numeric_value?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          domain?: string
+          group_code?: string | null
+          is_active?: boolean
+          label?: string
+          numeric_value?: number | null
+        }
+        Relationships: []
       }
       ce_notice_responses: {
         Row: {
@@ -43234,6 +43299,13 @@ export type Database = {
             columns: ["notice_id"]
             isOneToOne: false
             referencedRelation: "ce_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_notice_id_fkey"
+            columns: ["notice_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_notice_register"
             referencedColumns: ["id"]
           },
           {
@@ -117518,6 +117590,135 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_notice_register: {
+        Row: {
+          acknowledged_at: string | null
+          case_id: string | null
+          case_number: string | null
+          created_at: string | null
+          created_by: string | null
+          delivered_at: string | null
+          delivery_attempts: number | null
+          delivery_failure_reason: string | null
+          delivery_method: string | null
+          delivery_method_label: string | null
+          delivery_status: string | null
+          dms_document_ref: string | null
+          due_response_date: string | null
+          employer_id: string | null
+          employer_name: string | null
+          id: string | null
+          last_attempt_at: string | null
+          last_delivered_at: string | null
+          last_delivery_channel: string | null
+          last_response_date: string | null
+          notice_number: string | null
+          notice_type: string | null
+          notice_type_group: string | null
+          notice_type_label: string | null
+          response_count: number | null
+          response_date: string | null
+          response_received: boolean | null
+          response_state: string | null
+          sent_at: string | null
+          stage_code: string | null
+          status: string | null
+          status_group: string | null
+          status_label: string | null
+          subject: string | null
+          template_code: string | null
+          template_id: string | null
+          template_name: string | null
+          violation_id: string | null
+          violation_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_v_officer_performance: {
         Row: {
           active_count: number | null
@@ -125176,6 +125377,7 @@ export type Database = {
         Returns: Json
       }
       ce_next_number_v1: { Args: { p_applies_to: string }; Returns: string }
+      ce_notice_allocate_number_v1: { Args: never; Returns: string }
       ce_officer_identities: { Args: { _user_id: string }; Returns: string[] }
       ce_officer_label: { Args: { _code: string }; Returns: string }
       ce_override_sector_benchmark_v1: {
