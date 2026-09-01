@@ -20,6 +20,7 @@ import {
 import {
   buildInternalAuditPayload,
   internalAuditTemplateEntry,
+  missingInternalAuditFacts,
 } from './templates/internalAuditTemplateRegistry';
 
 export interface InternalAuditCommunicationInput {
@@ -97,11 +98,31 @@ export async function emitInternalAuditCommunication(
   }
 
   const templateEntry = internalAuditTemplateEntry(eventCode);
-  const payload = buildInternalAuditPayload(eventCode, {
+  const facts = {
     ...(input.values ?? {}),
     subjectName: input.recipientName,
     reference: input.reference,
-  });
+  };
+
+  // A professional audit communication never renders a placeholder in place of
+  // a business fact: emit only when every declared token has a real value.
+  const missing = missingInternalAuditFacts(eventCode, facts);
+  if (missing.length > 0) {
+    return {
+      outcome: 'blocked',
+      blockers: missing.map((name) => `internal_audit_missing_fact:${name}`),
+      requestId: null,
+      idempotencyKey: null,
+      mode: 'queued',
+      eventCode,
+      organizationId: input.organizationId ?? null,
+      departmentId: input.departmentId ?? null,
+      departmentSource: 'none',
+      skippedReason: null,
+    };
+  }
+
+  const payload = buildInternalAuditPayload(eventCode, facts);
 
   const recipient: ConfiguredBusinessEventRecipient = {
     reference: input.recipientUserId ?? input.reference,
