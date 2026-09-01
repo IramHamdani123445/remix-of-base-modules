@@ -127184,6 +127184,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_case_type_label: { Args: { p_code: string }; Returns: string }
       ce_classify_finding_v1: {
         Args: {
           p_candidate_violation_type_id?: string
@@ -128367,6 +128368,18 @@ export type Database = {
       ce_team_officer_identities: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      ce_trend_analytics_v1: {
+        Args: {
+          p_case_type?: string[]
+          p_compare?: string
+          p_from: string
+          p_grain?: string
+          p_to: string
+          p_violation_type?: string[]
+          p_zone?: string[]
+        }
+        Returns: Json
       }
       ce_upsert_contribution_exemption_v1: {
         Args: {
