@@ -24,6 +24,7 @@
  * This module does NOT write to cl_cheques — the payment batch process does.
  */
 import { supabase } from '@/integrations/supabase/client';
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 
 const db = supabase as any;
 
@@ -490,6 +491,7 @@ export async function executeEntitlementAction(params: ExecuteEntitlementActionP
       await db.from('bn_claim')
         .update({ status: claimStatus, modified_by: performedBy, modified_at: now })
         .eq('id', ent.claim_id);
+      await routeClaimAfterStatusChange(ent.claim_id, performedBy);
     }
   }
 

@@ -21,6 +21,7 @@
  * OUTBOUND PAYMENTS: cl_cheques only. cn_payment* NEVER used.
  * Approval here creates/activates entitlement — does NOT issue payment.
  */
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 import { supabase } from '@/integrations/supabase/client';
 import type { BnClaim, BnClaimDecision } from '@/types/bn';
 
@@ -364,6 +365,9 @@ export async function executeApprovalAction(params: ExecuteApprovalParams): Prom
     .update(claimUpdate)
     .eq('id', claimId);
   if (updateErr) throw updateErr;
+
+  // The claim's new status decides which workbasket owns it next.
+  await routeClaimAfterStatusChange(claimId, performedBy);
 
   // Create decision record
   await db.from('bn_claim_decision').insert({

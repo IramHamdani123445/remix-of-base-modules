@@ -16,6 +16,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { auditClaimAction, auditAwardAction } from '@/services/bn/audit/bnAuditService';
+import { routeClaimAfterStatusChange } from '@/services/bn/workflow/routeClaimAfterStatusChange';
 import {
   resolveApprovalRouting,
   getUserRoleNames,
@@ -268,9 +269,12 @@ export async function orchestrateApproval(
     .update({ status: toStatus, modified_by: performedBy, modified_at: new Date().toISOString() })
     .eq('id', claimId);
 
-  // Phase 4: route to next workbasket if transition rule declared one.
+  // Phase 4: an explicit transition rule wins; otherwise the claim's new status
+  // decides its workbasket via the product's workflow.
   if (sideEffect.nextWorkbasketId) {
     await assignClaimToWorkbasket(claimId, sideEffect.nextWorkbasketId, performedBy, `Auto-routed by ${taskType}`);
+  } else {
+    await routeClaimAfterStatusChange(claimId, performedBy);
   }
 
 
@@ -322,6 +326,11 @@ export async function submitClaimForDecision(claimId: string, performedBy: strin
     .from('bn_claim')
     .update({ status: 'DECISION', modified_by: performedBy, modified_at: new Date().toISOString() })
     .eq('id', claimId);
+
+  // The claim now belongs to the decision stage's workbasket, not intake.
+  await routeClaimAfterStatusChange(claimId, performedBy);
+
+
 
   await db.from('bn_claim_event').insert({
     claim_id: claimId,
@@ -407,6 +416,8 @@ export async function approveClaim(
         claimId, routing.nextWorkbasketId, performedBy,
         `Recommended for level ${routing.nextLevel.level} approval`,
       );
+    } else {
+      await routeClaimAfterStatusChange(claimId, performedBy);
     }
 
     await db.from('bn_claim_event').insert({
