@@ -42794,6 +42794,13 @@ export type Database = {
             referencedRelation: "ce_v_approved_escalation_register"
             referencedColumns: ["referral_id"]
           },
+          {
+            foreignKeyName: "ce_legal_pack_items_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
         ]
       }
       ce_legal_pack_ref: {
@@ -42994,6 +43001,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_legal_recommendation_ref: {
+        Row: {
+          aliases: string[]
+          code: string
+          created_at: string
+          description: string | null
+          display_order: number
+          domain: string
+          id: string
+          is_active: boolean
+          label: string
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          code: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          domain: string
+          id?: string
+          is_active?: boolean
+          label: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          code?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          domain?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_legal_recommendations: {
         Row: {
           approval_capability: string | null
@@ -43164,6 +43213,13 @@ export type Database = {
             columns: ["referral_id"]
             isOneToOne: false
             referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_referral_lines_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
             referencedColumns: ["referral_id"]
           },
         ]
@@ -43360,6 +43416,13 @@ export type Database = {
             referencedRelation: "ce_legal_recommendations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_legal_referrals_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["recommendation_id"]
+          },
         ]
       }
       ce_legal_returns: {
@@ -43418,6 +43481,13 @@ export type Database = {
             columns: ["referral_id"]
             isOneToOne: false
             referencedRelation: "ce_v_approved_escalation_register"
+            referencedColumns: ["referral_id"]
+          },
+          {
+            foreignKeyName: "ce_legal_returns_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
             referencedColumns: ["referral_id"]
           },
         ]
@@ -86818,6 +86888,13 @@ export type Database = {
             referencedRelation: "ce_v_approved_escalation_register"
             referencedColumns: ["referral_id"]
           },
+          {
+            foreignKeyName: "legal_referral_source_ce_referral_id_fkey"
+            columns: ["source_ce_referral_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_legal_recommendation_register"
+            referencedColumns: ["referral_id"]
+          },
         ]
       }
       legal_referral_audit: {
@@ -118711,6 +118788,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_legal_recommendation_register: {
+        Row: {
+          assigned_officer_name: string | null
+          court_case_number: string | null
+          eligibility_snapshot: Json | null
+          employer_id: string | null
+          employer_name: string | null
+          financial_snapshot: Json | null
+          grand_total: number | null
+          legal_state_code: string | null
+          lg_case_no: string | null
+          lg_intake_no: string | null
+          policy_snapshot: Json | null
+          qualifying_case_count: number | null
+          recommendation_id: string | null
+          recommendation_reason: string | null
+          recommendation_type: string | null
+          recommended_at: string | null
+          recommended_by: string | null
+          recommended_date: string | null
+          referral_accepted_date: string | null
+          referral_created_at: string | null
+          referral_id: string | null
+          referral_number: string | null
+          referral_returned_at: string | null
+          referral_status: string | null
+          referral_submitted_date: string | null
+          review_notes: string | null
+          reviewed_by: string | null
+          reviewed_date: string | null
+          risk_code: string | null
+          risk_rank: number | null
+          risk_score: number | null
+          rule_names: string[] | null
+          rule_summary: string | null
+          search_blob: string | null
+          source_case_id: string | null
+          source_case_number: string | null
+          source_case_status: string | null
+          source_code: string | null
+          status_code: string | null
+          subcase_summary: Json | null
+          total_interest: number | null
+          total_penalties: number | null
+          total_principal: number | null
+          triggered_rules: Json | null
+          waiting_hours: number | null
+          zone: string | null
+        }
+        Relationships: []
+      }
       ce_v_notice_register: {
         Row: {
           acknowledged_at: string | null
@@ -126645,6 +126773,24 @@ export type Database = {
       }
       ce_legal_proceeding_facets_v1: { Args: never; Returns: Json }
       ce_legal_proceeding_register_v1: {
+        Args: {
+          p_dir?: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      ce_legal_rec_label: {
+        Args: { _code: string; _domain: string }
+        Returns: Json
+      }
+      ce_legal_recommendation_detail_v1: {
+        Args: { p_recommendation_id: string }
+        Returns: Json
+      }
+      ce_legal_recommendation_register_v1: {
         Args: {
           p_dir?: string
           p_filters?: Json
