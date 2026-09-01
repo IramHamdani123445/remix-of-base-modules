@@ -81331,6 +81331,62 @@ export type Database = {
           },
         ]
       }
+      ia_risk_recalc_log: {
+        Row: {
+          created_at: string
+          id: string
+          new_inherent_level: string | null
+          new_inherent_score: number | null
+          new_residual_level: string | null
+          new_residual_score: number | null
+          old_inherent_level: string | null
+          old_inherent_score: number | null
+          old_residual_level: string | null
+          old_residual_score: number | null
+          recalculated_by: string | null
+          risk_id: string | null
+          trigger_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_inherent_level?: string | null
+          new_inherent_score?: number | null
+          new_residual_level?: string | null
+          new_residual_score?: number | null
+          old_inherent_level?: string | null
+          old_inherent_score?: number | null
+          old_residual_level?: string | null
+          old_residual_score?: number | null
+          recalculated_by?: string | null
+          risk_id?: string | null
+          trigger_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_inherent_level?: string | null
+          new_inherent_score?: number | null
+          new_residual_level?: string | null
+          new_residual_score?: number | null
+          old_inherent_level?: string | null
+          old_inherent_score?: number | null
+          old_residual_level?: string | null
+          old_residual_score?: number | null
+          recalculated_by?: string | null
+          risk_id?: string | null
+          trigger_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_risk_recalc_log_risk_id_fkey"
+            columns: ["risk_id"]
+            isOneToOne: false
+            referencedRelation: "ia_risk_register"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_risk_register: {
         Row: {
           audit_universe_id: string | null
