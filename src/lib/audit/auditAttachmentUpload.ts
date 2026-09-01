@@ -77,11 +77,64 @@ export function validateAuditFile(file: File): AuditFileValidation {
   return { ok: true };
 }
 
-/** Collision-safe, engagement-scoped object path inside the private bucket. */
-export function buildAuditObjectPath(prefix: string, engagementId: string, ownerId: string, fileName: string): string {
+/**
+ * Canonical Internal Audit storage root. `ia_storage_engagement()` returns NULL
+ * for any object whose first segment is not exactly this value, and the storage
+ * INSERT policy requires a non-NULL engagement — so every write MUST start here.
+ */
+export const AUDIT_STORAGE_ROOT = 'internal-audit';
+
+/**
+ * Allow-listed object classes (segment 3 — what `ia_storage_class()` reads).
+ * Arbitrary root prefixes are deliberately NOT expressible through this API.
+ */
+export const AUDIT_OBJECT_CLASSES = [
+  'working-papers',
+  'evidence',
+  'responses',
+  'actions',
+  'documents',
+  'queries',
+  'qa',
+] as const;
+export type AuditObjectClass = (typeof AUDIT_OBJECT_CLASSES)[number];
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Collision-safe canonical object path:
+ *   internal-audit/<engagement_uuid>/<class>/<owner_uuid>/<stamp>_<safe-name>
+ */
+export function buildAuditObjectPath(
+  engagementId: string,
+  objectClass: AuditObjectClass,
+  ownerId: string,
+  fileName: string,
+): string {
+  if (!UUID_RE.test(engagementId ?? '')) {
+    throw new Error(`Invalid engagement id for audit storage path: "${engagementId}"`);
+  }
+  if (!(AUDIT_OBJECT_CLASSES as readonly string[]).includes(objectClass)) {
+    throw new Error(`Unknown audit storage class "${objectClass}"`);
+  }
+  if (!ownerId || /[\\/]/.test(ownerId)) {
+    throw new Error('Invalid owner id for audit storage path');
+  }
   const safe = sanitizeAuditFileName(fileName);
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  return `${prefix}/${engagementId}/${ownerId}/${stamp}_${safe}`;
+  return `${AUDIT_STORAGE_ROOT}/${engagementId}/${objectClass}/${ownerId}/${stamp}_${safe}`;
+}
+
+/** Mirror of SQL `ia_storage_engagement()` — for contract tests and client guards. */
+export function storageEngagementOf(path: string): string | null {
+  if (!path || path.split('/')[0] !== AUDIT_STORAGE_ROOT) return null;
+  const seg = path.split('/')[1] ?? '';
+  return UUID_RE.test(seg) ? seg : null;
+}
+
+/** Mirror of SQL `ia_storage_class()`. */
+export function storageClassOf(path: string): string | null {
+  return (path?.split('/')[2] || null) as string | null;
 }
 
 export interface UploadedAuditObject {
@@ -94,14 +147,14 @@ export interface UploadedAuditObject {
 
 /** Upload one validated file into the private audit bucket. Throws on failure. */
 export async function uploadAuditAttachment(
-  prefix: string,
+  objectClass: AuditObjectClass,
   engagementId: string,
   ownerId: string,
   file: File,
 ): Promise<UploadedAuditObject> {
   const check = validateAuditFile(file);
   if (!check.ok) throw new Error(check.reason);
-  const path = buildAuditObjectPath(prefix, engagementId, ownerId, file.name);
+  const path = buildAuditObjectPath(engagementId, objectClass, ownerId, file.name);
   const { error } = await supabase.storage
     .from(AUDIT_ATTACHMENT_BUCKET)
     .upload(path, file, { contentType: file.type || undefined, upsert: false });
@@ -115,12 +168,37 @@ export async function uploadAuditAttachment(
   };
 }
 
-/** Best-effort orphan cleanup after a failed metadata write. Never throws. */
-export async function removeAuditObjects(paths: string[]): Promise<void> {
-  if (!paths.length) return;
-  try {
-    await supabase.storage.from(AUDIT_ATTACHMENT_BUCKET).remove(paths);
-  } catch (err) {
-    console.error('[auditAttachmentUpload] orphan cleanup failed', paths, err);
-  }
+/**
+ * COMPENSATING ROLLBACK primitive — this is NOT a transaction. Storage and the
+ * database are separate systems; failures here leave a deterministic orphan
+ * condition that must be reported, never silently swallowed.
+ */
+export interface CompensatingCleanupResult {
+  cleanup_attempted: boolean;
+  cleanup_succeeded: boolean;
+  cleanup_errors: string[];
 }
+
+/** Remove uploaded objects, reporting every failure. Never throws. */
+export async function removeAuditObjects(paths: string[]): Promise<CompensatingCleanupResult> {
+  if (!paths.length) {
+    return { cleanup_attempted: false, cleanup_succeeded: true, cleanup_errors: [] };
+  }
+  const errors: string[] = [];
+  try {
+    const { data, error } = await supabase.storage.from(AUDIT_ATTACHMENT_BUCKET).remove(paths);
+    if (error) {
+      errors.push(`storage.remove failed: ${error.message}`);
+    } else {
+      const removed = new Set((data ?? []).map((o: { name: string }) => o.name));
+      paths.filter(p => !removed.has(p)).forEach(p => errors.push(`storage object not removed: ${p}`));
+    }
+  } catch (err: unknown) {
+    errors.push(`storage.remove threw: ${(err as Error)?.message ?? String(err)}`);
+  }
+  if (errors.length) {
+    console.error('[auditAttachmentUpload] ORPHAN-CLEANUP-DEFECT', { paths, errors });
+  }
+  return { cleanup_attempted: true, cleanup_succeeded: errors.length === 0, cleanup_errors: errors };
+}
+
