@@ -82,11 +82,12 @@ export function useUrlTab<T extends readonly string[]>(
 
   const activeTab = useMemo(() => {
     const normalized = normalizeTab(vocabulary, raw);
-    if (ready && allowed && !allowed.includes(normalized)) {
+    if (allowed && !allowed.includes(normalized)) {
       return DEFAULT_TAB as T[number];
     }
     return normalized;
-  }, [vocabulary, raw, allowed, ready]);
+  }, [vocabulary, raw, allowed]);
+
 
   const setTab = useCallback(
     (next: string) => {
