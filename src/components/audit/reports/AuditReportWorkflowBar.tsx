@@ -46,7 +46,7 @@ export function AuditReportWorkflowBar({ currentStatus, onStatusChange, disabled
           const StepIcon = step.icon;
 
           return (
-            <React.Fragment key={step.key}>
+            <div key={step.key} className="contents">
               <div
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   isCurrent
@@ -66,7 +66,7 @@ export function AuditReportWorkflowBar({ currentStatus, onStatusChange, disabled
               {idx < WORKFLOW_STEPS.length - 1 && (
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
               )}
-            </React.Fragment>
+            </div>
           );
         })}
 
