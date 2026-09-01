@@ -119,7 +119,8 @@ export function AuditWorkingPapersTab({ auditId }: AuditWorkingPapersTabProps) {
         status: 'Draft',
       } as any);
 
-      // 2. Upload each validated file into the PRIVATE audit bucket.
+      // 2. Upload each validated file into the PRIVATE audit bucket using the
+      //    canonical contract path internal-audit/<engagement>/working-papers/<paper>/...
       for (const item of staged) {
         const uploaded = await uploadAuditAttachment('working-papers', auditId, paperRow.id, item.file);
         uploadedPaths.push(uploaded.path);
@@ -166,21 +167,22 @@ export function AuditWorkingPapersTab({ auditId }: AuditWorkingPapersTabProps) {
       });
       resetForm();
     } catch (err: any) {
-      // Atomicity — remove orphan objects, metadata and the misleading paper row.
-      await removeAuditObjects(uploadedPaths);
-      if (evidenceIds.length) {
-        await supabase.from('ia_evidence').delete().in('id', evidenceIds);
-      }
-      if (paperRow?.id) {
-        await supabase.from('ia_working_papers').delete().eq('id', paperRow.id);
-      }
+      // COMPENSATING ROLLBACK — storage + database are separate systems, so this
+      // is not a transaction. Every compensating step is checked and reported.
+      const rollback = await compensateWorkingPaperFailure({
+        uploadedPaths,
+        evidenceIds,
+        workingPaperRowId: paperRow?.id ?? null,
+      });
       queryClient.invalidateQueries({ queryKey: ['eng_working_papers'] });
+      queryClient.invalidateQueries({ queryKey: ['eng_evidence'] });
       toast({
         title: 'Working paper not saved',
-        description: err?.message || 'The upload failed and nothing was stored.',
+        description: describeRollback(rollback, err?.message || 'The upload failed.'),
         variant: 'destructive',
       });
     } finally {
+
       setUploading(false);
     }
   };
