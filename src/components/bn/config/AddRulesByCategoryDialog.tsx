@@ -19,7 +19,11 @@ import { useBnProductVersion } from '@/hooks/bn/useBnProduct';
 import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
-import { RULE_CATEGORIES, type RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
+import {
+  RULE_CATEGORIES,
+  isRuleCurrentlyEffective,
+  type RuleCatalogueItem,
+} from '@/services/bn/ruleCatalogueService';
 import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
