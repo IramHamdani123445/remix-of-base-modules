@@ -13,6 +13,12 @@ export interface CandidateRule {
   rule_code: string;
   rule_name?: string | null;
   fact_key: string | null;
+  /** DATE_DIFFERENCE rules carry no single fact_key by design — they compare
+   *  start_fact_key/end_fact_key instead. Needed here so the unlinked-fact
+   *  check below doesn't flag a correctly-configured date-difference rule. */
+  rule_kind?: string | null;
+  start_fact_key?: string | null;
+  end_fact_key?: string | null;
   operator: string;
   value_from: string | number | null;
   value_to?: string | number | null;
@@ -80,7 +86,18 @@ export function detectEligibilityConflicts(
 
   // 1. Unlinked / NOT_IMPLEMENTED fact + missing thresholds
   active.forEach(r => {
-    if (!r.fact_key) {
+    if (r.rule_kind === 'DATE_DIFFERENCE') {
+      if (!r.start_fact_key || !r.end_fact_key) {
+        conflicts.push({
+          id: `unlinked-${r.rule_code}`, severity: 'ERROR', conflict_type: 'UNLINKED_FACT',
+          reason: `Rule ${r.rule_code} (date difference) is missing its start or end date fact`,
+          suggestion: 'Set both the start date and end date facts on this rule.',
+          rule_a: { rule_code: r.rule_code, rule_name: r.rule_name },
+        });
+      }
+      // A date-difference rule has no single fact_key by design — the checks
+      // below (which key off r.fact_key) don't apply to it.
+    } else if (!r.fact_key) {
       conflicts.push({
         id: `unlinked-${r.rule_code}`, severity: 'ERROR', conflict_type: 'UNLINKED_FACT',
         reason: `Rule ${r.rule_code} has no fact_key`,

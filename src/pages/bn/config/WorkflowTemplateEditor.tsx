@@ -27,9 +27,50 @@ interface StepConfig {
   notify_template_code?: string | null;
   is_optional?: boolean;
   description?: string;
+  /**
+   * BUG-047 — claimWorkbasketResolver.ts (the code that actually routes a
+   * submitted claim to a workbasket) reads `step`/`role` on the first step,
+   * never `step_type`/`assigned_role`. This editor only ever wrote the
+   * latter — every template built purely through this screen looked
+   * complete but silently failed to route any claim. Every one of the 45
+   * templates already in the database only works because it was seeded with
+   * both shapes present; nothing authored through this editor alone has
+   * ever produced a step the resolver could read. `step`/`role` are now
+   * derived automatically from `step_type` (see `routingFieldsForStepType`)
+   * whenever a step type is chosen, so the user never has to know this
+   * second, internal vocabulary exists.
+   */
+  step?: string;
+  role?: string;
 }
 
 const STEP_TYPES = ['INTAKE', 'REVIEW', 'ELIGIBILITY', 'CALCULATION', 'DECISION', 'APPROVAL', 'PAYMENT', 'NOTIFICATION', 'EXTERNAL_TASK', 'CUSTOM'];
+
+/**
+ * Maps a UI step type onto the short `step`/`role` codes
+ * `claimWorkbasketResolver.ts`'s `STEP_NAME_TO_BASKET_ROLE` /
+ * `STEP_ROLE_TO_BASKET_ROLE` tables actually recognise. `role` here is what
+ * carries real routing in practice — `step` doubles as a fallback when a
+ * role string doesn't match (as most legacy "CLAIMS_OFFICER"-style role text
+ * in existing data doesn't). SYSTEM carries no basket by design (system-run
+ * steps have no human queue), matching the resolver's own stated intent.
+ */
+const STEP_TYPE_TO_ROUTING: Record<string, { step: string; role: string }> = {
+  INTAKE: { step: 'INTAKE', role: 'CLERK' },
+  REVIEW: { step: 'REVIEW', role: 'OFFICER' },
+  ELIGIBILITY: { step: 'ELIGIBILITY', role: 'OFFICER' },
+  CALCULATION: { step: 'CALCULATION', role: 'OFFICER' },
+  DECISION: { step: 'DECISION', role: 'SUPERVISOR' },
+  APPROVAL: { step: 'APPROVAL', role: 'SUPERVISOR' },
+  PAYMENT: { step: 'PAYMENT', role: 'FINANCE' },
+  NOTIFICATION: { step: 'NOTIFICATION', role: 'SYSTEM' },
+  EXTERNAL_TASK: { step: 'EXTERNAL_TASK', role: 'OFFICER' },
+  CUSTOM: { step: 'CUSTOM', role: 'OFFICER' },
+};
+
+function routingFieldsForStepType(stepType: string | undefined): { step: string; role: string } {
+  return STEP_TYPE_TO_ROUTING[stepType ?? ''] ?? { step: stepType || 'REVIEW', role: 'OFFICER' };
+}
 
 function useEscalationPolicies() {
   return useQuery({
@@ -37,13 +78,25 @@ function useEscalationPolicies() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('bn_escalation_policy')
-        .select('id, policy_code, policy_name, is_active, hours_overdue, severity')
+        .select('id, policy_code, policy_name, is_active, severity, trigger_config, due_after_hours, breach_after_hours')
         .eq('is_active', true)
         .order('policy_name');
       if (error) throw error;
       return data ?? [];
     },
   });
+}
+
+/**
+ * BUG-046 — the dropdown used to select a nonexistent `hours_overdue` column
+ * and always came back empty. The real value lives in different places
+ * depending on how the policy was authored: newer rows use the dedicated
+ * `due_after_hours`/`breach_after_hours` columns, older seed data only ever
+ * set it inside `trigger_config` (e.g. `{ hours_overdue: 17 }`).
+ */
+function policyHoursLabel(p: { due_after_hours?: number | null; breach_after_hours?: number | null; trigger_config?: { hours_overdue?: number } | null }): string | null {
+  const hours = p.due_after_hours ?? p.breach_after_hours ?? p.trigger_config?.hours_overdue ?? null;
+  return hours != null ? `${hours}h` : null;
 }
 
 function normalizeSteps(raw: unknown): StepConfig[] {
@@ -150,12 +203,20 @@ export default function WorkflowTemplateEditor() {
   const [form, setForm] = useState<any>(null);
   const [steps, setSteps] = useState<StepConfig[]>([]);
   const [activeStep, setActiveStep] = useState<number>(0);
+  // BUG-045 — "New Template" cleared selectedId to trigger a blank form, but
+  // this same auto-select effect (meant only for the initial page load) saw
+  // selectedId go null and immediately re-picked templates[0], silently
+  // reverting both the highlight and the form back to the existing template
+  // — including its real id, so a Save afterward would overwrite it instead
+  // of creating a new row. This flag tells the effect a blank form is
+  // deliberate, not "nothing loaded yet".
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
 
   const selected = useMemo(() => templates.find((t: any) => t.id === selectedId), [templates, selectedId]);
 
   useEffect(() => {
-    if (!selectedId && templates.length) setSelectedId((templates[0] as any).id);
-  }, [templates, selectedId]);
+    if (!selectedId && !isCreatingNew && templates.length) setSelectedId((templates[0] as any).id);
+  }, [templates, selectedId, isCreatingNew]);
 
   useEffect(() => {
     if (selected) {
@@ -176,11 +237,24 @@ export default function WorkflowTemplateEditor() {
   }, [selected]);
 
   const updateStep = (i: number, patch: Partial<StepConfig>) => {
-    setSteps((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+    setSteps((prev) => prev.map((s, idx) => {
+      if (idx !== i) return s;
+      const merged = { ...s, ...patch };
+      // BUG-047 — keep the resolver-facing step/role in sync whenever the
+      // user changes the step type, so the routing fields are always
+      // consistent with what's actually displayed.
+      return patch.step_type ? { ...merged, ...routingFieldsForStepType(patch.step_type) } : merged;
+    }));
   };
 
   const addStep = () => {
-    setSteps((prev) => [...prev, { step_code: `STEP_${prev.length + 1}`, step_name: `Step ${prev.length + 1}`, step_type: 'REVIEW' }]);
+    const stepType = 'REVIEW';
+    setSteps((prev) => [...prev, {
+      step_code: `STEP_${prev.length + 1}`,
+      step_name: `Step ${prev.length + 1}`,
+      step_type: stepType,
+      ...routingFieldsForStepType(stepType),
+    }]);
     setActiveStep(steps.length);
   };
 
@@ -201,10 +275,16 @@ export default function WorkflowTemplateEditor() {
   };
 
   const handleNewTemplate = () => {
+    setIsCreatingNew(true);
     setSelectedId(null);
     setForm({ template_code: '', template_name: '', description: '', country_code: '', channel_code: '', workflow_definition_id: '', is_active: true });
     setSteps([]);
     setActiveStep(0);
+  };
+
+  const handleSelectTemplate = (id: string) => {
+    setIsCreatingNew(false);
+    setSelectedId(id);
   };
 
   const handleSave = async () => {
@@ -220,7 +300,11 @@ export default function WorkflowTemplateEditor() {
         workflow_definition_id: form.workflow_definition_id || null,
         steps_config: steps,
       };
+      // Defense in depth for BUG-045: a genuinely new template must never
+      // carry another row's id into the upsert, whatever state got it here.
+      if (isCreatingNew) delete payload.id;
       const saved = await upsert.mutateAsync(payload);
+      setIsCreatingNew(false);
       setSelectedId((saved as any).id);
       toast({ title: 'Saved', description: `Template "${form.template_name}" saved with ${steps.length} step(s).` });
     } catch (err: any) {
@@ -255,7 +339,7 @@ export default function WorkflowTemplateEditor() {
                 {templates.map((t: any) => (
                   <button
                     key={t.id}
-                    onClick={() => setSelectedId(t.id)}
+                    onClick={() => handleSelectTemplate(t.id)}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-accent ${selectedId === t.id ? 'bg-accent' : ''}`}
                   >
                     <div className="font-medium truncate">{t.template_name}</div>
@@ -413,7 +497,7 @@ export default function WorkflowTemplateEditor() {
                               <SelectItem value="__none__">Inherit (workbasket → product → default)</SelectItem>
                               {policies.map((p: any) => (
                                 <SelectItem key={p.id} value={p.id}>
-                                  {p.policy_name} ({p.policy_code}) · {p.hours_overdue}h · {p.severity}
+                                  {p.policy_name} ({p.policy_code}){policyHoursLabel(p) ? ` · ${policyHoursLabel(p)}` : ''} · {p.severity}
                                 </SelectItem>
                               ))}
                             </SelectContent>

@@ -33,6 +33,26 @@ export const RULE_OPERATORS = [
 
 export const FAIL_ACTIONS: FailAction[] = ['REJECT','BLOCK','REFER'];
 
+/**
+ * effective_from/effective_to were captured on every catalogue rule and shown
+ * on screen, but never actually checked anywhere — confirmed by search, zero
+ * reads in the live evaluator or any picker. A rule dated to start next year,
+ * or one that expired months ago, was exactly as selectable as a current one.
+ * Individual product rules (bn_eligibility_rule) don't carry these dates at
+ * all, so this can't safely gate live claim evaluation without the larger
+ * reference-based redesign — but it can and should gate whether an expired or
+ * not-yet-started catalogue rule is offered as a *reusable template* here.
+ */
+export function isRuleCurrentlyEffective(
+  rule: Pick<RuleCatalogueItem, 'effective_from' | 'effective_to'>,
+  asOf: Date = new Date(),
+): boolean {
+  const today = asOf.toISOString().slice(0, 10);
+  if (rule.effective_from && rule.effective_from > today) return false;
+  if (rule.effective_to && rule.effective_to < today) return false;
+  return true;
+}
+
 export interface RuleCatalogueItem {
   id: string;
   rule_code: string;
@@ -128,8 +148,25 @@ export async function upsertRuleCatalogue(input: RuleCatalogueInput, userCode: s
 }
 
 export async function cloneRuleCatalogue(source: RuleCatalogueItem, newCode: string, userCode: string): Promise<RuleCatalogueItem> {
-  const { id, created_at, updated_at, version, created_by, updated_by, ...rest } = source;
-  return upsertRuleCatalogue({ ...rest, rule_code: newCode, rule_name: `${source.rule_name} (copy)` }, userCode);
+  const {
+    id, created_at, updated_at, version, created_by, updated_by,
+    // Governance/legal fields were being carried over unchanged — cloning an
+    // already-approved rule produced a clone that looked pre-approved without
+    // ever going through review itself. A clone is a new proposal; it starts
+    // at DRAFT with no legal history, same as any other new rule.
+    governance_status, legal_reference, legal_notes, jurisdiction_country, effective_date,
+    ...rest
+  } = source;
+  return upsertRuleCatalogue({
+    ...rest,
+    rule_code: newCode,
+    rule_name: `${source.rule_name} (copy)`,
+    governance_status: 'DRAFT',
+    legal_reference: null,
+    legal_notes: null,
+    jurisdiction_country: null,
+    effective_date: null,
+  }, userCode);
 }
 
 export async function deleteRuleCatalogue(id: string, code: string): Promise<void> {

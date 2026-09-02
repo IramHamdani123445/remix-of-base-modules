@@ -15,6 +15,7 @@ import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useRuleCatalogue } from '@/hooks/bn/useRuleCatalogue';
+import { useBnProductVersion } from '@/hooks/bn/useBnProduct';
 import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
@@ -33,6 +34,11 @@ type Band = 'READY' | 'PARTIAL' | 'BLOCKED';
 export function AddRulesByCategoryDialog({ open, onOpenChange, versionId, onAdded }: Props) {
   const { data: rules = [] } = useRuleCatalogue();
   const { data: facts = [] } = useEligibilityFacts();
+  const { data: version } = useBnProductVersion(versionId);
+  const asOfDate = useMemo(
+    () => ((version as any)?.effective_from ? new Date((version as any).effective_from) : new Date()),
+    [version],
+  );
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -60,6 +66,9 @@ export function AddRulesByCategoryDialog({ open, onOpenChange, versionId, onAdde
       // Governance gate — only legally approved rules attach to products
       const gs = (r as any).governance_status;
       if (gs && !['LEGAL_CONFIRMED','READY_FOR_PRODUCT_USE','ACTIVE'].includes(gs)) continue;
+      // Anchored to the product version's own effective_from, not "today" —
+      // same reasoning as CataloguePickerDialog.
+      if (!isRuleCurrentlyEffective(r, asOfDate)) continue;
       if (s && !r.rule_code.toLowerCase().includes(s) && !r.rule_name.toLowerCase().includes(s)
           && !(r.fact_key ?? '').toLowerCase().includes(s)) continue;
       const cat = (r.category ?? r.group_type ?? 'COMMON') as string;
@@ -68,7 +77,7 @@ export function AddRulesByCategoryDialog({ open, onOpenChange, versionId, onAdde
       m.set(cat, arr);
     }
     return m;
-  }, [rules, search]);
+  }, [rules, search, asOfDate]);
 
   const toggle = (id: string) => {
     setSelected(prev => {
