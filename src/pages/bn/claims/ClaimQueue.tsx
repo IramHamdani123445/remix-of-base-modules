@@ -38,6 +38,14 @@ const isOversightRole = (role: string) => {
 
 interface QueueBasket {
   id: string;
+  /**
+   * The basket's own code. `basketServesStage` is written against codes, not
+   * names or ids, so a row without this can never be judged: normalise()
+   * turns the missing value into '', which matches no expected code, and every
+   * claim whose stage HAS an expectation was marked "Stage / queue mismatch" --
+   * on the correct queue as much as the wrong one. Both scopes now carry it.
+   */
+  basket_code?: string;
   basket_name: string;
   role_name?: string;
   is_primary?: boolean;
@@ -73,6 +81,7 @@ export default function ClaimQueue() {
       }
       map.set(b.workbasket_id, {
         id: b.workbasket_id,
+        basket_code: b.basket_code,
         basket_name: b.basket_name,
         role_name: b.role_name,
         is_primary: b.is_primary,
@@ -96,6 +105,7 @@ export default function ClaimQueue() {
     scope === 'all'
       ? (allBaskets as BnWorkbasket[]).map((b) => ({
           id: b.id,
+          basket_code: b.basket_code,
           basket_name: b.basket_name,
           role_name: (b as any).assigned_role,
         }))
@@ -163,7 +173,7 @@ export default function ClaimQueue() {
     const stage = disposition.kind === 'STEP' ? disposition.step : null;
     const parked = disposition.kind === 'HOLD';
     const mismatched =
-      !!stage && !!owningBasket && !basketServesStage((owningBasket as any).basket_code, stage);
+      !!stage && !!owningBasket && !basketServesStage(owningBasket.basket_code, stage);
 
     return (
       <TableRow key={item.id} className={isOverdue(item.due_at) ? 'bg-destructive/5' : ''}>
