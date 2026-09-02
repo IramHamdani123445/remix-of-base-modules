@@ -33,6 +33,7 @@ import {
 } from '@/types/bn/meansTests/meansPolicyAdmin';
 import { BnMeansPolicyVersionDialog } from '@/components/bn/meansTests/configuration/BnMeansPolicyVersionDialog';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
+import { BnBusyButton } from '@/components/bn/shared';
 
 function findingText(f: BnMeansPolicyFinding): string {
   return BN_MEANS_POLICY_FINDING_TEXT[f.code] ?? f.message ?? humaniseMeansCode(f.code);
@@ -456,17 +457,17 @@ const VersionCard: React.FC<{
             {version.status === 'DRAFT' && (
               <>
                 <Button size="sm" variant="outline" onClick={onEdit}>Edit draft</Button>
-                <Button size="sm" variant="outline" disabled={pending}
+                <BnBusyButton loading={pending} size="sm" variant="outline" disabled={pending}
                   onClick={() => onCommand('VALIDATE_VERSION')}
-                  data-testid="means-policy-validate">Validate</Button>
-                <Button size="sm" disabled={pending}
+                  data-testid="means-policy-validate">Validate</BnBusyButton>
+                <BnBusyButton loading={pending} size="sm" disabled={pending}
                   onClick={() => onCommand('ACTIVATE_VERSION')}
-                  data-testid="means-policy-activate">Activate</Button>
+                  data-testid="means-policy-activate">Activate</BnBusyButton>
               </>
             )}
             {version.status === 'ACTIVE' && (
-              <Button size="sm" variant="outline" disabled={pending}
-                onClick={() => onCommand('RETIRE_VERSION')}>Retire version</Button>
+              <BnBusyButton loading={pending} size="sm" variant="outline" disabled={pending}
+                onClick={() => onCommand('RETIRE_VERSION')}>Retire version</BnBusyButton>
             )}
           </div>
         )}

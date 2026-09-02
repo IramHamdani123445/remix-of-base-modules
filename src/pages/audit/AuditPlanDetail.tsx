@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PLAN_WORKSPACE_TABS, useUrlTab } from '@/lib/audit/workspaceTabs';
 import { ArrowLeft, Briefcase, CheckCircle, Clock, AlertTriangle, ShieldCheck, Edit, Send, Undo2, BarChart3 } from 'lucide-react';
 import { configFromPlan, calculateCapacity, analyzeDistribution, getEngagementHours } from '@/lib/audit/capacityPlanner';
 import { useIAAnnualPlans, useIAAnnualPlanMutations, useIADepartments, useIAAuditors, useIADepartmentFunctions } from '@/hooks/useAuditData';
@@ -49,6 +50,8 @@ export default function AuditPlanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  // DEF-A-01 — controlled tabs bound to ?tab= (preserves other params).
+  const [activeTab, setActiveTab] = useUrlTab(PLAN_WORKSPACE_TABS);
 
   const { data: plans = [], isLoading: plansLoading } = useIAAnnualPlans();
   const { data: engagements = [], isLoading: engLoading } = useIAPlanEngagements(id);
@@ -207,7 +210,7 @@ export default function AuditPlanDetail() {
       </div>
 
       {/* 7-Tab Workspace */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="portfolio">Portfolio</TabsTrigger>

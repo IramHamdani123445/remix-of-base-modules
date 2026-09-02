@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Info, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { BnBusyButton } from '@/components/bn/shared';
 import {
   readProductCommunicationConfig,
   updateProductCommunicationConfig,
@@ -218,7 +219,7 @@ export function ProductOmniCommsPanel({ organizationId, productId }: ProductOmni
 
                 {canConfigure && (
                   <div className="flex flex-wrap gap-2">
-                    <Button
+                    <BnBusyButton loading={busy}
                       size="sm"
                       disabled={busy}
                       onClick={() =>
@@ -235,8 +236,8 @@ export function ProductOmniCommsPanel({ organizationId, productId }: ProductOmni
                       }
                     >
                       Save overrides
-                    </Button>
-                    <Button
+                    </BnBusyButton>
+                    <BnBusyButton loading={busy}
                       size="sm"
                       variant="outline"
                       disabled={busy}
@@ -249,7 +250,7 @@ export function ProductOmniCommsPanel({ organizationId, productId }: ProductOmni
                       }
                     >
                       Use inherited
-                    </Button>
+                    </BnBusyButton>
                   </div>
                 )}
               </div>

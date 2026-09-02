@@ -35,6 +35,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const db = supabase as any;
 
@@ -305,12 +306,12 @@ export default function ClaimWorklistEnhanced() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowReassign(false)}>Cancel</Button>
-              <Button
+              <BnBusyButton loading={reassignMutation.isPending}
                 onClick={() => reassignMutation.mutate({ ids: Array.from(selectedIds), officer: reassignTo })}
                 disabled={!reassignTo.trim() || reassignMutation.isPending}
               >
                 Reassign
-              </Button>
+              </BnBusyButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -20,6 +20,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { resolveProductWorkflow } from '@/services/bn/workflow/resolveProductWorkflow';
+import { pickBasketForStage } from '@/services/bn/workflow/stageBasketExpectation';
 
 const db = supabase as any;
 
@@ -317,11 +318,27 @@ export async function resolveClaimWorkbasket(params: {
     ? candidates.filter((b) => String(b.product_category ?? '').toUpperCase() === category)
     : [];
   const general = candidates.filter((b) => !b.product_category);
-  // Deterministic pick: category-specific first, then general, then lowest code.
   const pool = byCategory.length > 0 ? byCategory : general.length > 0 ? general : candidates;
-  const basket = [...pool].sort((a, b) =>
-    String(a.basket_code).localeCompare(String(b.basket_code)),
-  )[0];
+
+  // Several baskets can share one role — BN_PAYMENT_OFFICER staffs both
+  // Payment Preparation and Payment Issue. Picking the alphabetically first
+  // code put claims in a queue nobody chose. Prefer the basket whose code
+  // names the stage; when the stage does not name one, report the ambiguity
+  // instead of guessing.
+  const basket = pickBasketForStage(pool, stepName);
+  if (!basket) {
+    return {
+      ...NONE(
+        `stage "${stepName ?? 'unnamed'}" resolves to role "${basketRole}", which is shared by ` +
+        `${pool.length} active workbaskets (${pool.map((b) => b.basket_code).join(', ')}). ` +
+        'Name the workbasket explicitly on this workflow step to remove the ambiguity.',
+      ),
+      stepName,
+      stepRole,
+      basketRole,
+    };
+  }
+
 
   return {
     workbasketId: basket.id,

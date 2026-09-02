@@ -30,6 +30,7 @@ import {
   type BnRiskControlExecutionReadiness,
 } from '@/types/bn/risk/riskControlExecution';
 import { BnRiskControlExecutionDialog } from './BnRiskControlExecutionDialog';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   assessmentId: string;
@@ -117,7 +118,7 @@ export const BnRiskControlExecutionSection: React.FC<Props> = ({ assessmentId, o
             <Button size="sm" onClick={() => setDialog('RETRY')}>Retry execution</Button>
           )}
           {data.available_action === 'REFRESH' && (
-            <Button
+            <BnBusyButton loading={refreshStatus.isPending}
               size="sm"
               variant="outline"
               disabled={refreshStatus.isPending}
@@ -125,7 +126,7 @@ export const BnRiskControlExecutionSection: React.FC<Props> = ({ assessmentId, o
             >
               <RefreshCw className="mr-1 h-3.5 w-3.5" />
               {refreshStatus.isPending ? 'Refreshing…' : 'Refresh status'}
-            </Button>
+            </BnBusyButton>
           )}
         </div>
       </CardHeader>

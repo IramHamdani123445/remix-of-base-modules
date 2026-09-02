@@ -25,6 +25,7 @@ import { ChequePrintView } from '@/components/bn/payment/ChequePrintView';
 import { toast } from 'sonner';
 import { Download, Send, FileText, Printer, RotateCw, XCircle, Pencil, Truck } from 'lucide-react';
 import { formatNumber } from '@/lib/culture/culture';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   batchId: string;
@@ -86,7 +87,7 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
             <FileText className="h-4 w-4" /> EFT Bank File
           </h3>
           <div className="flex flex-wrap gap-2">
-            <Button
+            <BnBusyButton loading={busy}
               size="sm"
               disabled={!canExecute || busy}
               onClick={() => run(
@@ -95,7 +96,7 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
               )}
             >
               Generate EFT File
-            </Button>
+            </BnBusyButton>
           </div>
           {(eftFilesQ.data || []).length > 0 && (
             <div className="border rounded-md overflow-hidden">
@@ -125,10 +126,10 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
                             <Download className="h-3.5 w-3.5" />
                           </Button>
                           {f.status === 'GENERATED' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" disabled={busy}
+                            <BnBusyButton loading={busy} size="icon" variant="ghost" className="h-7 w-7" disabled={busy}
                               onClick={() => run(() => markEftSubmitted(f.id, userCode), 'Marked submitted')}>
                               <Send className="h-3.5 w-3.5" />
-                            </Button>
+                            </BnBusyButton>
                           )}
                         </div>
                       </TableCell>
@@ -143,16 +144,16 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
               <Label className="text-xs">Bank Response (paste contents)</Label>
               <Textarea rows={3} value={responsePayload} onChange={(e) => setResponsePayload(e.target.value)} />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" disabled={busy || !responsePayload.trim()}
+                <BnBusyButton loading={busy} size="sm" variant="outline" disabled={busy || !responsePayload.trim()}
                   onClick={() => {
                     const f = (eftFilesQ.data || []).find((x) => x.status === 'SUBMITTED');
                     if (f) run(() => uploadEftResponse(f.id, responsePayload, 'ACK', userCode), 'Response stored');
-                  }}>Mark Acknowledged</Button>
-                <Button size="sm" variant="destructive" disabled={busy || !responsePayload.trim()}
+                  }}>Mark Acknowledged</BnBusyButton>
+                <BnBusyButton loading={busy} size="sm" variant="destructive" disabled={busy || !responsePayload.trim()}
                   onClick={() => {
                     const f = (eftFilesQ.data || []).find((x) => x.status === 'SUBMITTED');
                     if (f) run(() => uploadEftResponse(f.id, responsePayload, 'REJECTED', userCode), 'Marked rejected');
-                  }}>Mark Rejected</Button>
+                  }}>Mark Rejected</BnBusyButton>
               </div>
             </div>
           )}
@@ -175,7 +176,7 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
               <Label className="text-xs">Starting Number (optional)</Label>
               <Input value={startingNumber} onChange={(e) => setStartingNumber(e.target.value)} placeholder="auto" className="h-8" />
             </div>
-            <Button
+            <BnBusyButton loading={busy}
               size="sm"
               disabled={!canExecute || busy}
               onClick={() => run(
@@ -190,7 +191,7 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
               )}
             >
               Assign Cheque Numbers
-            </Button>
+            </BnBusyButton>
           </div>
 
           {(chequesQ.data || []).length > 0 && (
@@ -215,10 +216,10 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
                       <TableCell className="text-xs">
                         <div className="flex gap-1">
                           {c.status === 'ASSIGNED' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" disabled={busy}
+                            <BnBusyButton loading={busy} size="icon" variant="ghost" className="h-7 w-7" disabled={busy}
                               onClick={() => run(() => markPrinted([c.id], userCode), 'Marked printed')}>
                               <Printer className="h-3.5 w-3.5" />
-                            </Button>
+                            </BnBusyButton>
                           )}
                           {(c.status === 'PRINTED' || c.status === 'REPRINTED') && (
                             <Button size="icon" variant="ghost" className="h-7 w-7"
@@ -239,10 +240,10 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
                             </Button>
                           )}
                           {(c.status === 'PRINTED' || c.status === 'REPRINTED') && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" disabled={busy}
+                            <BnBusyButton loading={busy} size="icon" variant="ghost" className="h-7 w-7" disabled={busy}
                               onClick={() => run(() => markDispatched([c.id], dispatchRef || undefined, userCode), 'Dispatched')}>
                               <Truck className="h-3.5 w-3.5" />
-                            </Button>
+                            </BnBusyButton>
                           )}
                         </div>
                       </TableCell>
@@ -255,13 +256,13 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
 
           <div className="flex flex-wrap gap-2">
             {(chequesQ.data || []).some((c) => c.status === 'ASSIGNED') && (
-              <Button size="sm" variant="outline" disabled={busy}
+              <BnBusyButton loading={busy} size="sm" variant="outline" disabled={busy}
                 onClick={() => run(
                   () => markPrinted((chequesQ.data || []).filter((c) => c.status === 'ASSIGNED').map((c) => c.id), userCode),
                   'All assigned cheques marked printed',
                 )}>
                 Mark All Printed
-              </Button>
+              </BnBusyButton>
             )}
             <ChequePrintView cheques={chequesQ.data || []} />
           </div>
@@ -271,7 +272,7 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
               <Label className="text-xs">Dispatch Reference (for bulk dispatch)</Label>
               <Input value={dispatchRef} onChange={(e) => setDispatchRef(e.target.value)} className="h-8" />
             </div>
-            <Button size="sm" variant="outline" disabled={busy}
+            <BnBusyButton loading={busy} size="sm" variant="outline" disabled={busy}
               onClick={() => run(
                 () => markDispatched(
                   (chequesQ.data || []).filter((c) => c.status === 'PRINTED' || c.status === 'REPRINTED').map((c) => c.id),
@@ -280,7 +281,7 @@ export const PaymentExecutionPanel: React.FC<Props> = ({
                 'Dispatched',
               )}>
               Dispatch Printed
-            </Button>
+            </BnBusyButton>
           </div>
 
           {/* Inline reason inputs */}

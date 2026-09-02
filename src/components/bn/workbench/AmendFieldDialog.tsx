@@ -20,6 +20,7 @@ import type { FieldArea } from '@/types/bn/amendment';
 import type { FieldMeta } from './DynamicSectionRenderer';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   claimId: string;
@@ -152,9 +153,9 @@ export const AmendFieldDialog: React.FC<Props> = ({ claimId, field, currentValue
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
+          <BnBusyButton loading={submitting} onClick={handleSubmit} disabled={submitting}>
             {submitting ? 'Saving…' : 'Save amendment'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

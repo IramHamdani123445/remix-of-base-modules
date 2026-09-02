@@ -23,6 +23,7 @@ import {
 import { Save, AlertTriangle } from 'lucide-react';
 import { BnActionToolbar, BnToolbarGroup } from '@/components/bn/shared/BnActionToolbar';
 import type { ClaimTransition } from '@/services/bn/claimWorkbenchService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface ClaimActionBarProps {
   claimId: string;
@@ -92,9 +93,9 @@ export const ClaimActionBar: React.FC<ClaimActionBarProps> = ({
 
         <BnToolbarGroup>
           {hasUnsavedChanges && (
-            <Button size="sm" variant="outline" onClick={onSave} disabled={isSaving} className="gap-1">
+            <BnBusyButton loading={isSaving} size="sm" variant="outline" onClick={onSave} disabled={isSaving} className="gap-1">
               <Save className="h-3.5 w-3.5" /> Save
-            </Button>
+            </BnBusyButton>
           )}
 
           {availableTransitions.map(transition => (

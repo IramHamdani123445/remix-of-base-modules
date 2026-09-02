@@ -28,6 +28,7 @@ import {
   type BnRiskOutcomeTypeOption,
 } from '@/types/bn/risk/riskOutcome';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -301,7 +302,7 @@ export const BnRiskOutcomeDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={mutation.isPending}
             data-testid="bn-risk-outcome-submit"
             disabled={missing.length > 0 || mutation.isPending}
             onClick={() => { setError(null); setConflict(false); mutation.mutate(); }}
@@ -309,7 +310,7 @@ export const BnRiskOutcomeDialog: React.FC<Props> = ({
             {mutation.isPending
               ? 'Recording…'
               : mode === 'CORRECT' ? 'Record superseding outcome' : 'Record outcome'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -22514,14 +22514,30 @@ export type Database = {
       }
       bn_payment_schedule: {
         Row: {
+          adjusted_from_id: string | null
+          adjustment_reason: string | null
+          amount: number | null
+          arrears_from: string | null
+          arrears_periods: number | null
+          arrears_to: string | null
+          batch_id: string | null
           bn_award_id: string
           bn_payment_instruction_id: string | null
+          cl_cheque_no: string | null
+          claim_id: string | null
+          claim_number: string | null
+          currency: string | null
           deductions: number | null
           due_date: string
           entered_at: string
           entered_by: string | null
+          entitlement_id: string | null
+          frequency: string | null
+          generation_mode: string | null
           gross_amount: number
           id: string
+          instruction_id: string | null
+          legacy_schedule_ref: string | null
           modified_at: string
           modified_by: string | null
           net_amount: number | null
@@ -22529,18 +22545,44 @@ export type Database = {
           paid_at: string | null
           payment_method: string | null
           payment_ref: string | null
+          period_end: string | null
+          period_start: string | null
+          rate_applied: number | null
+          rate_monthly: number | null
+          rate_weekly: number | null
           schedule_period: string
+          sequence_number: number
+          ssn: string | null
           status: string
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
         }
         Insert: {
+          adjusted_from_id?: string | null
+          adjustment_reason?: string | null
+          amount?: number | null
+          arrears_from?: string | null
+          arrears_periods?: number | null
+          arrears_to?: string | null
+          batch_id?: string | null
           bn_award_id: string
           bn_payment_instruction_id?: string | null
+          cl_cheque_no?: string | null
+          claim_id?: string | null
+          claim_number?: string | null
+          currency?: string | null
           deductions?: number | null
           due_date: string
           entered_at?: string
           entered_by?: string | null
+          entitlement_id?: string | null
+          frequency?: string | null
+          generation_mode?: string | null
           gross_amount: number
           id?: string
+          instruction_id?: string | null
+          legacy_schedule_ref?: string | null
           modified_at?: string
           modified_by?: string | null
           net_amount?: number | null
@@ -22548,18 +22590,44 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_ref?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          rate_applied?: number | null
+          rate_monthly?: number | null
+          rate_weekly?: number | null
           schedule_period: string
+          sequence_number?: number
+          ssn?: string | null
           status?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
         }
         Update: {
+          adjusted_from_id?: string | null
+          adjustment_reason?: string | null
+          amount?: number | null
+          arrears_from?: string | null
+          arrears_periods?: number | null
+          arrears_to?: string | null
+          batch_id?: string | null
           bn_award_id?: string
           bn_payment_instruction_id?: string | null
+          cl_cheque_no?: string | null
+          claim_id?: string | null
+          claim_number?: string | null
+          currency?: string | null
           deductions?: number | null
           due_date?: string
           entered_at?: string
           entered_by?: string | null
+          entitlement_id?: string | null
+          frequency?: string | null
+          generation_mode?: string | null
           gross_amount?: number
           id?: string
+          instruction_id?: string | null
+          legacy_schedule_ref?: string | null
           modified_at?: string
           modified_by?: string | null
           net_amount?: number | null
@@ -22567,8 +22635,18 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           payment_ref?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          rate_applied?: number | null
+          rate_monthly?: number | null
+          rate_weekly?: number | null
           schedule_period?: string
+          sequence_number?: number
+          ssn?: string | null
           status?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
         }
         Relationships: [
           {
@@ -22583,6 +22661,20 @@ export type Database = {
             columns: ["bn_payment_instruction_id"]
             isOneToOne: false
             referencedRelation: "bn_payment_instruction"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_payment_schedule_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "bn_claim"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_payment_schedule_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "bn_entitlement"
             referencedColumns: ["id"]
           },
         ]
@@ -81239,6 +81331,62 @@ export type Database = {
           },
         ]
       }
+      ia_risk_recalc_log: {
+        Row: {
+          created_at: string
+          id: string
+          new_inherent_level: string | null
+          new_inherent_score: number | null
+          new_residual_level: string | null
+          new_residual_score: number | null
+          old_inherent_level: string | null
+          old_inherent_score: number | null
+          old_residual_level: string | null
+          old_residual_score: number | null
+          recalculated_by: string | null
+          risk_id: string | null
+          trigger_reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          new_inherent_level?: string | null
+          new_inherent_score?: number | null
+          new_residual_level?: string | null
+          new_residual_score?: number | null
+          old_inherent_level?: string | null
+          old_inherent_score?: number | null
+          old_residual_level?: string | null
+          old_residual_score?: number | null
+          recalculated_by?: string | null
+          risk_id?: string | null
+          trigger_reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          new_inherent_level?: string | null
+          new_inherent_score?: number | null
+          new_residual_level?: string | null
+          new_residual_score?: number | null
+          old_inherent_level?: string | null
+          old_inherent_score?: number | null
+          old_residual_level?: string | null
+          old_residual_score?: number | null
+          recalculated_by?: string | null
+          risk_id?: string | null
+          trigger_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_risk_recalc_log_risk_id_fkey"
+            columns: ["risk_id"]
+            isOneToOne: false
+            referencedRelation: "ia_risk_register"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_risk_register: {
         Row: {
           audit_universe_id: string | null
@@ -127092,6 +127240,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_case_type_label: { Args: { p_code: string }; Returns: string }
       ce_classify_finding_v1: {
         Args: {
           p_candidate_violation_type_id?: string
@@ -128275,6 +128424,18 @@ export type Database = {
       ce_team_officer_identities: {
         Args: { _user_id: string }
         Returns: string[]
+      }
+      ce_trend_analytics_v1: {
+        Args: {
+          p_case_type?: string[]
+          p_compare?: string
+          p_from: string
+          p_grain?: string
+          p_to: string
+          p_violation_type?: string[]
+          p_zone?: string[]
+        }
+        Returns: Json
       }
       ce_upsert_contribution_exemption_v1: {
         Args: {

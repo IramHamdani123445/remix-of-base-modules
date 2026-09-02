@@ -63,6 +63,7 @@ import {
 } from '@/services/bn/forms/formLookupService';
 import type { PersonSummary, EmployerSummary, Dependant } from '@/services/bn/integration';
 import PaymentDetailsSection from '@/components/bn/payment/PaymentDetailsSection';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   definition: FormDefinition;
@@ -488,9 +489,9 @@ export function SmartBenefitFormRenderer({
 
       {!readOnly && (
         <div className="flex justify-end gap-2">
-          <Button type="submit" disabled={submitting}>
+          <BnBusyButton loading={submitting} type="submit" disabled={submitting}>
             {submitting ? 'Submitting…' : 'Submit Application'}
-          </Button>
+          </BnBusyButton>
         </div>
       )}
     </form>

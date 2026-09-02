@@ -27,6 +27,7 @@ import type {
   SuspensionExecutionState,
 } from '@/services/bn/awardSuspensionViewService';
 import { formatMoney, formatDateTime } from './suspensionViewModels';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   suspensionId: string;
@@ -296,7 +297,7 @@ export function ReinstatementPanel({
               />
               <div className="flex flex-wrap justify-end gap-2">
                 {pending && isProposer && (
-                  <Button
+                  <BnBusyButton loading={busy === 'withdraw'}
                     size="sm"
                     variant="outline"
                     disabled={!actionsEnabled || busy === 'withdraw'}
@@ -314,11 +315,11 @@ export function ReinstatementPanel({
                     }
                   >
                     Withdraw
-                  </Button>
+                  </BnBusyButton>
                 )}
                 {pending && canApprove && !isProposer && (
                   <>
-                    <Button
+                    <BnBusyButton loading={busy === 'reject'}
                       size="sm"
                       variant="destructive"
                       disabled={!actionsEnabled || !decisionNote.trim() || busy === 'reject'}
@@ -337,7 +338,7 @@ export function ReinstatementPanel({
                       }
                     >
                       Reject
-                    </Button>
+                    </BnBusyButton>
                     <Button
                       size="sm"
                       disabled={!actionsEnabled || busy === 'approve'}

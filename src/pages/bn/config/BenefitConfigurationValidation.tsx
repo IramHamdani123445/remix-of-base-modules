@@ -39,6 +39,7 @@ import { RuleGovernanceStatusCard } from '@/components/bn/governance/RuleGoverna
 import { ClaimGovernanceReadinessCard } from '@/components/bn/governance/ClaimGovernanceReadinessCard';
 import { HandoffReadinessCard } from '@/components/bn/governance/HandoffReadinessCard';
 import { QueueAccessHealthPanel } from '@/components/bn/config/QueueAccessHealthPanel';
+import { StageQueueHealthPanel } from '@/components/bn/config/StageQueueHealthPanel';
 
 
 const STATUS_VARIANT: Record<ValidationStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -208,6 +209,7 @@ export default function BenefitConfigurationValidation() {
       </div>
 
       <QueueAccessHealthPanel compact />
+      <StageQueueHealthPanel compact />
 
 
 

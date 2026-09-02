@@ -25,6 +25,7 @@ import {
   type BnRiskClosureReadiness,
 } from '@/types/bn/risk/riskOutcome';
 import { referenceItems, useRiskReferenceData } from './useRiskReference';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -156,13 +157,13 @@ export const BnRiskClosureDialog: React.FC<Props> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
+          <BnBusyButton loading={mutation.isPending}
             data-testid="bn-risk-closure-submit"
             disabled={!reasonCode || mutation.isPending || !readiness.can_close}
             onClick={() => { setError(null); setConflict(false); mutation.mutate(); }}
           >
             {mutation.isPending ? 'Closing…' : 'Close Risk assessment'}
-          </Button>
+          </BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

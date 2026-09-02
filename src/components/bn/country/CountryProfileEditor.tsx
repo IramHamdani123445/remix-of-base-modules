@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { getCountryProfile, updateCountryProfile, type CountryProfileFields } from '@/services/bn/countryProfileService';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   countryCode: string;
@@ -87,7 +88,7 @@ const CountryProfileEditor: React.FC<Props> = ({ countryCode, open, onOpenChange
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || isLoading}>Save</Button>
+          <BnBusyButton loading={save.isPending} onClick={() => save.mutate()} disabled={save.isPending || isLoading}>Save</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

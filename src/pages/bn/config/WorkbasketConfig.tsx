@@ -26,6 +26,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { QueueAccessHealthPanel } from '@/components/bn/config/QueueAccessHealthPanel';
+import { StageQueueHealthPanel } from '@/components/bn/config/StageQueueHealthPanel';
 
 
 function useEscalationPolicyOptions() {
@@ -229,6 +230,7 @@ export default function WorkbasketConfig() {
         />
 
         <QueueAccessHealthPanel />
+        <StageQueueHealthPanel />
 
 
 

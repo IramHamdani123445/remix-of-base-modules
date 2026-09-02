@@ -13,6 +13,7 @@ import {
   listGroupsForRule, addRulesToGroup, removeRuleFromGroup,
 } from '@/services/bn/ruleGroupItemService';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
+import { BnBusyButton } from '@/components/bn/shared';
 
 interface Props {
   open: boolean;
@@ -93,7 +94,7 @@ export function ManageGroupMembershipsDialog({ open, onOpenChange, ruleId, ruleC
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+          <BnBusyButton loading={busy} onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -156,7 +156,7 @@ export function CataloguePickerDialog({ open, onOpenChange, versionId, onAdded }
         <DialogFooter>
           <span className="mr-auto text-sm text-muted-foreground">{selected.size} selected</span>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleAdd} disabled={busy || selected.size === 0}>{busy ? 'Adding…' : 'Add Selected'}</Button>
+          <BnBusyButton loading={busy} onClick={handleAdd} disabled={busy || selected.size === 0}>{busy ? 'Adding…' : 'Add Selected'}</BnBusyButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

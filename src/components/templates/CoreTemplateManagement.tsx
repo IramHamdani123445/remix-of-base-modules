@@ -141,20 +141,36 @@ export default function CoreTemplateManagement({
       // Augment with variant + ref counts in a single query each
       const ids = t.map((x) => x.id);
       if (ids.length) {
-        const [{ data: variants }, { data: refs }] = await Promise.all([
-          (supabase as any).from("core_template_channel_variant")
-            .select("template_id, channel_code").in("template_id", ids).eq("is_active", true),
+        // DEF-A-03 — channel variants hang off core_template_version, not the
+        // template directly; resolve version -> template before counting.
+        const [{ data: versions }, { data: refs }] = await Promise.all([
+          (supabase as any).from("core_template_version")
+            .select("id, template_id").in("template_id", ids),
           (supabase as any).from("core_template_legal_reference")
             .select("template_id").in("template_id", ids),
         ]);
+        const versionToTemplate: Record<string, string> = {};
+        (versions || []).forEach((v: any) => { versionToTemplate[v.id] = v.template_id; });
+        const versionIds = Object.keys(versionToTemplate);
+        let variants: any[] = [];
+        if (versionIds.length) {
+          const { data: vr } = await (supabase as any).from("core_template_channel_variant")
+            .select("template_version_id, channel_code")
+            .in("template_version_id", versionIds).eq("is_active", true);
+          variants = vr || [];
+        }
         const vm: Record<string, string[]> = {};
-        (variants || []).forEach((v: any) => {
-          (vm[v.template_id] ||= []).push(v.channel_code);
+        variants.forEach((v: any) => {
+          const tid = versionToTemplate[v.template_version_id];
+          if (!tid) return;
+          const list = (vm[tid] ||= []);
+          if (!list.includes(v.channel_code)) list.push(v.channel_code);
         });
         const rm: Record<string, number> = {};
         (refs || []).forEach((r: any) => { rm[r.template_id] = (rm[r.template_id] || 0) + 1; });
         setVariantMap(vm);
         setRefCountMap(rm);
+
       } else {
         setVariantMap({}); setRefCountMap({});
       }

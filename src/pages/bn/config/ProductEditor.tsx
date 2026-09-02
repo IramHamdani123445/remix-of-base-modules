@@ -45,6 +45,7 @@ import { ConflictDetectionPanel } from '@/components/bn/config/ConflictDetection
 import { VersionReadinessPanel } from '@/components/bn/config/VersionReadinessPanel';
 
 import { BnPlatformConsumptionPanel } from '@/components/bn/config/BnPlatformConsumptionPanel';
+import { BnBusyButton } from '@/components/bn/shared';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   DRAFT: 'secondary', PENDING_APPROVAL: 'outline', ACTIVE: 'default', SUSPENDED: 'destructive', ARCHIVED: 'outline',
@@ -354,10 +355,10 @@ export default function ProductEditor() {
               <Plus className="h-4 w-4" /> New Version
             </Button>
           )}
-          <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="gap-2">
+          <BnBusyButton loading={createMutation.isPending || updateMutation.isPending} onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="gap-2">
             <Save className="h-4 w-4" />
             {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : 'Save Product'}
-          </Button>
+          </BnBusyButton>
         </div>
       </div>
 
